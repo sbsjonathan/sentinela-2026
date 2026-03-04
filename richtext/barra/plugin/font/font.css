@@ -1,0 +1,194 @@
+/* font.css - Estilos para o plugin de Font Size */
+
+/* --- Container do Plugin --- */
+.font-plugin {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* --- Botão Principal --- */
+.font-btn {
+    min-width: 44px;
+    height: 32px;
+    padding: 0 8px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.font-btn:active:not(:disabled) {
+    background-color: rgba(0, 0, 0, 0.1);
+    transform: scale(0.95);
+}
+
+.font-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1;
+}
+
+.font-arrow {
+    color: #666;
+    transition: transform 0.2s ease;
+}
+
+.font-btn.active .font-arrow {
+    transform: rotate(180deg);
+}
+
+/* --- Dropdown Menu --- */
+.font-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 120px;
+    z-index: 1001;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-50%) translateY(-5px);
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+.font-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* --- Opções do Dropdown --- */
+.font-option {
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: white;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    display: block;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.font-option:active {
+    background-color: #f0f0f0;
+}
+
+.font-option.selected {
+    background-color: #007AFF15;
+}
+
+.font-option.selected .font-preview {
+    color: #007AFF;
+}
+
+/* --- Preview dos Tamanhos --- */
+.font-preview {
+    display: block;
+    color: #333;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.font-preview.h1 {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.font-preview.h2 {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.font-preview.h3 {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.font-preview.normal {
+    font-size: 13px;
+    font-weight: normal;
+    line-height: 1.2;
+}
+
+/* --- Estado Bloqueado (dentro de toggle) --- */
+.font-btn.blocked,
+.font-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.font-btn.blocked .font-label,
+.font-btn:disabled .font-label {
+    color: #999;
+}
+
+.font-btn.blocked:active,
+.font-btn:disabled:active {
+    background-color: transparent;
+    transform: none;
+}
+
+/* --- Classes aplicadas aos text-blocks --- */
+.text-block.font-h1 {
+    font-size: 28px !important;
+    font-weight: 600 !important;
+    line-height: 1.3 !important;
+    margin-top: 12px;
+    margin-bottom: 8px;
+}
+
+.text-block.font-h2 {
+    font-size: 22px !important;
+    font-weight: 600 !important;
+    line-height: 1.35 !important;
+    margin-top: 12px;
+    margin-bottom: 8px;
+}
+
+.text-block.font-h3 {
+    font-size: 18px !important;
+    font-weight: 500 !important;
+    line-height: 1.4 !important;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+/* Garantir que o texto dentro mantenha o tamanho */
+.text-block.font-h1 *,
+.text-block.font-h2 *,
+.text-block.font-h3 * {
+    font-size: inherit !important;
+}
+
+/* --- Otimizações para iPhone --- */
+@supports (-webkit-touch-callout: none) {
+    .font-dropdown {
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+    }
+    
+    .font-option {
+        -webkit-touch-callout: none;
+    }
+}
