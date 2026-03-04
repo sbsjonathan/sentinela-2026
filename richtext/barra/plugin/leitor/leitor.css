@@ -1,0 +1,223 @@
+/* leitor.css - Estilos do Plugin Modo Leitura */
+
+/* === Botão na Barra de Ferramentas === */
+.leitor-plugin {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.leitor-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    cursor: pointer;
+}
+
+.leitor-btn:active {
+    background-color: rgba(0, 0, 0, 0.1);
+    transform: scale(0.9);
+}
+
+/* Estado ativo do botão */
+.leitor-btn.active {
+    background-color: #007AFF;
+}
+
+.leitor-btn.active .leitor-icon {
+    stroke: white;
+}
+
+.leitor-icon {
+    width: 20px;
+    height: 20px;
+    stroke: #333;
+    stroke-width: 2;
+    fill: none;
+    transition: stroke 0.2s ease;
+}
+
+/* === Indicador de Modo Leitura === */
+.read-only-indicator {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 122, 255, 0.95);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 1001;
+    pointer-events: none;
+    box-shadow: 0 2px 10px rgba(0, 122, 255, 0.3);
+}
+
+.read-only-indicator.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.read-only-indicator.fade-out {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+    transition: all 0.5s ease-out;
+}
+
+/* === Estilos do Modo Read-Only === */
+
+/* Visual diferente para o editor em modo leitura */
+.editor-content.read-only-mode {
+    background-color: #fafafa;
+    cursor: default;
+}
+
+/* Remove cursor de texto em modo leitura */
+.read-only-mode * {
+    cursor: default !important;
+}
+
+/* Elementos em modo leitura */
+.read-only {
+    background-color: transparent !important;
+    cursor: default !important;
+    caret-color: transparent !important;
+}
+
+/* Remove placeholder em modo leitura */
+.read-only-mode .text-block[data-placeholder]:empty:before,
+.read-only-mode .toggle-title[data-placeholder]:empty:before,
+.read-only-mode .content-invisible[data-placeholder]:empty:before {
+    display: none !important;
+}
+
+/* Esconde o placeholder do editor principal */
+.read-only-mode.is-empty::before {
+    display: none !important;
+}
+
+/* Esconde botões de adicionar filho em modo leitura */
+.add-child-btn.read-only-hidden {
+    display: none !important;
+}
+
+/* Desabilita visual das setas mas mantém visível */
+.arrow-wrapper.read-only-disabled {
+    opacity: 0.5;
+    cursor: default !important;
+}
+
+/* Remove highlight de foco em modo leitura */
+.read-only-mode .text-block:focus,
+.read-only-mode .toggle-title:focus,
+.read-only-mode .content-invisible:focus {
+    outline: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* === Ajustes visuais para melhor leitura === */
+
+/* Texto com melhor contraste em modo leitura */
+.read-only-mode .text-block,
+.read-only-mode .toggle-title,
+.read-only-mode .content-invisible {
+    color: #1a1a1a;
+}
+
+/* Remove animações de hover em modo leitura */
+.read-only-mode .arrow-wrapper:hover {
+    background-color: transparent !important;
+}
+
+/* Barra de status mais sutil em modo leitura */
+.read-only-mode + .editor-status {
+    opacity: 0.7;
+}
+
+/* === Feedback visual suave === */
+
+/* Transição suave ao entrar/sair do modo leitura */
+.editor-content {
+    transition: background-color 0.3s ease;
+}
+
+/* Seleção de texto em modo leitura (se permitida) */
+.read-only-mode ::selection {
+    background-color: rgba(0, 122, 255, 0.2);
+}
+
+/* === Links Bíblicos em Modo Read-Only === */
+.read-only-mode .bbl {
+    color: #4A6DA7;
+    text-decoration: none;
+    font-weight: 500;
+    display: inline;
+    position: relative;
+    border-radius: 3px;
+    padding: 1px 3px;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    cursor: pointer;
+    background-color: rgba(74, 109, 167, 0.08);
+}
+
+/* Sublinhado sutil */
+.read-only-mode .bbl::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 2px;
+    right: 2px;
+    height: 1px;
+    background-color: #4A6DA7;
+    opacity: 0.4;
+}
+
+/* Estados de interação do link bíblico */
+.read-only-mode .bbl.pressionando {
+    background-color: rgba(74, 109, 167, 0.2);
+    transform: scale(1.05);
+}
+
+.read-only-mode .bbl.ref-aberta {
+    background-color: rgba(74, 109, 167, 0.3);
+    animation: pulse-link 0.3s ease-out;
+}
+
+@keyframes pulse-link {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+@supports (-webkit-touch-callout: none) {
+    .leitor-btn {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+    }
+    
+    .read-only-mode {
+        -webkit-touch-callout: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Previne zoom acidental em modo leitura */
+    .editor-read-only {
+        touch-action: pan-y;
+    }
+}
