@@ -1,0 +1,27 @@
+<!-- cores.html — Plugin de Cores (slot 6) com ícones “A” dinâmicos -->
+<div class="cores-plugin" role="group" aria-label="Cores de texto e fundo">
+  <!-- Inputs de cor -->
+  <input type="color" id="text-color-input" class="color-input-hidden" aria-hidden="true" tabindex="-1">
+  <input type="color" id="bg-color-input"   class="color-input-hidden" aria-hidden="true" tabindex="-1">
+
+  <!-- Botão: Cor do Texto (sem o data-text) -->
+  <label for="text-color-input" id="text-color-label" class="format-btn color-picker-label" title="Cor do texto" aria-label="Cor do texto">
+    <span class="color-indicator text" data-role="text-indicator">A</span>
+  </label>
+
+  <!-- Botão: Cor de Fundo -->
+  <label for="bg-color-input" id="bg-color-label" class="format-btn color-picker-label" title="Cor de fundo" aria-label="Cor de fundo">
+    <span class="color-indicator bg" data-role="bg-indicator">A</span>
+  </label>
+
+  <!-- Botão: Reset -->
+  <button id="reset-color-btn" class="format-btn" title="Resetar Cores" aria-label="Resetar formatação de cores">
+    <span id="reset-color-indicator" class="reset-indicator">
+      A
+      <svg id="reset-prohibition-icon" class="reset-prohibition-icon" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="#ff0000" stroke-width="2" opacity="0.8"/>
+        <line x1="6" y1="6" x2="18" y2="18" stroke="#ff0000" stroke-width="2" opacity="0.8"/>
+      </svg>
+    </span>
+  </button>
+</div>

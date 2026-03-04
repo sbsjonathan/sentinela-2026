@@ -1,0 +1,55 @@
+/* cores.css — Estilos do plugin Cores (slot 6) */
+
+.cores-plugin {
+  width: 100%; height: 100%; display: flex;
+  align-items: center; justify-content: center;
+  /* === MELHORIA 2: Espaçamento entre botões reduzido === */
+  gap: 1px;
+}
+
+.color-picker-label,
+#reset-color-btn { /* Aplica a todos os botões do plugin */
+  min-width: 32px;
+  min-height: 32px;
+  /* === MELHORIA 2: Padding interno reduzido === */
+  padding: 0 4px;
+  line-height: 1; user-select: none;
+}
+
+.color-indicator {
+  display: inline-block; font-weight: 600; font-size: 18px;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  letter-spacing: 0.02em; transform: translateY(1px);
+}
+
+.color-indicator.text {
+  transition: text-shadow 0.2s ease-in-out;
+}
+
+.color-indicator.bg {
+  padding: 2px 6px; border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.12);
+}
+
+.color-input-hidden {
+  position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;
+  top: -9999px; left: -9999px; font-size: 16px;
+}
+
+.reset-indicator {
+  position: relative; font-weight: 600; font-size: 18px; line-height: 1;
+  display: inline-block; padding: 2px 4px; border-radius: 3px;
+  background-color: transparent; transition: all 0.2s ease; color: #111;
+}
+
+.reset-prohibition-icon {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); pointer-events: none;
+  width: 24px; height: 24px;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); }
+}
+.shake { animation: shake 0.5s; }
