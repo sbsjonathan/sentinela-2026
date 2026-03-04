@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Login - Sincronização</title>
+    
+    <link rel="stylesheet" href="../navbar/navbar-unified.css">
+    
+    <style>
+        /* Badge de status específico para página save */
+        .sync-status-badge {
+            position: fixed;
+            top: 50px;
+            right: 15px;
+            background: #10b981;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 999;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .sync-status-badge.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .sync-status-badge.logged-out {
+            background: #6b7280;
+        }
+        
+        :root {
+            --cor-principal: #3F3C6D;
+            --cor-titulo: #375255;
+            --cor-sucesso: #10b981;
+            --cor-erro: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            padding-bottom: calc(90px + env(safe-area-inset-bottom)); /* Espaço para navbar */
+        }
+
+        .auth-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--cor-principal), var(--cor-titulo));
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .logo-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--cor-titulo);
+            margin-bottom: 5px;
+        }
+
+        .logo-subtitle {
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--cor-principal);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(63, 60, 109, 0.1);
+        }
+
+        .form-input.error {
+            border-color: var(--cor-erro);
+            background: #fef2f2;
+        }
+
+        .form-input.success {
+            border-color: var(--cor-sucesso);
+            background: #f0fdf4;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .btn-primary {
+            background: var(--cor-principal);
+            color: white;
+            box-shadow: 0 4px 15px rgba(63, 60, 109, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(63, 60, 109, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:active {
+            background: #4b5563;
+        }
+
+        .btn-load {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-load:active {
+            background: #138496;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+
+        .auth-switch button {
+            background: none;
+            border: none;
+            color: var(--cor-principal);
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            margin: -8px 0 0 -8px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="logo">
+            <div class="logo-icon">💾</div>
+            <h1 class="logo-title">Sincronização</h1>
+            <p class="logo-subtitle">Suas anotações em todos os dispositivos</p>
+        </div>
+
+        <!-- Tela de Login -->
+        <div class="screen active" id="login-screen">
+            <div class="form-group">
+                <label class="form-label" for="login-usuario">Nome de usuário</label>
+                <input type="text" id="login-usuario" class="form-input" placeholder="Digite seu nome de usuário" autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="login-senha">Senha</label>
+                <input type="password" id="login-senha" class="form-input" placeholder="Digite sua senha" autocomplete="current-password">
+            </div>
+            
+            <button class="btn btn-primary" id="btn-login">
+                Entrar
+            </button>
+            
+            <button class="btn btn-secondary" id="btn-voltar">
+                Voltar sem Sincronizar
+            </button>
+            
+            <div class="auth-switch">
+                Primeira vez aqui? 
+                <button id="switch-to-register">Criar conta</button>
+            </div>
+        </div>
+
+        <!-- Tela de Cadastro -->
+        <div class="screen" id="register-screen">
+            <div class="form-group">
+                <label class="form-label" for="register-usuario">Nome de usuário</label>
+                <input type="text" id="register-usuario" class="form-input" placeholder="Escolha um nome único" autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="register-senha">Senha</label>
+                <input type="password" id="register-senha" class="form-input" placeholder="Crie uma senha" autocomplete="new-password">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="register-nome">Nome completo</label>
+                <input type="text" id="register-nome" class="form-input" placeholder="Como você gostaria de ser chamado?">
+            </div>
+            
+            <button class="btn btn-primary" id="btn-register">
+                Criar Conta
+            </button>
+            
+            <button class="btn btn-secondary" id="btn-voltar-register">
+                Voltar sem Sincronizar
+            </button>
+            
+            <div class="auth-switch">
+                Já tem uma conta? 
+                <button id="switch-to-login">Fazer login</button>
+            </div>
+        </div>
+
+        <!-- Tela de Usuário Logado -->
+        <div class="screen" id="logged-screen">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="font-size: 2.5rem; margin-bottom: 15px;">👤</div>
+                <h2 style="color: var(--cor-titulo); margin-bottom: 10px;" id="logged-user-name">Usuário Logado</h2>
+                <p style="color: #6b7280; font-size: 0.9rem;" id="logged-user-info">Suas anotações estão sincronizadas</p>
+            </div>
+
+            <div class="message success">
+                ✅ Você já está logado e sincronizando suas anotações automaticamente
+            </div>
+            
+            <button class="btn btn-load" id="btn-carregar-conteudo">
+                📥 Carregar Conteúdo Salvo
+            </button>
+            
+            <button class="btn btn-primary" id="btn-continuar-logged">
+                Continuar
+            </button>
+            
+            <button class="btn btn-secondary" id="btn-logout">
+                Fazer Logout
+            </button>
+        </div>
+
+        <!-- Tela de Sucesso -->
+        <div class="screen" id="success-screen">
+            <div class="message success" id="success-message">
+                Login realizado com sucesso!
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <div style="font-size: 2rem; margin-bottom: 15px;">✅</div>
+                <h2 style="color: var(--cor-titulo); margin-bottom: 10px;">Bem-vindo!</h2>
+                <p style="color: #6b7280;" id="welcome-text">Suas anotações estão sincronizadas</p>
+            </div>
+            
+            <button class="btn btn-load" id="btn-carregar-sucesso">
+                📥 Carregar Conteúdo Salvo
+            </button>
+            
+            <button class="btn btn-primary" id="btn-continuar">
+                Continuar
+            </button>
+        </div>
+
+        <!-- Mensagem de erro -->
+        <div class="message error" id="error-message" style="display: none;">
+            <span id="error-text"></span>
+        </div>
+    </div>
+
+    <!-- Badge de status de login -->
+    <div class="sync-status-badge" id="sync-status-badge">
+        <span id="sync-status-text">Não logado</span>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="supabase.js"></script>
+    <script src="sync-bridge.js"></script>
+    <script src="../navbar/navbar-unified.js"></script>
+    <script>
+        class AuthUI {
+            constructor() {
+                this.currentScreen = 'login';
+                this.statusBadge = document.getElementById('sync-status-badge');
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.checkExistingLogin(); // Verifica se já está logado
+            }
+
+            checkExistingLogin() {
+                const savedUser = localStorage.getItem('supabase_user');
+                
+                if (savedUser) {
+                    try {
+                        const userData = JSON.parse(savedUser);
+                        this.showStatusBadge(`Logado: ${userData.nome || userData.usuario}`, 'success');
+                        
+                        // Mostra tela de usuário logado SEM validar online
+                        // (evita deslogar por erro de rede)
+                        this.showLoggedUserScreen(userData);
+                        
+                        // Tenta validar em background, mas NÃO remove se falhar
+                        this.validateUserInBackground(userData);
+                        
+                    } catch (e) {
+                        // Só remove se o JSON estiver corrompido
+                        localStorage.removeItem('supabase_user');
+                        this.showStatusBadge('Login corrompido removido', 'logged-out');
+                    }
+                } else {
+                    this.showStatusBadge('Não logado', 'logged-out');
+                }
+            }
+
+            async validateUserInBackground(userData) {
+                try {
+                    // Tenta validar, mas não trava a interface
+                    const { data: validUser, error } = await window.SupabaseSync.supabase
+                        .from('usuarios')
+                        .select('*')
+                        .eq('id', userData.id)
+                        .single();
+                    
+                    if (error) {
+                        // Se for erro de rede, mantém login
+                        if (error.code === 'PGRST301' || error.message.includes('network') || error.message.includes('fetch')) {
+                            console.log('⚠️ Erro de rede na validação - mantendo login');
+                            return;
+                        }
+                        
+                        // Se for erro específico de usuário não encontrado, aí remove
+                        if (error.code === 'PGRST116') {
+                            console.log('❌ Usuário não existe no banco - removendo login');
+                            localStorage.removeItem('supabase_user');
+                            this.checkExistingLogin(); // Atualiza interface
+                        }
+                    } else if (validUser) {
+                        console.log('✅ Login validado com sucesso');
+                    }
+                    
+                } catch (networkError) {
+                    // Qualquer erro de rede - mantém login
+                    console.log('⚠️ Erro de rede na validação - mantendo login:', networkError.message);
+                }
+            }
+
+            showLoggedUserScreen(userData) {
+                document.getElementById('logged-user-name').textContent = 
+                    userData.nome || userData.usuario;
+                document.getElementById('logged-user-info').textContent = 
+                    `Logado como: ${userData.usuario}`;
+                this.showScreen('logged');
+            }
+
+            async handleLogout() {
+                const btn = document.getElementById('btn-logout');
+                btn.classList.add('loading');
+                btn.disabled = true;
+
+                try {
+                    // Logout do Supabase
+                    if (window.SupabaseSync) {
+                        window.SupabaseSync.logout();
+                    }
+
+                    // Limpa localStorage
+                    localStorage.removeItem('supabase_user');
+                    localStorage.removeItem('last_login');
+
+                    // Atualiza badge
+                    this.showStatusBadge('👋 Logout realizado', 'logged-out');
+                    
+                    // Volta para tela de login após delay
+                    setTimeout(() => {
+                        this.showScreen('login');
+                        
+                        // Limpa campos
+                        document.getElementById('login-usuario').value = '';
+                        document.getElementById('login-senha').value = '';
+                        
+                        // Atualiza badge final
+                        setTimeout(() => {
+                            this.showStatusBadge('Não logado', 'logged-out');
+                        }, 500);
+                        
+                    }, 1500);
+
+                } catch (error) {
+                    console.error('Erro no logout:', error);
+                    this.showStatusBadge('❌ Erro no logout', 'error');
+                }
+
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+
+            async handleLoadContent() {
+                const btn = event.target;
+                btn.classList.add('loading');
+                btn.disabled = true;
+                btn.textContent = 'Carregando...';
+
+                try {
+                    this.showStatusBadge('📥 Carregando conteúdo...', 'loading');
+                    
+                    // USA O SYNCBRIDGE para carregar EM TODAS AS PÁGINAS
+                    if (window.SyncBridge) {
+                        window.SyncBridge.forceLoadAllPages();
+                        this.showStatusBadge('✅ Conteúdo carregado em todas as páginas!', 'success');
+                        
+                        // Redireciona para anotações após 2 segundos
+                        setTimeout(() => {
+                            this.redirectToNotes();
+                        }, 2000);
+                    } else {
+                        this.showStatusBadge('❌ Sistema de sincronização indisponível', 'error');
+                    }
+
+                } catch (error) {
+                    console.error('Erro ao carregar conteúdo:', error);
+                    this.showStatusBadge('❌ Erro ao carregar', 'error');
+                }
+
+                btn.classList.remove('loading');
+                btn.disabled = false;
+                btn.textContent = '📥 Carregar Conteúdo Salvo';
+            }
+
+            redirectToNotes() {
+                // Detecta semana atual ou usa fallback
+                const semanaAtual = this.detectCurrentWeek();
+                const notesUrl = `../richtext/container.html${semanaAtual ? '?semana=' + semanaAtual : ''}`;
+                window.location.href = notesUrl;
+            }
+
+            detectCurrentWeek() {
+                // Tenta detectar semana da URL atual
+                const urlParams = new URLSearchParams(window.location.search);
+                const semana = urlParams.get('semana');
+                if (semana) return semana;
+                
+                // Fallback baseado na data
+                const agora = new Date();
+                const dia = String(agora.getDate()).padStart(2, '0');
+                const mes = String(agora.getMonth() + 1).padStart(2, '0');
+                return `${dia}-${mes}`;
+            }
+
+            showStatusBadge(message, type) {
+                if (!this.statusBadge) return;
+                
+                document.getElementById('sync-status-text').textContent = message;
+                this.statusBadge.classList.remove('logged-out', 'show');
+                
+                if (type === 'success' || type === 'loading') {
+                    this.statusBadge.classList.add('show');
+                } else if (type === 'logged-out') {
+                    this.statusBadge.classList.add('logged-out');
+                }
+            }
+
+            setupEventListeners() {
+                // Troca de telas
+                document.getElementById('switch-to-register').onclick = () => this.showScreen('register');
+                document.getElementById('switch-to-login').onclick = () => this.showScreen('login');
+
+                // Ações
+                document.getElementById('btn-login').onclick = () => this.handleLogin();
+                document.getElementById('btn-register').onclick = () => this.handleRegister();
+                document.getElementById('btn-continuar').onclick = () => this.redirectToApp();
+                document.getElementById('btn-continuar-logged').onclick = () => this.redirectToApp();
+                document.getElementById('btn-logout').onclick = () => this.handleLogout();
+
+                // Novos botões de carregar
+                document.getElementById('btn-carregar-conteudo').onclick = () => this.handleLoadContent();
+                document.getElementById('btn-carregar-sucesso').onclick = () => this.handleLoadContent();
+
+                // Voltar
+                document.getElementById('btn-voltar').onclick = () => this.redirectToApp();
+                document.getElementById('btn-voltar-register').onclick = () => this.redirectToApp();
+
+                // Enter
+                document.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        if (this.currentScreen === 'login') this.handleLogin();
+                        else if (this.currentScreen === 'register') this.handleRegister();
+                    }
+                });
+            }
+
+            async handleLogin() {
+                const usuario = document.getElementById('login-usuario').value.trim();
+                const senha = document.getElementById('login-senha').value;
+
+                if (!this.validateInput(usuario, senha)) return;
+
+                const btn = document.getElementById('btn-login');
+                btn.classList.add('loading');
+                btn.disabled = true;
+
+                try {
+                    const result = await window.SupabaseSync.logarUsuario(usuario, senha);
+                    
+                    if (result.success) {
+                        this.showSuccess(`Bem-vindo, ${result.userData.nome_completo || usuario}!`);
+                        
+                        // Notifica sistema global sobre o login
+                        if (window.UnifiedNavbar && window.UnifiedNavbar.get()) {
+                            window.UnifiedNavbar.get().onLoginSuccess(result.userData);
+                        }
+
+                        // LOAD AUTOMÁTICO APÓS LOGIN USANDO SYNCBRIDGE
+                        setTimeout(() => {
+                            console.log('🚀 Executando load automático após login...');
+                            if (window.SyncBridge) {
+                                window.SyncBridge.forceLoadAllPages();
+                                console.log('✅ Load automático enviado para todas as páginas!');
+                            }
+                        }, 1000);
+                        
+                    } else {
+                        this.showError(result.error);
+                    }
+                } catch (error) {
+                    this.showError('Erro de conexão');
+                }
+
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+
+            async handleRegister() {
+                const usuario = document.getElementById('register-usuario').value.trim();
+                const senha = document.getElementById('register-senha').value;
+                const nome = document.getElementById('register-nome').value.trim();
+
+                if (!this.validateInput(usuario, senha)) return;
+
+                const btn = document.getElementById('btn-register');
+                btn.classList.add('loading');
+                btn.disabled = true;
+
+                try {
+                    const result = await window.SupabaseSync.cadastrarUsuario(usuario, senha, nome);
+                    
+                    if (result.success) {
+                        // Faz login automático após cadastro
+                        const loginResult = await window.SupabaseSync.logarUsuario(usuario, senha);
+                        if (loginResult.success) {
+                            this.showSuccess(`Conta criada! Bem-vindo, ${nome || usuario}!`);
+                            
+                            // Notifica sistema global
+                            if (window.UnifiedNavbar && window.UnifiedNavbar.get()) {
+                                window.UnifiedNavbar.get().onLoginSuccess(loginResult.userData);
+                            }
+                        }
+                    } else {
+                        this.showError(result.error);
+                    }
+                } catch (error) {
+                    this.showError('Erro de conexão');
+                }
+
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+
+            validateInput(usuario, senha) {
+                document.querySelectorAll('.form-input').forEach(i => i.classList.remove('error', 'success'));
+
+                let valid = true;
+
+                if (!usuario || usuario.length < 3) {
+                    this.showError('Nome de usuário deve ter pelo menos 3 caracteres');
+                    document.getElementById(this.currentScreen + '-usuario').classList.add('error');
+                    valid = false;
+                }
+
+                if (!senha || senha.length < 4) {
+                    this.showError('Senha deve ter pelo menos 4 caracteres');
+                    document.getElementById(this.currentScreen + '-senha').classList.add('error');
+                    valid = false;
+                }
+
+                if (usuario && !/^[a-zA-Z0-9_-]+$/.test(usuario)) {
+                    this.showError('Nome deve ter apenas letras, números, _ ou -');
+                    document.getElementById(this.currentScreen + '-usuario').classList.add('error');
+                    valid = false;
+                }
+
+                return valid;
+            }
+
+            showScreen(screenName) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(`${screenName}-screen`).classList.add('active');
+                this.currentScreen = screenName;
+                this.hideError();
+            }
+
+            showError(message) {
+                const error = document.getElementById('error-message');
+                document.getElementById('error-text').textContent = message;
+                error.style.display = 'block';
+                setTimeout(() => this.hideError(), 5000);
+            }
+
+            hideError() {
+                document.getElementById('error-message').style.display = 'none';
+            }
+
+            showSuccess(message) {
+                document.getElementById('success-message').textContent = message;
+                const user = window.SupabaseSync.getCurrentUser();
+                document.getElementById('welcome-text').textContent = 
+                    `Logado como: ${user.usuario}`;
+                
+                this.showScreen('success');
+                // Não redireciona automaticamente - deixa o usuário escolher
+            }
+
+            redirectToApp() {
+                const returnUrl = new URLSearchParams(window.location.search).get('return') || 
+                                  '../richtext/container.html';
+                window.location.href = returnUrl;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new AuthUI();
+            
+            // Define página ativa como 'save' para navbar
+            setTimeout(() => {
+                if (window.UnifiedNavbar && window.UnifiedNavbar.get()) {
+                    window.UnifiedNavbar.setActivePage('save');
+                }
+            }, 200);
+        });
+    </script>
+</body>
+</html>
