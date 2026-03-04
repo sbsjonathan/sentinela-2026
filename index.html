@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reunião de Domingo</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="navbar/navbar-unified.css">
+</head>
+<body>
+    <!-- Cabeçalho fixo -->
+    <header class="header">
+        <h1 class="titulo-principal">Reunião de Domingo</h1>
+        <p class="semana-atual" id="semana-display">Carregando...</p>
+    </header>
+
+    <!-- Carrossel de slides -->
+    <div class="carousel-container">
+        <div class="slides-wrapper" id="slides-wrapper">
+            <!-- Os slides serão carregados dinamicamente -->
+        </div>
+
+        <!-- Setas de navegação -->
+        <button class="nav-arrow prev" id="prev-btn">‹</button>
+        <button class="nav-arrow next" id="next-btn">›</button>
+
+        <!-- Indicadores -->
+        <div class="nav-indicators" id="indicators">
+            <!-- Os indicadores serão criados dinamicamente -->
+        </div>
+    </div>
+
+    <script src="navbar/navbar-unified.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
