@@ -1,0 +1,183 @@
+/* stylebbl.css - Código completo com os ajustes de espaço e cor */
+
+/* Importação das fontes (alternativa, melhor fazer no HTML) */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Sumana:wght@400;700&display=swap');
+
+/* --- Estilo para as referências clicáveis na página --- */
+.bbl {
+  transition: color 0.3s ease, text-decoration-color 0.3s ease;
+  font-weight: 500;
+  display: inline-block;
+  transform-origin: center;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* --- O Fundo do Modal (Overlay) --- */
+#modal-biblia {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* --- A Janela do Modal (a caixa de conteúdo) --- */
+.modal-biblia-content {
+  background-color: #fefefe;
+  padding: 25px 35px;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.25);
+  width: 90%;
+  max-width: 650px;
+  position: relative;
+  animation: zoomIn 0.3s ease-out;
+}
+
+/* --- O Botão de Fechar (X) --- */
+#modal-biblia-fechar {
+  color: #aaa;
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 28px;
+  font-weight: bold;
+  transition: color 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  cursor: pointer;
+}
+
+/* --- O Corpo do Modal (onde o texto aparece) --- */
+#modal-biblia-corpo {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 15px;
+  margin-right: -15px;
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+}
+
+/* --- Estilo do Título do Livro --- */
+#modal-biblia-corpo h3 {
+  font-family: 'Noto Sans', sans-serif;
+  margin-top: 0;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  font-size: 1.5em;
+  color: #333;
+  border-bottom: 2px solid #626262;
+}
+
+/* --- Estilo do parágrafo de "Carregando..." --- */
+#modal-biblia-corpo h3:only-child {
+  border-bottom: none;
+  text-align: center;
+}
+
+/* --- Estilo dos Parágrafos com os Versículos --- */
+#modal-biblia-corpo p {
+  font-family: 'Sumana', serif;
+  font-size: 1.2em; 
+  line-height: 1.7;
+  color: #555;
+  margin-bottom: 12px;
+}
+
+/* --- Estilo do Número do Versículo --- */
+#modal-biblia-corpo p strong {
+  font-family: 'Noto Sans', sans-serif;
+  color: #4A6DA7; /* ALTERADO: Sua nova cor */
+  font-weight: 700;
+  margin-right: 3px; /* ALTERADO: Espaço entre número e texto (ajuste conforme preferir) */
+}
+
+/* --- Animações do Modal --- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* --- Scrollbar customizada --- */
+#modal-biblia-corpo::-webkit-scrollbar {
+  width: 8px;
+}
+#modal-bibbia-corpo::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+#modal-bibbia-corpo::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+#modal-bibbia-corpo::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
+}
+
+/* --- ANIMAÇÕES PARA O LONG PRESS INTERATIVO --- */
+@keyframes press-loading {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.3);
+    opacity: 0.6;
+  }
+}
+
+@keyframes press-success {
+  0% { transform: scale(1.3); opacity: 0.6; }
+  50% { transform: scale(1.4); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+.bbl.pressionando {
+  animation: press-loading 300ms ease-out forwards;
+  animation-play-state: running;
+}
+
+.bbl.ref-aberta {
+  animation: press-success 200ms ease-out forwards;
+}
+
+/* --- PROTEÇÃO CONTRA SELEÇÃO DE TEXTO --- */
+.no-select-global,
+.no-select-global * {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -khtml-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.no-select-global *::selection {
+  background: transparent !important;
+}
+
+.no-select-global *::-moz-selection {
+  background: transparent !important;
+}
+
+#modal-biblia,
+#modal-biblia * {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
