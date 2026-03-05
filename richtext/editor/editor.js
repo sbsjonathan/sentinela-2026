@@ -4,6 +4,14 @@ class EditorManager {
     constructor() {
         this.editorContainer = null;
         this.editorElement = null;
+        this.metaPanel = null;
+        this.panelIsOpen = false;
+        this.pullGesture = {
+            enabled: false,
+            startY: 0,
+            baselineHeight: 0,
+            moved: false
+        };
         this.currentTextBlock = null;
         this.statusElements = {};
         this.isLoaded = false;
@@ -41,6 +49,7 @@ class EditorManager {
             // Setup
             this.setupEditor();
             this.setupEventListeners();
+            this.setupPanelGesture();
             this.updateStats();
             
             this.isLoaded = true;
@@ -53,6 +62,17 @@ class EditorManager {
     }
 
     createEditorStructure() {
+        this.metaPanel = document.createElement('div');
+        this.metaPanel.className = 'meta-panel';
+        this.metaPanel.innerHTML = `
+            <div class="meta-panel-content">
+                <div class="meta-pull-handle" data-panel-handle="true"></div>
+                <div class="meta-input speaker-input" contenteditable="true" data-panel-handle="true" data-placeholder="orador"></div>
+                <div class="meta-input title-input" contenteditable="true" data-panel-handle="true" data-placeholder="titulo do discurso"></div>
+            </div>
+        `;
+        this.editorContainer.appendChild(this.metaPanel);
+
         // Container principal (NÃO é contenteditable)
         this.editorElement = document.createElement('div');
         this.editorElement.id = 'text-editor';
@@ -73,6 +93,123 @@ class EditorManager {
             <span class="char-count">0 caracteres</span>
         `;
         this.editorContainer.appendChild(statusBar);
+    }
+
+    getPanelMaxHeight() {
+        return 260;
+    }
+
+    setPanelHeight(height) {
+        if (!this.metaPanel) return;
+        const panelHeight = Math.max(0, Math.min(this.getPanelMaxHeight(), height));
+        this.metaPanel.style.maxHeight = `${panelHeight}px`;
+        this.metaPanel.classList.toggle('is-open', panelHeight >= this.getPanelMaxHeight() - 1);
+    }
+
+    openPanel() {
+        this.panelIsOpen = true;
+        this.setPanelHeight(this.getPanelMaxHeight());
+    }
+
+    closePanel() {
+        this.panelIsOpen = false;
+        this.setPanelHeight(0);
+    }
+
+    isStartRegionValid(target, touchY) {
+        if (!this.panelIsOpen) {
+            const rect = this.editorElement.getBoundingClientRect();
+            const fromTop = touchY - rect.top;
+            const isTopRegion = fromTop >= 0 && fromTop <= 64;
+            const atTop = this.editorElement.scrollTop <= 0;
+            return isTopRegion && atTop;
+        }
+
+        if (!this.metaPanel) return false;
+        const handleTarget = target.closest('[data-panel-handle="true"]');
+        return !!handleTarget;
+    }
+
+    setupPanelGesture() {
+        if (!this.editorElement || !this.metaPanel) return;
+
+        const startGesture = (target, y) => {
+            if (!this.isStartRegionValid(target, y)) return;
+            this.pullGesture.enabled = true;
+            this.pullGesture.startY = y;
+            this.pullGesture.baselineHeight = this.panelIsOpen ? this.getPanelMaxHeight() : 0;
+            this.pullGesture.moved = false;
+            this.metaPanel.style.transition = 'none';
+        };
+
+        const moveGesture = (y) => {
+            if (!this.pullGesture.enabled) return;
+            const delta = y - this.pullGesture.startY;
+            this.pullGesture.moved = Math.abs(delta) > 4;
+
+            let nextHeight = this.pullGesture.baselineHeight + delta;
+
+            if (nextHeight > this.getPanelMaxHeight()) {
+                const overflow = nextHeight - this.getPanelMaxHeight();
+                nextHeight = this.getPanelMaxHeight() + overflow * 0.28;
+            }
+
+            if (nextHeight < 0) {
+                nextHeight = nextHeight * 0.22;
+            }
+
+            this.setPanelHeight(nextHeight);
+        };
+
+        const endGesture = () => {
+            if (!this.pullGesture.enabled) return;
+
+            const currentHeight = parseFloat(this.metaPanel.style.maxHeight || '0');
+            this.metaPanel.style.transition = 'max-height 0.35s ease';
+
+            if (this.panelIsOpen) {
+                if (currentHeight < this.getPanelMaxHeight() * 0.52 && this.pullGesture.moved) {
+                    this.closePanel();
+                } else {
+                    this.openPanel();
+                }
+            } else if (currentHeight > this.getPanelMaxHeight() * 0.48 && this.pullGesture.moved) {
+                this.openPanel();
+            } else {
+                this.closePanel();
+            }
+
+            this.pullGesture.enabled = false;
+            this.pullGesture.moved = false;
+        };
+
+        this.editorElement.addEventListener('touchstart', (e) => {
+            if (!e.touches?.length) return;
+            startGesture(e.target, e.touches[0].clientY);
+        }, { passive: true });
+
+        this.editorElement.addEventListener('touchmove', (e) => {
+            if (!this.pullGesture.enabled || !e.touches?.length) return;
+            moveGesture(e.touches[0].clientY);
+            e.preventDefault();
+        }, { passive: false });
+
+        this.editorElement.addEventListener('touchend', endGesture);
+        this.editorElement.addEventListener('touchcancel', endGesture);
+
+        this.metaPanel.addEventListener('touchstart', (e) => {
+            if (!e.touches?.length) return;
+            startGesture(e.target, e.touches[0].clientY);
+        }, { passive: true });
+
+        this.metaPanel.addEventListener('touchmove', (e) => {
+            if (!this.pullGesture.enabled || !e.touches?.length) return;
+            moveGesture(e.touches[0].clientY);
+            e.preventDefault();
+        }, { passive: false });
+
+        this.metaPanel.addEventListener('touchend', endGesture);
+        this.metaPanel.addEventListener('touchcancel', endGesture);
     }
 
     createTextBlock() {

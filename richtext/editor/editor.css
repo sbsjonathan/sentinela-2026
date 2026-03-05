@@ -5,6 +5,66 @@
     display: flex;
     flex-direction: column;
     background-color: white;
+    overflow: hidden;
+}
+
+.meta-panel {
+    max-height: 0;
+    overflow: hidden;
+    background: #ffffff;
+    border-bottom: 1px solid #ececec;
+    transition: max-height 0.35s ease;
+    flex-shrink: 0;
+}
+
+.meta-panel.is-open {
+    max-height: 260px;
+}
+
+.meta-panel-content {
+    min-height: 200px;
+    padding: 10px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+}
+
+.meta-pull-handle {
+    width: 56px;
+    height: 6px;
+    border-radius: 999px;
+    background: #d5d5d5;
+}
+
+.meta-input {
+    width: 100%;
+    text-align: center;
+    border: none;
+    outline: none;
+    padding: 2px 0;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.meta-input:empty::before {
+    content: attr(data-placeholder);
+    color: #aaa;
+    font-weight: 400;
+}
+
+.speaker-input {
+    color: #cc2020;
+    font-weight: 700;
+    font-size: 22px;
+}
+
+.title-input {
+    color: #4b9f5d;
+    font-weight: 600;
+    font-size: 30px;
 }
 
 .editor-content {
