@@ -8,6 +8,12 @@ class EditorManager {
         this.statusElements = {};
         this.isLoaded = false;
         this.cleanupInputTimeout = null;
+        this.editorStack = null;
+        this.metaPanel = null;
+        this.dragHandle = null;
+        this.panelOpen = false;
+        this.panelHeight = 0;
+        this.currentOffset = 0;
         this.init();
     }
 
@@ -54,6 +60,24 @@ class EditorManager {
 
     createEditorStructure() {
         // Container principal (NÃO é contenteditable)
+        this.metaPanel = document.createElement('div');
+        this.metaPanel.className = 'speech-meta-panel';
+        this.metaPanel.innerHTML = `
+            <div class="speech-meta-fields">
+                <textarea class="speech-speaker" placeholder="orador" aria-label="Orador" rows="1"></textarea>
+                <textarea class="speech-title" placeholder="Título do discurso" aria-label="Título do discurso" rows="1"></textarea>
+            </div>
+        `;
+
+        this.editorStack = document.createElement('div');
+        this.editorStack.className = 'editor-stack';
+
+        this.dragHandle = document.createElement('button');
+        this.dragHandle.className = 'editor-drag-handle';
+        this.dragHandle.type = 'button';
+        this.dragHandle.setAttribute('aria-label', 'Puxar formulário do discurso');
+        this.dragHandle.innerHTML = '<span class="handle-grip" aria-hidden="true"></span>';
+
         this.editorElement = document.createElement('div');
         this.editorElement.id = 'text-editor';
         this.editorElement.className = 'editor-content';
@@ -62,8 +86,11 @@ class EditorManager {
         // Primeiro bloco de texto
         this.currentTextBlock = this.createTextBlock();
         this.editorElement.appendChild(this.currentTextBlock);
-        
-        this.editorContainer.appendChild(this.editorElement);
+
+        this.editorContainer.appendChild(this.metaPanel);
+        this.editorContainer.appendChild(this.editorStack);
+        this.editorStack.appendChild(this.dragHandle);
+        this.editorStack.appendChild(this.editorElement);
         
         // Barra de status
         const statusBar = document.createElement('div');
@@ -72,7 +99,29 @@ class EditorManager {
             <span class="word-count">0 palavras</span>
             <span class="char-count">0 caracteres</span>
         `;
-        this.editorContainer.appendChild(statusBar);
+        this.editorStack.appendChild(statusBar);
+
+        requestAnimationFrame(() => {
+            this.panelHeight = this.metaPanel.offsetHeight;
+            this.applyPanelOffset(0, false);
+        });
+
+        this.setupMetaFieldAutoResize();
+    }
+
+    setupMetaFieldAutoResize() {
+        const fields = this.metaPanel?.querySelectorAll('textarea');
+        if (!fields || fields.length === 0) return;
+
+        fields.forEach((field) => {
+            const resize = () => {
+                field.style.height = 'auto';
+                field.style.height = `${Math.max(field.scrollHeight, 44)}px`;
+            };
+
+            resize();
+            field.addEventListener('input', resize);
+        });
     }
 
     createTextBlock() {
@@ -92,6 +141,8 @@ class EditorManager {
 
     setupEventListeners() {
         if (!this.editorElement) return;
+
+        this.setupPullPanelEvents();
 
         // === Observer para mudanças estruturais (listas, etc) ===
         const observer = new MutationObserver(() => {
@@ -167,6 +218,94 @@ class EditorManager {
         }, true);
         
         document.addEventListener('selectionchange', () => this.handleSelectionChange());
+    }
+
+    setupPullPanelEvents() {
+        if (!this.dragHandle || !this.editorStack) return;
+
+        let startY = 0;
+        let startOffset = 0;
+        let dragging = false;
+        let draggedDistance = 0;
+
+        const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+        const getY = (event) => {
+            if (event.touches && event.touches[0]) return event.touches[0].clientY;
+            if (event.changedTouches && event.changedTouches[0]) return event.changedTouches[0].clientY;
+            return event.clientY;
+        };
+
+        const onMove = (event) => {
+            if (!dragging) return;
+            const delta = getY(event) - startY;
+            draggedDistance = Math.max(draggedDistance, Math.abs(delta));
+            const rawOffset = startOffset + delta;
+
+            let elasticOffset = rawOffset;
+            if (rawOffset < 0) {
+                elasticOffset = rawOffset * 0.35;
+            } else if (rawOffset > this.panelHeight) {
+                elasticOffset = this.panelHeight + ((rawOffset - this.panelHeight) * 0.35);
+            }
+
+            const bounded = clamp(elasticOffset, -24, this.panelHeight + 32);
+            this.applyPanelOffset(bounded, false);
+        };
+
+        const onEnd = () => {
+            if (!dragging) return;
+            dragging = false;
+
+            const openThreshold = this.panelHeight * 0.58;
+            const closeThreshold = this.panelHeight * 0.42;
+            const shouldOpen = this.panelOpen ? this.currentOffset > closeThreshold : this.currentOffset > openThreshold;
+
+            this.setPanelOpen(shouldOpen);
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onEnd);
+            window.removeEventListener('touchmove', onMove);
+            window.removeEventListener('touchend', onEnd);
+        };
+
+        const onStart = (event) => {
+            this.panelHeight = this.metaPanel.offsetHeight;
+            dragging = true;
+            draggedDistance = 0;
+            startY = getY(event);
+            startOffset = this.currentOffset;
+            this.editorStack.classList.add('is-dragging');
+
+            window.addEventListener('mousemove', onMove, { passive: false });
+            window.addEventListener('mouseup', onEnd);
+            window.addEventListener('touchmove', onMove, { passive: false });
+            window.addEventListener('touchend', onEnd);
+        };
+
+        this.dragHandle.addEventListener('mousedown', onStart);
+        this.dragHandle.addEventListener('touchstart', onStart, { passive: true });
+        this.dragHandle.addEventListener('click', (event) => {
+            if (draggedDistance > 6) {
+                event.preventDefault();
+                return;
+            }
+            this.setPanelOpen(!this.panelOpen);
+        });
+    }
+
+    applyPanelOffset(offset, animate = true) {
+        if (!this.editorStack) return;
+        this.currentOffset = offset;
+        this.editorStack.classList.toggle('animate', animate);
+        this.editorStack.style.transform = `translateY(${offset}px)`;
+        this.editorStack.classList.toggle('panel-open', offset > 4);
+    }
+
+    setPanelOpen(isOpen) {
+        this.panelOpen = isOpen;
+        this.editorStack.classList.remove('is-dragging');
+        const targetOffset = isOpen ? this.panelHeight : 0;
+        this.applyPanelOffset(targetOffset, true);
     }
 
     // ======= HANDLERS PRINCIPAIS ======= //
