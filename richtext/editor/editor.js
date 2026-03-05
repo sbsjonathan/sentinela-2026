@@ -2,10 +2,18 @@
 
 class EditorManager {
     constructor() {
-        this.editorContainer = null;
+        this.editorArea = null;
         this.editorElement = null;
+        this.metaPanel = null;
+        this.metaGrip = null;
+        this.panelIsOpen = false;
+        this.pullGesture = {
+            enabled: false,
+            startY: 0,
+            baselineHeight: 0,
+            moved: false
+        };
         this.currentTextBlock = null;
-        this.statusElements = {};
         this.isLoaded = false;
         this.cleanupInputTimeout = null;
         this.init();
@@ -21,26 +29,18 @@ class EditorManager {
 
     async loadEditor() {
         try {
-            const editorArea = document.querySelector('.editor-area');
-            if (!editorArea) {
+            this.editorArea = document.querySelector('.editor-area');
+            if (!this.editorArea) {
                 throw new Error('Container do editor não encontrado.');
             }
-
-            // Cria o container do editor
-            this.editorContainer = document.createElement('div');
-            this.editorContainer.className = 'editor-wrapper';
-            editorArea.appendChild(this.editorContainer);
 
             // Cria estrutura
             this.createEditorStructure();
 
-            // Referências
-            this.statusElements.wordCount = this.editorContainer.querySelector('.word-count');
-            this.statusElements.charCount = this.editorContainer.querySelector('.char-count');
-
             // Setup
             this.setupEditor();
             this.setupEventListeners();
+            this.setupPanelGesture();
             this.updateStats();
             
             this.isLoaded = true;
@@ -53,6 +53,23 @@ class EditorManager {
     }
 
     createEditorStructure() {
+        this.metaPanel = document.createElement('div');
+        this.metaPanel.className = 'meta-panel';
+        this.metaPanel.innerHTML = `
+            <div class="meta-panel-grip" data-panel-grip="true">
+                <div class="meta-pull-handle"></div>
+                <span class="meta-grip-label">puxe para mostrar/ocultar cabeçalho</span>
+            </div>
+            <div class="meta-panel-content">
+                <div class="meta-card">
+                    <div class="meta-input speaker-input" contenteditable="true" data-placeholder="orador"></div>
+                    <div class="meta-input title-input" contenteditable="true" data-placeholder="titulo do discurso"></div>
+                </div>
+            </div>
+        `;
+        this.metaGrip = this.metaPanel.querySelector('[data-panel-grip="true"]');
+        this.editorArea.appendChild(this.metaPanel);
+
         // Container principal (NÃO é contenteditable)
         this.editorElement = document.createElement('div');
         this.editorElement.id = 'text-editor';
@@ -60,19 +77,140 @@ class EditorManager {
         this.editorElement.setAttribute('data-placeholder', 'Digite seu texto aqui...');
         
         // Primeiro bloco de texto
+        const tailSpacer = document.createElement('div');
+        tailSpacer.className = 'editor-tail-spacer';
+        this.editorElement.appendChild(tailSpacer);
+
         this.currentTextBlock = this.createTextBlock();
-        this.editorElement.appendChild(this.currentTextBlock);
-        
-        this.editorContainer.appendChild(this.editorElement);
-        
-        // Barra de status
-        const statusBar = document.createElement('div');
-        statusBar.className = 'editor-status';
-        statusBar.innerHTML = `
-            <span class="word-count">0 palavras</span>
-            <span class="char-count">0 caracteres</span>
-        `;
-        this.editorContainer.appendChild(statusBar);
+        this.insertBeforeTailSpacer(this.currentTextBlock);
+
+        this.editorArea.appendChild(this.editorElement);
+    }
+
+    insertBeforeTailSpacer(element) {
+        const tail = this.editorElement.querySelector('.editor-tail-spacer');
+        if (tail) {
+            this.editorElement.insertBefore(element, tail);
+            return;
+        }
+
+        this.editorElement.appendChild(element);
+    }
+
+    getPanelMaxHeight() {
+        return 260;
+    }
+
+    setPanelHeight(height) {
+        if (!this.metaPanel) return;
+        const panelHeight = Math.max(0, Math.min(this.getPanelMaxHeight(), height));
+        this.metaPanel.style.maxHeight = `${panelHeight}px`;
+        this.metaPanel.classList.toggle('is-open', panelHeight >= this.getPanelMaxHeight() - 1);
+    }
+
+    openPanel() {
+        this.panelIsOpen = true;
+        this.setPanelHeight(this.getPanelMaxHeight());
+    }
+
+    closePanel() {
+        this.panelIsOpen = false;
+        this.setPanelHeight(0);
+    }
+
+    isStartRegionValid(target, touchY) {
+        if (!this.panelIsOpen) {
+            const rect = this.editorElement.getBoundingClientRect();
+            const fromTop = touchY - rect.top;
+            const isTopRegion = fromTop >= 0 && fromTop <= 64;
+            const atTop = this.editorElement.scrollTop <= 0;
+            return isTopRegion && atTop;
+        }
+
+        if (!this.metaGrip) return false;
+        return this.metaGrip.contains(target);
+    }
+
+    setupPanelGesture() {
+        if (!this.editorElement || !this.metaPanel) return;
+
+        const startGesture = (target, y) => {
+            if (!this.isStartRegionValid(target, y)) return;
+            this.pullGesture.enabled = true;
+            this.pullGesture.startY = y;
+            this.pullGesture.baselineHeight = this.panelIsOpen ? this.getPanelMaxHeight() : 0;
+            this.pullGesture.moved = false;
+            this.metaPanel.style.transition = 'none';
+        };
+
+        const moveGesture = (y) => {
+            if (!this.pullGesture.enabled) return;
+            const delta = y - this.pullGesture.startY;
+            this.pullGesture.moved = Math.abs(delta) > 4;
+
+            let nextHeight = this.pullGesture.baselineHeight + delta;
+
+            if (nextHeight > this.getPanelMaxHeight()) {
+                const overflow = nextHeight - this.getPanelMaxHeight();
+                nextHeight = this.getPanelMaxHeight() + overflow * 0.28;
+            }
+
+            if (nextHeight < 0) {
+                nextHeight = nextHeight * 0.22;
+            }
+
+            this.setPanelHeight(nextHeight);
+        };
+
+        const endGesture = () => {
+            if (!this.pullGesture.enabled) return;
+
+            const currentHeight = parseFloat(this.metaPanel.style.maxHeight || '0');
+            this.metaPanel.style.transition = 'max-height 0.35s ease';
+
+            if (this.panelIsOpen) {
+                if (currentHeight < this.getPanelMaxHeight() * 0.52 && this.pullGesture.moved) {
+                    this.closePanel();
+                } else {
+                    this.openPanel();
+                }
+            } else if (currentHeight > this.getPanelMaxHeight() * 0.48 && this.pullGesture.moved) {
+                this.openPanel();
+            } else {
+                this.closePanel();
+            }
+
+            this.pullGesture.enabled = false;
+            this.pullGesture.moved = false;
+        };
+
+        this.editorElement.addEventListener('touchstart', (e) => {
+            if (!e.touches?.length) return;
+            startGesture(e.target, e.touches[0].clientY);
+        }, { passive: true });
+
+        this.editorElement.addEventListener('touchmove', (e) => {
+            if (!this.pullGesture.enabled || !e.touches?.length) return;
+            moveGesture(e.touches[0].clientY);
+            e.preventDefault();
+        }, { passive: false });
+
+        this.editorElement.addEventListener('touchend', endGesture);
+        this.editorElement.addEventListener('touchcancel', endGesture);
+
+        this.metaGrip.addEventListener('touchstart', (e) => {
+            if (!e.touches?.length) return;
+            startGesture(e.target, e.touches[0].clientY);
+        }, { passive: true });
+
+        this.metaGrip.addEventListener('touchmove', (e) => {
+            if (!this.pullGesture.enabled || !e.touches?.length) return;
+            moveGesture(e.touches[0].clientY);
+            e.preventDefault();
+        }, { passive: false });
+
+        this.metaGrip.addEventListener('touchend', endGesture);
+        this.metaGrip.addEventListener('touchcancel', endGesture);
     }
 
     createTextBlock() {
@@ -88,6 +226,17 @@ class EditorManager {
     setupEditor() {
         this.updatePlaceholder();
         setTimeout(() => this.currentTextBlock.focus(), 100);
+    }
+
+    ensureCaretComfort() {
+        if (!this.currentTextBlock || !this.editorElement) return;
+        requestAnimationFrame(() => {
+            this.currentTextBlock.scrollIntoView({
+                behavior: 'auto',
+                block: 'center',
+                inline: 'nearest'
+            });
+        });
     }
 
     setupEventListeners() {
@@ -121,7 +270,7 @@ class EditorManager {
                 } else {
                     // Cria um novo bloco se não existir nenhum
                     targetBlock = this.createTextBlock();
-                    this.editorElement.appendChild(targetBlock);
+                    this.insertBeforeTailSpacer(targetBlock);
                 }
                 
                 // Foca no bloco e posiciona o cursor no final
@@ -142,6 +291,7 @@ class EditorManager {
         this.editorElement.addEventListener('input', (e) => {
             if (e.target.classList.contains('text-block')) {
                 this.handleInput(e);
+                this.ensureCaretComfort();
             }
         });
         
@@ -155,6 +305,7 @@ class EditorManager {
             if (e.target.classList.contains('text-block')) {
                 e.target.classList.add('focused');
                 this.currentTextBlock = e.target;
+                this.ensureCaretComfort();
             }
         }, true);
         
@@ -167,6 +318,12 @@ class EditorManager {
         }, true);
         
         document.addEventListener('selectionchange', () => this.handleSelectionChange());
+
+        window.addEventListener('resize', () => {
+            if (document.activeElement?.closest('.text-block')) {
+                this.ensureCaretComfort();
+            }
+        });
     }
 
     // ======= HANDLERS PRINCIPAIS ======= //
@@ -250,6 +407,18 @@ class EditorManager {
         // Plugins específicos cuidam de seus próprios estados
         // Atualiza placeholder quando houver mudança de seleção
         this.updatePlaceholder();
+
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) return;
+
+        const node = selection.anchorNode;
+        const activeBlock = node?.nodeType === Node.ELEMENT_NODE
+            ? node.closest?.('.text-block')
+            : node?.parentElement?.closest?.('.text-block');
+
+        if (activeBlock) {
+            this.currentTextBlock = activeBlock;
+        }
     }
 
     // ======= LIMPEZA CONSOLIDADA ======= //
@@ -326,7 +495,7 @@ class EditorManager {
         
         if (textBlocks.length === 0) {
             const newBlock = this.createTextBlock();
-            this.editorElement.appendChild(newBlock);
+            this.insertBeforeTailSpacer(newBlock);
             this.currentTextBlock = newBlock;
             setTimeout(() => newBlock.focus(), 0);
         }
@@ -338,13 +507,12 @@ class EditorManager {
         this.cleanEmptyTextBlocks();
         
         const editor = this.editorElement;
+        const textBlocks = editor.querySelectorAll('.text-block');
         const isEditorEmpty = 
-            editor.children.length === 1 &&
-            editor.firstElementChild.classList.contains('text-block') &&
-            this.isBlockEmpty(editor.firstElementChild);
+            textBlocks.length === 1 && this.isBlockEmpty(textBlocks[0]);
 
         if (isEditorEmpty) {
-            editor.firstElementChild.replaceWith(element);
+            textBlocks[0].replaceWith(element);
             const toggleTitle = element.querySelector('.toggle-title');
             if (toggleTitle) this.focusAndPrime(toggleTitle);
         } else {
@@ -504,23 +672,12 @@ class EditorManager {
     }
 
     updateStats() {
-        if (!this.editorElement) return;
-        
-        const text = this.editorElement.innerText || '';
-        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-        const chars = text.length;
-
-        if (this.statusElements.wordCount) {
-            this.statusElements.wordCount.textContent = `${words} palavras`;
-        }
-        if (this.statusElements.charCount) {
-            this.statusElements.charCount.textContent = `${chars} caracteres`;
-        }
+        return;
     }
 
     showFallback() {
-        if (this.editorContainer) {
-            this.editorContainer.innerHTML = `
+        if (this.editorArea) {
+            this.editorArea.innerHTML = `
                 <div style="padding: 20px; text-align: center; color: #999;">
                     ⚠️ Erro ao carregar o editor
                     <br><br>
