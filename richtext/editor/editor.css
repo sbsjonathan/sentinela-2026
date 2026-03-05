@@ -1,17 +1,128 @@
 /* editor.css - Estilos otimizados e consistentes do editor de texto */
 
+:root {
+    --editor-font-size: 16px;
+    --editor-bottom-gap: 380px;
+}
+
 .editor-wrapper {
     height: 100%;
     display: flex;
     flex-direction: column;
     background-color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.speech-meta-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(180deg, #ffffff 0%, #f9f9fb 100%);
+    border-bottom: 1px solid #ececf0;
+    padding: 18px 20px 16px;
+    z-index: 1;
+}
+
+.speech-meta-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.speech-speaker,
+.speech-title {
+    width: 100%;
+    max-width: 620px;
+    text-align: center;
+    border: none;
+    border-radius: 10px;
+    background: #f2f2f5;
+    padding: 10px 14px;
+    outline: none;
+    white-space: normal;
+    overflow-wrap: break-word;
+    resize: none;
+    overflow: hidden;
+    min-height: 44px;
+}
+
+.speech-speaker {
+    font-size: var(--editor-font-size);
+    font-weight: 400;
+    color: #a82c2c;
+}
+
+.speech-speaker::placeholder {
+    color: #7f7f87;
+    font-weight: 400;
+}
+
+.speech-speaker:not(:placeholder-shown) {
+    font-size: var(--editor-font-size);
+    font-weight: 800;
+    color: #d02b2b;
+}
+
+.speech-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #4d9862;
+}
+
+.speech-title::placeholder {
+    color: #4d9862;
+    opacity: 0.75;
+}
+
+.editor-stack {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 2;
+    background: white;
+}
+
+.editor-stack.animate {
+    transition: transform 0.35s cubic-bezier(0.22, 0.85, 0.23, 1);
+}
+
+.editor-wrapper,
+.editor-stack,
+.editor-content {
+    overscroll-behavior-y: contain;
+}
+
+.editor-drag-handle {
+    height: 42px;
+    border: none;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    touch-action: none;
+}
+
+.editor-drag-handle:active {
+    cursor: grabbing;
+}
+
+.handle-grip {
+    width: 62px;
+    height: 6px;
+    border-radius: 999px;
+    background: #cfcfd8;
 }
 
 .editor-content {
     flex: 1;
-    padding: 20px;
+    padding: 20px 20px var(--editor-bottom-gap);
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 16px;
+    font-size: var(--editor-font-size);
     line-height: 1.6;
     color: #333;
     background: white;
@@ -24,6 +135,8 @@
     
     /* === NOVO: Garante altura mínima e área clicável === */
     min-height: calc(100vh - 100px); /* 100vh menos altura da barra e status */
+    scroll-padding-top: 22vh;
+    scroll-padding-bottom: var(--editor-bottom-gap);
     cursor: text; /* Mostra cursor de texto em toda a área */
 }
 
@@ -134,24 +247,6 @@
     border: none;
 }
 
-/* Barra de status */
-.editor-status {
-    height: 30px;
-    background-color: #f8f8f8;
-    border-top: 1px solid #e0e0e0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    font-size: 12px;
-    color: #666;
-    flex-shrink: 0;
-}
-
-.word-count,
-.char-count {
-    font-weight: 500;
-}
 
 /* Seleção de texto */
 .editor-content ::selection {
