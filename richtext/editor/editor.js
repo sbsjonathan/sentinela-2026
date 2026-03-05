@@ -221,12 +221,12 @@ class EditorManager {
     }
 
     setupPullPanelEvents() {
-        if (!this.dragHandle || !this.editorStack) return;
+        if (!this.dragHandle || !this.editorStack || !this.editorElement) return;
 
         let startY = 0;
         let startOffset = 0;
         let dragging = false;
-        let draggedDistance = 0;
+        let dragMode = null;
 
         const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -236,10 +236,34 @@ class EditorManager {
             return event.clientY;
         };
 
+        const canStartEditorPull = (event) => {
+            const target = event.target;
+            const isFormField = target.closest('input, textarea, button, a');
+            if (isFormField) return false;
+
+            if (this.panelOpen) return true;
+            return this.editorElement.scrollTop <= 2;
+        };
+
+        const startDrag = (event, mode) => {
+            this.panelHeight = this.metaPanel.offsetHeight;
+            dragging = true;
+            dragMode = mode;
+            startY = getY(event);
+            startOffset = this.currentOffset;
+            this.editorStack.classList.add('is-dragging');
+        };
+
         const onMove = (event) => {
             if (!dragging) return;
             const delta = getY(event) - startY;
-            draggedDistance = Math.max(draggedDistance, Math.abs(delta));
+
+            const movingDown = delta > 0;
+            const shouldLockPagePull = dragMode === 'handle' || this.panelOpen || (dragMode === 'editor' && movingDown && this.editorElement.scrollTop <= 2);
+            if (shouldLockPagePull && event.cancelable) {
+                event.preventDefault();
+            }
+
             const rawOffset = startOffset + delta;
 
             let elasticOffset = rawOffset;
@@ -249,16 +273,17 @@ class EditorManager {
                 elasticOffset = this.panelHeight + ((rawOffset - this.panelHeight) * 0.35);
             }
 
-            const bounded = clamp(elasticOffset, -24, this.panelHeight + 32);
+            const bounded = clamp(elasticOffset, -28, this.panelHeight + 44);
             this.applyPanelOffset(bounded, false);
         };
 
         const onEnd = () => {
             if (!dragging) return;
             dragging = false;
+            dragMode = null;
 
-            const openThreshold = this.panelHeight * 0.58;
-            const closeThreshold = this.panelHeight * 0.42;
+            const openThreshold = this.panelHeight * 0.52;
+            const closeThreshold = this.panelHeight * 0.48;
             const shouldOpen = this.panelOpen ? this.currentOffset > closeThreshold : this.currentOffset > openThreshold;
 
             this.setPanelOpen(shouldOpen);
@@ -268,27 +293,30 @@ class EditorManager {
             window.removeEventListener('touchend', onEnd);
         };
 
-        const onStart = (event) => {
-            this.panelHeight = this.metaPanel.offsetHeight;
-            dragging = true;
-            draggedDistance = 0;
-            startY = getY(event);
-            startOffset = this.currentOffset;
-            this.editorStack.classList.add('is-dragging');
-
+        const bindWindowEvents = () => {
             window.addEventListener('mousemove', onMove, { passive: false });
             window.addEventListener('mouseup', onEnd);
             window.addEventListener('touchmove', onMove, { passive: false });
             window.addEventListener('touchend', onEnd);
         };
 
-        this.dragHandle.addEventListener('mousedown', onStart);
-        this.dragHandle.addEventListener('touchstart', onStart, { passive: true });
-        this.dragHandle.addEventListener('click', (event) => {
-            if (draggedDistance > 6) {
-                event.preventDefault();
-                return;
-            }
+        this.dragHandle.addEventListener('mousedown', (event) => {
+            startDrag(event, 'handle');
+            bindWindowEvents();
+        });
+
+        this.dragHandle.addEventListener('touchstart', (event) => {
+            startDrag(event, 'handle');
+            bindWindowEvents();
+        }, { passive: true });
+
+        this.editorElement.addEventListener('touchstart', (event) => {
+            if (!canStartEditorPull(event)) return;
+            startDrag(event, 'editor');
+            bindWindowEvents();
+        }, { passive: true });
+
+        this.dragHandle.addEventListener('click', () => {
             this.setPanelOpen(!this.panelOpen);
         });
     }

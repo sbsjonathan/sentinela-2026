@@ -1,5 +1,9 @@
 /* editor.css - Estilos otimizados e consistentes do editor de texto */
 
+:root {
+    --editor-font-size: 16px;
+}
+
 .editor-wrapper {
     height: 100%;
     display: flex;
@@ -45,7 +49,7 @@
 }
 
 .speech-speaker {
-    font-size: 16px;
+    font-size: var(--editor-font-size);
     font-weight: 400;
     color: #a82c2c;
 }
@@ -56,7 +60,7 @@
 }
 
 .speech-speaker:not(:placeholder-shown) {
-    font-size: 24px;
+    font-size: calc(var(--editor-font-size) * 1.5);
     font-weight: 800;
     color: #d02b2b;
 }
@@ -85,8 +89,14 @@
     transition: transform 0.35s cubic-bezier(0.22, 0.85, 0.23, 1);
 }
 
+.editor-wrapper,
+.editor-stack,
+.editor-content {
+    overscroll-behavior-y: contain;
+}
+
 .editor-drag-handle {
-    height: 30px;
+    height: 42px;
     border: none;
     background: #ffffff;
     display: flex;
@@ -109,9 +119,9 @@
 
 .editor-content {
     flex: 1;
-    padding: 20px;
+    padding: 20px 20px max(32vh, 260px);
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 16px;
+    font-size: var(--editor-font-size);
     line-height: 1.6;
     color: #333;
     background: white;
