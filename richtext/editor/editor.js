@@ -5,7 +5,6 @@ class EditorManager {
         this.editorContainer = null;
         this.editorElement = null;
         this.currentTextBlock = null;
-        this.statusElements = {};
         this.isLoaded = false;
         this.cleanupInputTimeout = null;
         this.init();
@@ -34,14 +33,9 @@ class EditorManager {
             // Cria estrutura
             this.createEditorStructure();
 
-            // Referências
-            this.statusElements.wordCount = this.editorContainer.querySelector('.word-count');
-            this.statusElements.charCount = this.editorContainer.querySelector('.char-count');
-
             // Setup
             this.setupEditor();
             this.setupEventListeners();
-            this.updateStats();
             
             this.isLoaded = true;
             console.log('✅ Editor carregado com sucesso');
@@ -64,15 +58,6 @@ class EditorManager {
         this.editorElement.appendChild(this.currentTextBlock);
         
         this.editorContainer.appendChild(this.editorElement);
-        
-        // Barra de status
-        const statusBar = document.createElement('div');
-        statusBar.className = 'editor-status';
-        statusBar.innerHTML = `
-            <span class="word-count">0 palavras</span>
-            <span class="char-count">0 caracteres</span>
-        `;
-        this.editorContainer.appendChild(statusBar);
     }
 
     createTextBlock() {
@@ -87,7 +72,6 @@ class EditorManager {
 
     setupEditor() {
         this.updatePlaceholder();
-        setTimeout(() => this.currentTextBlock.focus(), 100);
     }
 
     setupEventListeners() {
@@ -96,46 +80,12 @@ class EditorManager {
         // === Observer para mudanças estruturais (listas, etc) ===
         const observer = new MutationObserver(() => {
             this.updatePlaceholder();
-            this.updateStats();
         });
         
         observer.observe(this.editorElement, {
             childList: true,
             subtree: true,
             characterData: true
-        });
-
-        // === NOVO: Clique em qualquer área vazia do editor ===
-        this.editorElement.addEventListener('click', (e) => {
-            // Se clicou diretamente no container do editor (área vazia)
-            if (e.target === this.editorElement) {
-                e.preventDefault();
-                
-                // Encontra o último text-block ou cria um novo se necessário
-                const textBlocks = this.editorElement.querySelectorAll('.text-block');
-                let targetBlock = null;
-                
-                if (textBlocks.length > 0) {
-                    // Usa o último bloco de texto disponível
-                    targetBlock = textBlocks[textBlocks.length - 1];
-                } else {
-                    // Cria um novo bloco se não existir nenhum
-                    targetBlock = this.createTextBlock();
-                    this.editorElement.appendChild(targetBlock);
-                }
-                
-                // Foca no bloco e posiciona o cursor no final
-                this.currentTextBlock = targetBlock;
-                targetBlock.focus();
-                
-                // Posiciona o cursor no final do conteúdo
-                const range = document.createRange();
-                const sel = window.getSelection();
-                range.selectNodeContents(targetBlock);
-                range.collapse(false);
-                sel.removeAllRanges();
-                sel.addRange(range);
-            }
         });
 
         // Eventos delegados otimizados
@@ -180,7 +130,6 @@ class EditorManager {
             this.cleanEmptyTextBlocks();
         }, 1000);
         
-        this.updateStats();
         this.updatePlaceholder();
     }
     
@@ -216,7 +165,7 @@ class EditorManager {
         if (prevElement.classList.contains('toggle')) {
             const lastEditable = this.findLastEditableInToggle(prevElement);
             if (lastEditable) {
-                this.focusAtEnd(lastEditable);
+                lastEditable.focus();
                 this.removeTextBlock(textBlock);
             }
         } else if (prevElement.classList.contains('text-block')) {
@@ -225,7 +174,6 @@ class EditorManager {
     }
 
     mergeTextBlocks(targetBlock, sourceBlock) {
-        const cursorPosition = targetBlock.textContent.length;
         const content = sourceBlock.innerHTML.trim();
         
         if (content) {
@@ -234,7 +182,7 @@ class EditorManager {
         
         this.removeTextBlock(sourceBlock);
         this.currentTextBlock = targetBlock;
-        this.focusAtPosition(targetBlock, cursorPosition);
+        targetBlock.focus();
     }
 
     findLastEditableInToggle(toggle) {
@@ -317,7 +265,6 @@ class EditorManager {
         
         textBlock.remove();
         this.ensureMinimumTextBlock();
-        this.updateStats();
         this.updatePlaceholder();
     }
 
@@ -328,7 +275,6 @@ class EditorManager {
             const newBlock = this.createTextBlock();
             this.editorElement.appendChild(newBlock);
             this.currentTextBlock = newBlock;
-            setTimeout(() => newBlock.focus(), 0);
         }
     }
 
@@ -346,12 +292,11 @@ class EditorManager {
         if (isEditorEmpty) {
             editor.firstElementChild.replaceWith(element);
             const toggleTitle = element.querySelector('.toggle-title');
-            if (toggleTitle) this.focusAndPrime(toggleTitle);
+            if (toggleTitle) toggleTitle.focus();
         } else {
             this.insertAtCursor(element);
         }
         
-        this.updateStats();
         this.updatePlaceholder();
     }
 
@@ -382,7 +327,7 @@ class EditorManager {
         }
         
         const toggleTitle = element.querySelector('.toggle-title');
-        if (toggleTitle) this.focusAndPrime(toggleTitle);
+        if (toggleTitle) toggleTitle.focus();
     }
 
     findContainingTextBlock(node) {
@@ -416,71 +361,9 @@ class EditorManager {
     createTextBlockAfterElement(element) {
         const newBlock = this.createTextBlock();
         element.after(newBlock);
-        this.focusAndPrime(newBlock);
+        newBlock.focus();
         this.currentTextBlock = newBlock;
         return newBlock;
-    }
-
-    // ======= FOCO E NAVEGAÇÃO ======= //
-
-    focusAndPrime(element, callback) {
-        if (!element) return;
-        
-        setTimeout(() => {
-            element.focus();
-            const range = document.createRange();
-            range.selectNodeContents(element);
-            range.collapse(false);
-            const sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(range);
-            
-            if (callback && document.activeElement === element) {
-                callback();
-            }
-        }, 0);
-    }
-
-    focusAtPosition(element, position) {
-        if (!element) return;
-        
-        setTimeout(() => {
-            element.focus();
-            const walker = document.createTreeWalker(
-                element,
-                NodeFilter.SHOW_TEXT,
-                null,
-                false
-            );
-            
-            let node;
-            let charCount = 0;
-            
-            while (node = walker.nextNode()) {
-                const nextCount = charCount + node.length;
-                if (position <= nextCount) {
-                    const range = document.createRange();
-                    range.setStart(node, position - charCount);
-                    range.collapse(true);
-                    const sel = window.getSelection();
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                    return;
-                }
-                charCount = nextCount;
-            }
-            
-            this.focusAtEnd(element);
-        }, 0);
-    }
-
-    focusAtEnd(element) {
-        this.focusAndPrime(element);
-    }
-
-    focus() {
-        const target = this.currentTextBlock || this.editorElement.querySelector('.text-block');
-        if (target) target.focus();
     }
 
     // ======= UTILITÁRIOS ======= //
@@ -503,20 +386,6 @@ class EditorManager {
         this.editorElement.classList.toggle('is-empty', isEmpty);
     }
 
-    updateStats() {
-        if (!this.editorElement) return;
-        
-        const text = this.editorElement.innerText || '';
-        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-        const chars = text.length;
-
-        if (this.statusElements.wordCount) {
-            this.statusElements.wordCount.textContent = `${words} palavras`;
-        }
-        if (this.statusElements.charCount) {
-            this.statusElements.charCount.textContent = `${chars} caracteres`;
-        }
-    }
 
     showFallback() {
         if (this.editorContainer) {

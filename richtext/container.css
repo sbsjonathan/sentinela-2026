@@ -39,7 +39,8 @@ body {
     display: flex;
     flex-direction: column;
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     margin-top: 70px; /* Compensa a altura da barra fixa */
 }
