@@ -9,7 +9,8 @@
 
 .editor-content {
     flex: 1;
-    padding: 20px;
+    /* Alteração aqui: Top=20px, Right=20px, Bottom=80px (o respiro), Left=20px */
+    padding: 20px 20px 160px 20px; 
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
     font-size: 16px;
     line-height: 1.6;
@@ -22,10 +23,11 @@
     user-select: text;
     position: relative;
     
-    /* === NOVO: Garante altura mínima e área clicável === */
-    min-height: calc(100vh - 100px); /* 100vh menos altura da barra e status */
-    cursor: text; /* Mostra cursor de texto em toda a área */
+    /* Garante altura mínima e área clicável */
+    min-height: calc(100vh - 100px); 
+    cursor: text; 
 }
+
 
 /* === NOVO: Área clicável visual === */
 .editor-content:empty::after,
