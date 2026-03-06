@@ -24,7 +24,7 @@
     position: relative;
     
     /* Garante altura mínima e área clicável */
-    min-height: calc(100vh - 100px); 
+    min-height: calc(120vh - 12px); 
     cursor: text; 
 }
 
@@ -136,24 +136,6 @@
     border: none;
 }
 
-/* Barra de status */
-.editor-status {
-    height: 30px;
-    background-color: #f8f8f8;
-    border-top: 1px solid #e0e0e0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    font-size: 12px;
-    color: #666;
-    flex-shrink: 0;
-}
-
-.word-count,
-.char-count {
-    font-weight: 500;
-}
 
 /* Seleção de texto */
 .editor-content ::selection {
