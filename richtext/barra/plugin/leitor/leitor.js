@@ -72,15 +72,24 @@ class LeitorPlugin {
             e.preventDefault();
             this.toggleReadOnly();
         });
-
-        this.leitorBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.toggleReadOnly();
-        }, { passive: false });
     }
 
     connectToEditor() {
         this.editor = window.editor;
+
+        // Garante estado consistente ao voltar via navbar / bfcache.
+        window.addEventListener('pageshow', () => {
+            if (!this.isReadOnly) {
+                this.resetReadOnlyArtifacts();
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && !this.isReadOnly) {
+                this.resetReadOnlyArtifacts();
+            }
+        });
+
         console.log('📖 Plugin Leitor conectado ao editor');
     }
 
@@ -179,6 +188,8 @@ class LeitorPlugin {
             arrow.style.pointerEvents = '';
             arrow.style.opacity = '';
         });
+
+        this.resetReadOnlyArtifacts();
     }
 
     processAllContent() {
@@ -250,40 +261,57 @@ class LeitorPlugin {
 
         if (matches.length === 0) return;
 
-        // Processa de trás para frente
-        const parent = textNode.parentNode;
-        let currentNode = textNode;
+        const fragment = document.createDocumentFragment();
+        let lastIndex = 0;
 
-        for (let i = matches.length - 1; i >= 0; i--) {
-            const matchInfo = matches[i];
-            const before = currentNode.textContent.substring(0, matchInfo.index);
-            const reference = currentNode.textContent.substring(matchInfo.index, matchInfo.index + matchInfo.length);
-            const after = currentNode.textContent.substring(matchInfo.index + matchInfo.length);
+        matches.forEach((matchInfo) => {
+            if (matchInfo.index > lastIndex) {
+                fragment.appendChild(
+                    document.createTextNode(text.slice(lastIndex, matchInfo.index))
+                );
+            }
 
-            // Cria o link
+            const reference = text.slice(matchInfo.index, matchInfo.index + matchInfo.length);
             const link = document.createElement('span');
             link.className = 'bbl';
             link.textContent = reference;
             link.setAttribute('data-ref', reference);
 
-            // Configura eventos do link
             if (window.setupBblLinkListeners) {
                 window.setupBblLinkListeners(link);
             }
 
-            // Reconstrói o nó
-            const afterNode = document.createTextNode(after);
-            parent.insertBefore(afterNode, currentNode.nextSibling);
-            parent.insertBefore(link, afterNode);
-            
-            currentNode.textContent = before;
-            
-            // Para próxima iteração
-            if (i > 0) {
-                currentNode = document.createTextNode(before + after);
-                parent.replaceChild(currentNode, currentNode);
-            }
+            fragment.appendChild(link);
+            lastIndex = matchInfo.index + matchInfo.length;
+        });
+
+        if (lastIndex < text.length) {
+            fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
         }
+
+        textNode.parentNode.replaceChild(fragment, textNode);
+    }
+
+    resetReadOnlyArtifacts() {
+        if (!this.editor?.editorElement) return;
+
+        this.editor.editorElement.classList.remove('read-only-mode');
+        document.body.classList.remove('editor-read-only');
+        this.leitorBtn?.classList.remove('active');
+
+        const staleReadOnly = this.editor.editorElement.querySelectorAll('[contenteditable="false"], .read-only');
+        staleReadOnly.forEach((element) => {
+            element.setAttribute('contenteditable', 'true');
+            element.classList.remove('read-only');
+        });
+
+        const links = this.editor.editorElement.querySelectorAll('.bbl');
+        links.forEach(link => {
+            const textNode = document.createTextNode(link.textContent);
+            link.parentNode.replaceChild(textNode, link);
+        });
+
+        this.editor.editorElement.querySelectorAll('.text-block, .toggle-title, .content-invisible').forEach(el => el.normalize());
     }
 
     removeAllLinks() {

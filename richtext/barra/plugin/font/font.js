@@ -159,35 +159,29 @@ class FontPlugin {
     }
 
     const tag = this.fontSizes[size].tag;
-    
-    // Usa o comando nativo formatBlock
-    // Isso funciona com seleções múltiplas automaticamente!
-    document.execCommand('formatBlock', false, tag);
-    
-    // Adiciona classe para manter compatibilidade com estilos customizados
-    if (tag !== 'div') {
-      // Encontra o elemento recém-criado
-      const selection = window.getSelection();
-      if (selection.rangeCount) {
-        let node = selection.getRangeAt(0).commonAncestorContainer;
-        if (node.nodeType === Node.TEXT_NODE) {
-          node = node.parentElement;
-        }
-        
-        // Sobe até encontrar o heading
-        while (node && node.tagName?.toLowerCase() !== tag) {
-          node = node.parentElement;
-        }
-        
-        if (node) {
-          // Adiciona classe para estilização adicional
-          node.className = `text-block font-${size}`;
-          
-          // Garante que seja editável
-          if (!node.hasAttribute('contenteditable')) {
-            node.contentEditable = 'true';
-          }
-        }
+    const targetBlock = this.getTargetBlock();
+
+    if (!targetBlock) {
+      console.warn('⚠️ Nenhum bloco disponível para aplicar fonte');
+      return;
+    }
+
+    // Se o bloco estiver vazio (caso principal reportado), aplica direto no bloco atual.
+    // Isso evita perder a formatação quando o botão do dropdown rouba o foco.
+    const isEmptyBlock = !targetBlock.textContent.trim();
+    const shouldApplyDirectly = isEmptyBlock || !this.isSelectionInsideEditor();
+
+    if (shouldApplyDirectly) {
+      const updatedBlock = this.replaceBlockTag(targetBlock, tag, size);
+      this.editor.currentTextBlock = updatedBlock;
+      this.editor.focusAtEnd(updatedBlock);
+    } else {
+      // Usa o comando nativo para casos com seleção ativa de texto
+      document.execCommand('formatBlock', false, tag);
+
+      const currentBlock = this.getCurrentBlock();
+      if (currentBlock) {
+        this.applyBlockClass(currentBlock, size);
       }
     }
     
@@ -200,6 +194,60 @@ class FontPlugin {
     // Atualiza estatísticas
     if (this.editor.updateStats) {
       this.editor.updateStats();
+    }
+  }
+
+  getTargetBlock() {
+    const currentBlock = this.getCurrentBlock();
+    if (currentBlock) return currentBlock;
+
+    if (this.editor?.currentTextBlock) return this.editor.currentTextBlock;
+    return this.editor?.editorElement?.querySelector('.text-block, h1, h2, h3') || null;
+  }
+
+  isSelectionInsideEditor() {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return false;
+
+    const editorElement = this.editor?.editorElement;
+    if (!editorElement) return false;
+
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    return editorElement.contains(container);
+  }
+
+  replaceBlockTag(block, targetTag, size) {
+    const currentTag = block.tagName?.toLowerCase() || 'div';
+
+    if (currentTag === targetTag) {
+      this.applyBlockClass(block, size);
+      return block;
+    }
+
+    const replacement = document.createElement(targetTag);
+    replacement.innerHTML = block.innerHTML;
+
+    // Preserva atributos importantes
+    Array.from(block.attributes).forEach(attr => {
+      if (attr.name !== 'class') {
+        replacement.setAttribute(attr.name, attr.value);
+      }
+    });
+
+    replacement.contentEditable = 'true';
+    this.applyBlockClass(replacement, size);
+
+    block.replaceWith(replacement);
+    return replacement;
+  }
+
+  applyBlockClass(block, size) {
+    block.classList.remove('font-h1', 'font-h2', 'font-h3');
+    block.classList.add('text-block');
+
+    if (size !== 'normal') {
+      block.classList.add(`font-${size}`);
     }
   }
 
