@@ -77,6 +77,17 @@ class LeitorPlugin {
     connectToEditor() {
         this.editor = window.editor;
 
+        // Ao sair da página, sempre desativa o modo leitor para evitar voltar com editor travado.
+        const shutdownReadOnly = () => {
+            if (this.isReadOnly) {
+                this.disableReadOnly();
+                this.isReadOnly = false;
+            }
+        };
+
+        window.addEventListener('pagehide', shutdownReadOnly);
+        window.addEventListener('beforeunload', shutdownReadOnly);
+
         // Garante estado consistente ao voltar via navbar / bfcache.
         window.addEventListener('pageshow', () => {
             if (!this.isReadOnly) {

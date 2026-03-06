@@ -112,6 +112,7 @@ class FontPlugin {
     editorEl.addEventListener('focus', () => this.updateButtonState(), true);
     editorEl.addEventListener('click', () => this.updateButtonState());
     editorEl.addEventListener('keyup', () => this.updateButtonState());
+    editorEl.addEventListener('keydown', (e) => this.handleEnterInHeading(e), true);
 
     this.updateButtonState();
     console.log('🔗 Plugin de Font conectado (modo nativo)');
@@ -249,6 +250,66 @@ class FontPlugin {
     if (size !== 'normal') {
       block.classList.add(`font-${size}`);
     }
+  }
+
+  handleEnterInHeading(e) {
+    if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+
+    const block = this.getCurrentBlock();
+    if (!block || !block.tagName?.match(/^H[1-3]$/i)) {
+      return;
+    }
+
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+    if (!block.contains(range.startContainer)) return;
+
+    e.preventDefault();
+
+    const afterRange = range.cloneRange();
+    afterRange.selectNodeContents(block);
+    afterRange.setStart(range.endContainer, range.endOffset);
+
+    const afterFragment = afterRange.extractContents();
+    const nextBlock = document.createElement('div');
+    nextBlock.className = 'text-block';
+    nextBlock.contentEditable = 'true';
+    nextBlock.setAttribute('spellcheck', 'true');
+    nextBlock.setAttribute('autocapitalize', 'sentences');
+    nextBlock.setAttribute('autocorrect', 'on');
+
+    if (afterFragment.childNodes.length > 0) {
+      nextBlock.appendChild(afterFragment);
+    }
+
+    block.after(nextBlock);
+
+    this.editor.currentTextBlock = nextBlock;
+    this.currentSize = 'normal';
+    this.updateButtonLabel();
+    this.updateDropdownSelection();
+
+    this.placeCursorAtStart(nextBlock);
+  }
+
+  placeCursorAtStart(element) {
+    const range = document.createRange();
+    const selection = window.getSelection();
+
+    if (element.firstChild) {
+      range.setStart(element.firstChild, 0);
+    } else {
+      range.setStart(element, 0);
+    }
+    range.collapse(true);
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+    element.focus();
   }
 
   // === Utilitários ===
