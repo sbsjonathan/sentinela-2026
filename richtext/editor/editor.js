@@ -5,7 +5,6 @@ class EditorManager {
         this.editorContainer = null;
         this.editorElement = null;
         this.currentTextBlock = null;
-        this.statusElements = {};
         this.isLoaded = false;
         this.cleanupInputTimeout = null;
         this.init();
@@ -34,10 +33,6 @@ class EditorManager {
             // Cria estrutura
             this.createEditorStructure();
 
-            // Referências
-            this.statusElements.wordCount = this.editorContainer.querySelector('.word-count');
-            this.statusElements.charCount = this.editorContainer.querySelector('.char-count');
-
             // Setup
             this.setupEditor();
             this.setupEventListeners();
@@ -65,14 +60,6 @@ class EditorManager {
         
         this.editorContainer.appendChild(this.editorElement);
         
-        // Barra de status
-        const statusBar = document.createElement('div');
-        statusBar.className = 'editor-status';
-        statusBar.innerHTML = `
-            <span class="word-count">0 palavras</span>
-            <span class="char-count">0 caracteres</span>
-        `;
-        this.editorContainer.appendChild(statusBar);
     }
 
     createTextBlock() {
@@ -504,18 +491,7 @@ class EditorManager {
     }
 
     updateStats() {
-        if (!this.editorElement) return;
-        
-        const text = this.editorElement.innerText || '';
-        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-        const chars = text.length;
-
-        if (this.statusElements.wordCount) {
-            this.statusElements.wordCount.textContent = `${words} palavras`;
-        }
-        if (this.statusElements.charCount) {
-            this.statusElements.charCount.textContent = `${chars} caracteres`;
-        }
+        // Contador removido por decisão de UX.
     }
 
     showFallback() {
