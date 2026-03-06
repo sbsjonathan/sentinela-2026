@@ -7,6 +7,11 @@ class EditorManager {
         this.currentTextBlock = null;
         this.isLoaded = false;
         this.cleanupInputTimeout = null;
+        this.headerDrawer = null;
+        this.isHeaderOpen = false;
+        this.isHeaderDragging = false;
+        this.headerStartY = 0;
+        this.headerPullDelta = 0;
         this.init();
     }
 
@@ -54,12 +59,96 @@ class EditorManager {
         this.editorElement.className = 'editor-content';
         this.editorElement.setAttribute('data-placeholder', 'Digite seu texto aqui...');
         
+        // Cabeçalho retrátil das anotações (parte do conteúdo selecionável)
+        this.headerDrawer = this.createHeaderDrawer();
+        this.editorElement.appendChild(this.headerDrawer);
+
         // Primeiro bloco de texto
         this.currentTextBlock = this.createTextBlock();
         this.editorElement.appendChild(this.currentTextBlock);
         
         this.editorContainer.appendChild(this.editorElement);
         
+    }
+
+
+    createHeaderDrawer() {
+        const drawer = document.createElement('div');
+        drawer.className = 'notes-header-drawer';
+
+        drawer.innerHTML = `
+            <div class="notes-header-inner">
+                <div class="notes-header-field notes-header-speaker"
+                     contenteditable="true"
+                     data-placeholder="Orador"></div>
+                <div class="notes-header-field notes-header-title"
+                     contenteditable="true"
+                     data-placeholder="Título do discurso"></div>
+            </div>
+        `;
+
+        return drawer;
+    }
+
+    setupHeaderDrawerGesture() {
+        const isWithinPullZone = (touch) => {
+            const rect = this.editorElement.getBoundingClientRect();
+            const touchY = touch.clientY - rect.top;
+            return touchY >= 0 && touchY <= 90;
+        };
+
+        this.editorElement.addEventListener('touchstart', (e) => {
+            if (!e.changedTouches || !e.changedTouches.length) return;
+            if (this.editorElement.scrollTop > 2) return;
+
+            const touch = e.changedTouches[0];
+            if (!isWithinPullZone(touch)) return;
+
+            this.isHeaderDragging = true;
+            this.headerStartY = touch.clientY;
+            this.headerPullDelta = 0;
+            this.editorElement.classList.add('header-dragging');
+        }, { passive: true });
+
+        this.editorElement.addEventListener('touchmove', (e) => {
+            if (!this.isHeaderDragging || !e.changedTouches || !e.changedTouches.length) return;
+
+            const touch = e.changedTouches[0];
+            const rawDelta = touch.clientY - this.headerStartY;
+
+            const dragDirection = this.isHeaderOpen ? -rawDelta : rawDelta;
+            if (dragDirection <= 0) {
+                this.headerPullDelta = 0;
+                this.editorElement.style.setProperty('--header-pull', '0px');
+                return;
+            }
+
+            const resisted = Math.min(80, dragDirection * 0.35);
+            this.headerPullDelta = dragDirection;
+            this.editorElement.style.setProperty('--header-pull', `${resisted}px`);
+        }, { passive: true });
+
+        const finalizeDrag = () => {
+            if (!this.isHeaderDragging) return;
+
+            const threshold = 55;
+            if (this.headerPullDelta > threshold) {
+                this.toggleHeaderDrawer(!this.isHeaderOpen);
+            }
+
+            this.isHeaderDragging = false;
+            this.headerPullDelta = 0;
+            this.editorElement.style.setProperty('--header-pull', '0px');
+            this.editorElement.classList.remove('header-dragging');
+        };
+
+        this.editorElement.addEventListener('touchend', finalizeDrag, { passive: true });
+        this.editorElement.addEventListener('touchcancel', finalizeDrag, { passive: true });
+    }
+
+    toggleHeaderDrawer(shouldOpen) {
+        this.isHeaderOpen = shouldOpen;
+        this.editorElement.classList.toggle('header-open', shouldOpen);
     }
 
     createTextBlock() {
@@ -74,11 +163,14 @@ class EditorManager {
 
     setupEditor() {
         this.updatePlaceholder();
+        this.toggleHeaderDrawer(false);
         setTimeout(() => this.currentTextBlock.focus(), 100);
     }
 
     setupEventListeners() {
         if (!this.editorElement) return;
+
+        this.setupHeaderDrawerGesture();
 
         // === Observer para mudanças estruturais (listas, etc) ===
         const observer = new MutationObserver(() => {
@@ -129,6 +221,11 @@ class EditorManager {
         this.editorElement.addEventListener('input', (e) => {
             if (e.target.classList.contains('text-block')) {
                 this.handleInput(e);
+                return;
+            }
+
+            if (e.target.classList.contains('notes-header-field')) {
+                this.updatePlaceholder();
             }
         });
         
@@ -150,6 +247,11 @@ class EditorManager {
                 e.target.classList.remove('focused');
                 this.cleanTextBlock(e.target);
                 this.scheduleEmptyBlockRemoval(e.target);
+            }
+
+            if (e.target.classList.contains('notes-header-field') && !e.target.textContent.trim()) {
+                e.target.innerHTML = '';
+                this.updatePlaceholder();
             }
         }, true);
         
@@ -483,9 +585,11 @@ class EditorManager {
         const hasList = this.editorElement.querySelector('ul, ol') !== null;
         const hasToggle = this.editorElement.querySelector('.toggle') !== null;
         const hasImage = this.editorElement.querySelector('img') !== null;
-        
+        const hasHeaderContent = Array.from(this.editorElement.querySelectorAll('.notes-header-field'))
+            .some(field => field.textContent.trim().length > 0);
+
         // Mostra placeholder apenas se NÃO tiver nenhum desses elementos
-        const isEmpty = !hasText && !hasList && !hasToggle && !hasImage;
+        const isEmpty = !hasText && !hasList && !hasToggle && !hasImage && !hasHeaderContent;
         
         this.editorElement.classList.toggle('is-empty', isEmpty);
     }
