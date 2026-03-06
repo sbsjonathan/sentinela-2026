@@ -8,6 +8,9 @@ class UnifiedNavbar {
         this.scrollDirection = 'up';
         this.touchStartY = 0;
         this.consecutiveScrollDown = 0;
+        this.isKeyboardOpen = false;
+        this.baseViewportHeight = 0;
+        this.keyboardHeightThreshold = 120;
         this.currentPage = this.detectCurrentPage();
         
         this.init();
@@ -16,6 +19,7 @@ class UnifiedNavbar {
     init() {
         this.createNavbar();
         this.setupScrollBehavior();
+        this.setupKeyboardBehavior();
         this.setupNavigation();
         
         setTimeout(() => {
@@ -133,6 +137,10 @@ class UnifiedNavbar {
     }
 
     setupScrollBehavior() {
+        if (this.currentPage === 'notes') {
+            return;
+        }
+
         this.setupScrollHandlers();
         this.setupTouchBehavior();
     }
@@ -142,6 +150,10 @@ class UnifiedNavbar {
     }
 
     onScroll() {
+        if (this.isKeyboardOpen) {
+            return;
+        }
+
         const currentScrollY = window.scrollY;
         
         if (currentScrollY > this.lastScrollY && currentScrollY > 10) {
@@ -174,11 +186,84 @@ class UnifiedNavbar {
     }
 
     showNavbar() {
+        if (this.isKeyboardOpen) {
+            return;
+        }
+
         if (this.isHidden && this.navbar) {
             this.navbar.classList.remove('hidden');
             this.isHidden = false;
             clearTimeout(this.hideTimeout);
         }
+    }
+
+    setupKeyboardBehavior() {
+        if (!window.visualViewport) {
+            this.setupKeyboardFocusFallback();
+            return;
+        }
+
+        this.baseViewportHeight = window.visualViewport.height;
+
+        const onViewportResize = () => {
+            const currentViewportHeight = window.visualViewport.height;
+
+            if (currentViewportHeight > this.baseViewportHeight) {
+                this.baseViewportHeight = currentViewportHeight;
+            }
+
+            const viewportReduction = this.baseViewportHeight - currentViewportHeight;
+            const keyboardOpen = viewportReduction > this.keyboardHeightThreshold;
+
+            this.toggleKeyboardState(keyboardOpen);
+        };
+
+        window.visualViewport.addEventListener('resize', onViewportResize);
+        window.visualViewport.addEventListener('scroll', onViewportResize);
+
+        this.setupKeyboardFocusFallback();
+    }
+
+    setupKeyboardFocusFallback() {
+        document.addEventListener('focusin', (event) => {
+            const element = event.target;
+            if (!element) return;
+
+            const tagName = element.tagName;
+            const isEditable = element.isContentEditable || tagName === 'INPUT' || tagName === 'TEXTAREA';
+
+            if (isEditable) {
+                this.toggleKeyboardState(true);
+            }
+        });
+
+        document.addEventListener('focusout', () => {
+            if (window.visualViewport) {
+                requestAnimationFrame(() => {
+                    const viewportReduction = this.baseViewportHeight - window.visualViewport.height;
+                    const keyboardOpen = viewportReduction > this.keyboardHeightThreshold;
+                    this.toggleKeyboardState(keyboardOpen);
+                });
+                return;
+            }
+
+            this.toggleKeyboardState(false);
+        });
+    }
+
+    toggleKeyboardState(isOpen) {
+        if (this.isKeyboardOpen === isOpen) {
+            return;
+        }
+
+        this.isKeyboardOpen = isOpen;
+
+        if (isOpen) {
+            this.hideNavbar();
+            return;
+        }
+
+        this.showNavbar();
     }
 
     setupNavigation() {
