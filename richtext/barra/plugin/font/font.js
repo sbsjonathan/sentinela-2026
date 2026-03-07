@@ -260,8 +260,8 @@ class FontPlugin {
     const map = {
       h1: { fontSize: '28px', lineHeight: '1.3', topAdjust: '0px', caretOffset: '-3px' },
       h2: { fontSize: '22px', lineHeight: '1.35', topAdjust: '0px', caretOffset: '-2px' },
-      h3: { fontSize: '18px', lineHeight: '1.4', topAdjust: '0px', caretOffset: '-2px' },
-      normal: { fontSize: '16px', lineHeight: '1.6', topAdjust: '-1px', caretOffset: '-2px' }
+      h3: { fontSize: '18px', lineHeight: '1.4', topAdjust: '0px', caretOffset: '-1px' },
+      normal: { fontSize: '16px', lineHeight: '1.6', topAdjust: '-1px', caretOffset: '-1px' }
     };
 
     const style = map[size] || map.normal;

@@ -14,6 +14,7 @@ class EditorManager {
         this.bindedGlobalTouchStart = null;
         this.bindedGlobalTouchMove = null;
         this.bindedWindowScroll = null;
+        this.isTouchInsideEditor = false;
         this.init();
     }
 
@@ -170,8 +171,8 @@ class EditorManager {
         this.bindedGlobalTouchMove = (e) => this.handleGlobalTouchMove(e);
         this.bindedWindowScroll = () => this.handleWindowScroll();
 
-        document.addEventListener('touchstart', this.bindedGlobalTouchStart, { passive: true });
-        document.addEventListener('touchmove', this.bindedGlobalTouchMove, { passive: true });
+        document.addEventListener('touchstart', this.bindedGlobalTouchStart, { passive: true, capture: true });
+        document.addEventListener('touchmove', this.bindedGlobalTouchMove, { passive: true, capture: true });
         window.addEventListener('scroll', this.bindedWindowScroll, { passive: true });
 
         document.addEventListener('selectionchange', () => this.handleSelectionChange());
@@ -189,7 +190,7 @@ class EditorManager {
         const deltaY = currentY - this.touchStartY;
 
         // Qualquer gesto de puxar para baixo deve ressurgir a barra.
-        if (deltaY > 8) {
+        if (deltaY > 6) {
             this.revealTopToolbar();
             this.revealBottomNavbar();
         }
@@ -211,13 +212,19 @@ class EditorManager {
 
     handleGlobalTouchStart(e) {
         this.globalTouchStartY = e.touches?.[0]?.clientY || 0;
+        const target = e.target;
+        this.isTouchInsideEditor = !!(target && (target.closest?.('.editor-area') || this.editorElement?.contains(target)));
     }
 
     handleGlobalTouchMove(e) {
-        const currentY = e.touches?.[0]?.clientY || 0;
-        const pullingDown = currentY - this.globalTouchStartY > 8;
+        if (!this.isTouchInsideEditor) return;
 
-        if (pullingDown) {
+        const currentY = e.touches?.[0]?.clientY || 0;
+        const deltaY = currentY - this.globalTouchStartY;
+
+        // No iPhone, no fundo do editor o gesto pode não gerar scroll imediato;
+        // por isso qualquer arraste para baixo dentro da área do editor já revela barras.
+        if (deltaY > 6) {
             this.revealTopToolbar();
             this.revealBottomNavbar();
         }
@@ -621,11 +628,12 @@ class EditorManager {
         }
 
         if (this.bindedGlobalTouchStart) {
-            document.removeEventListener('touchstart', this.bindedGlobalTouchStart);
+            document.removeEventListener('touchstart', this.bindedGlobalTouchStart, { capture: true });
         }
         if (this.bindedGlobalTouchMove) {
-            document.removeEventListener('touchmove', this.bindedGlobalTouchMove);
+            document.removeEventListener('touchmove', this.bindedGlobalTouchMove, { capture: true });
         }
+        this.isTouchInsideEditor = false;
         if (this.bindedWindowScroll) {
             window.removeEventListener('scroll', this.bindedWindowScroll);
         }
