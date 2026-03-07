@@ -6,7 +6,7 @@ class CoresPlugin {
   constructor() {
     this.name = 'cores'; this.slotId = 5; this.editor = null; this.textInput = null; this.bgInput = null;
     this.resetBtn = null; this.textIndicator = null; this.resetIndicator = null; this.savedRange = null;
-    this.selectionListener = null; this._retryMs = 100; this.activeColorInput = null; this.boundGlobalTouchEnd = null; 
+    this.selectionListener = null; this._retryMs = 100; this.activeColorInput = null; this.autoCloseTimer = null; 
     
     // === NOVO: Variáveis para lembrar das últimas cores aplicadas ===
     this.lastAppliedTextColor = '#111111';
@@ -79,6 +79,7 @@ class CoresPlugin {
 
     const markPickerOpen = (input) => {
       this.activeColorInput = input;
+      this.scheduleAutoClose();
     };
 
     ['pointerdown','mousedown','touchstart'].forEach(ev => {
@@ -109,9 +110,6 @@ class CoresPlugin {
 
     this.bgInput?.addEventListener('change', () => this.closeColorPicker());
 
-    // iOS: fecha o seletor ao soltar o dedo (inclusive ao tocar em "X").
-    this.boundGlobalTouchEnd = () => this.closeColorPicker();
-    document.addEventListener('touchend', this.boundGlobalTouchEnd, { passive: true });
     
     this.resetBtn?.addEventListener('mousedown', (e) => { e.preventDefault(); this.resetFormatting(); });
   }
@@ -352,7 +350,22 @@ class CoresPlugin {
     const rgb = this.hexToRgb(hex); if (!rgb) return '#111111'; const luma = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000; return luma > 128 ? '#111111' : '#FFFFFF';
   }
 
+  scheduleAutoClose() {
+    if (this.autoCloseTimer) {
+      clearTimeout(this.autoCloseTimer);
+    }
+
+    this.autoCloseTimer = setTimeout(() => {
+      this.closeColorPicker();
+    }, 3000);
+  }
+
   closeColorPicker() {
+    if (this.autoCloseTimer) {
+      clearTimeout(this.autoCloseTimer);
+      this.autoCloseTimer = null;
+    }
+
     if (!this.activeColorInput) return;
 
     try {
@@ -366,7 +379,7 @@ class CoresPlugin {
   saveSelection() { const sel = window.getSelection(); if (!sel || sel.rangeCount === 0) return; const range = sel.getRangeAt(0); if (this.editor && this.editor.editorElement && this.editor.editorElement.contains(range.commonAncestorContainer)) { this.savedRange = range.cloneRange(); }}
   restoreSelection() { if (!this.savedRange) return false; const sel = window.getSelection(); if (!sel) return false; sel.removeAllRanges(); sel.addRange(this.savedRange); this.savedRange = null; return true;}
   rgbToHex(rgb) { if (!rgb) return null; const m = rgb.replace(/\s+/g,'').match(/^rgba?\((\d+),(\d+),(\d+)(?:,([\d.]+))?\)$/i); if (!m) return null; return '#' + [1, 2, 3].map(i => parseInt(m[i]).toString(16).padStart(2, '0')).join('');}
-  destroy() { this.detachSelectionChange(); if (this.boundGlobalTouchEnd) { document.removeEventListener('touchend', this.boundGlobalTouchEnd); this.boundGlobalTouchEnd = null; } this.activeColorInput = null; }
+  destroy() { this.detachSelectionChange(); if (this.autoCloseTimer) { clearTimeout(this.autoCloseTimer); this.autoCloseTimer = null; } this.activeColorInput = null; }
 }
 
 const coresPlugin = new CoresPlugin();
