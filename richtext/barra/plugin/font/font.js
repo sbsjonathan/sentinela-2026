@@ -112,8 +112,10 @@ class FontPlugin {
     editorEl.addEventListener('focus', () => this.updateButtonState(), true);
     editorEl.addEventListener('click', () => this.updateButtonState());
     editorEl.addEventListener('keyup', () => this.updateButtonState());
+    editorEl.addEventListener('keydown', (e) => this.handleEnterInHeading(e), true);
 
     this.updateButtonState();
+    this.syncPlaceholderStyle(this.currentSize);
     console.log('🔗 Plugin de Font conectado (modo nativo)');
   }
 
@@ -159,39 +161,34 @@ class FontPlugin {
     }
 
     const tag = this.fontSizes[size].tag;
-    
-    // Usa o comando nativo formatBlock
-    // Isso funciona com seleções múltiplas automaticamente!
-    document.execCommand('formatBlock', false, tag);
-    
-    // Adiciona classe para manter compatibilidade com estilos customizados
-    if (tag !== 'div') {
-      // Encontra o elemento recém-criado
-      const selection = window.getSelection();
-      if (selection.rangeCount) {
-        let node = selection.getRangeAt(0).commonAncestorContainer;
-        if (node.nodeType === Node.TEXT_NODE) {
-          node = node.parentElement;
-        }
-        
-        // Sobe até encontrar o heading
-        while (node && node.tagName?.toLowerCase() !== tag) {
-          node = node.parentElement;
-        }
-        
-        if (node) {
-          // Adiciona classe para estilização adicional
-          node.className = `text-block font-${size}`;
-          
-          // Garante que seja editável
-          if (!node.hasAttribute('contenteditable')) {
-            node.contentEditable = 'true';
-          }
-        }
+    const targetBlock = this.getTargetBlock();
+
+    if (!targetBlock) {
+      console.warn('⚠️ Nenhum bloco disponível para aplicar fonte');
+      return;
+    }
+
+    // Se o bloco estiver vazio (caso principal reportado), aplica direto no bloco atual.
+    // Isso evita perder a formatação quando o botão do dropdown rouba o foco.
+    const isEmptyBlock = !targetBlock.textContent.trim();
+    const shouldApplyDirectly = isEmptyBlock || !this.isSelectionInsideEditor();
+
+    if (shouldApplyDirectly) {
+      const updatedBlock = this.replaceBlockTag(targetBlock, tag, size);
+      this.editor.currentTextBlock = updatedBlock;
+      this.editor.focusAtEnd(updatedBlock);
+    } else {
+      // Usa o comando nativo para casos com seleção ativa de texto
+      document.execCommand('formatBlock', false, tag);
+
+      const currentBlock = this.getCurrentBlock();
+      if (currentBlock) {
+        this.applyBlockClass(currentBlock, size);
       }
     }
     
     this.currentSize = size;
+    this.syncPlaceholderStyle(size);
     this.updateButtonLabel();
     
     // Mantém o foco
@@ -201,6 +198,138 @@ class FontPlugin {
     if (this.editor.updateStats) {
       this.editor.updateStats();
     }
+  }
+
+  getTargetBlock() {
+    const currentBlock = this.getCurrentBlock();
+    if (currentBlock) return currentBlock;
+
+    if (this.editor?.currentTextBlock) return this.editor.currentTextBlock;
+    return this.editor?.editorElement?.querySelector('.text-block, h1, h2, h3') || null;
+  }
+
+  isSelectionInsideEditor() {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return false;
+
+    const editorElement = this.editor?.editorElement;
+    if (!editorElement) return false;
+
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    return editorElement.contains(container);
+  }
+
+  replaceBlockTag(block, targetTag, size) {
+    const currentTag = block.tagName?.toLowerCase() || 'div';
+
+    if (currentTag === targetTag) {
+      this.applyBlockClass(block, size);
+      return block;
+    }
+
+    const replacement = document.createElement(targetTag);
+    replacement.innerHTML = block.innerHTML;
+
+    // Preserva atributos importantes
+    Array.from(block.attributes).forEach(attr => {
+      if (attr.name !== 'class') {
+        replacement.setAttribute(attr.name, attr.value);
+      }
+    });
+
+    replacement.contentEditable = 'true';
+    this.applyBlockClass(replacement, size);
+
+    block.replaceWith(replacement);
+    return replacement;
+  }
+
+  applyBlockClass(block, size) {
+    block.classList.remove('font-h1', 'font-h2', 'font-h3');
+    block.classList.add('text-block');
+
+    if (size !== 'normal') {
+      block.classList.add(`font-${size}`);
+    }
+  }
+
+  syncPlaceholderStyle(size) {
+    if (!this.editor?.editorElement) return;
+
+    const map = {
+      h1: { fontSize: '28px', lineHeight: '1.3', topAdjust: '2px', caretOffset: '-3px' },
+      h2: { fontSize: '22px', lineHeight: '1.35', topAdjust: '2px', caretOffset: '-2px' },
+      h3: { fontSize: '18px', lineHeight: '1.4', topAdjust: '1px', caretOffset: '-1px' },
+      normal: { fontSize: '16px', lineHeight: '1.6', topAdjust: '-1px', caretOffset: '-1px' }
+    };
+
+    const style = map[size] || map.normal;
+    this.editor.editorElement.style.setProperty('--placeholder-font-size', style.fontSize);
+    this.editor.editorElement.style.setProperty('--placeholder-line-height', style.lineHeight);
+    this.editor.editorElement.style.setProperty('--placeholder-top-adjust', style.topAdjust);
+    this.editor.editorElement.style.setProperty('--caret-offset-y', style.caretOffset);
+  }
+
+  handleEnterInHeading(e) {
+    if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+
+    const block = this.getCurrentBlock();
+    if (!block || !block.tagName?.match(/^H[1-3]$/i)) {
+      return;
+    }
+
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+    if (!block.contains(range.startContainer)) return;
+
+    e.preventDefault();
+
+    const afterRange = range.cloneRange();
+    afterRange.selectNodeContents(block);
+    afterRange.setStart(range.endContainer, range.endOffset);
+
+    const afterFragment = afterRange.extractContents();
+    const nextBlock = document.createElement('div');
+    nextBlock.className = 'text-block';
+    nextBlock.contentEditable = 'true';
+    nextBlock.setAttribute('spellcheck', 'true');
+    nextBlock.setAttribute('autocapitalize', 'sentences');
+    nextBlock.setAttribute('autocorrect', 'on');
+
+    if (afterFragment.childNodes.length > 0) {
+      nextBlock.appendChild(afterFragment);
+    }
+
+    block.after(nextBlock);
+
+    this.editor.currentTextBlock = nextBlock;
+    this.currentSize = 'normal';
+    this.syncPlaceholderStyle('normal');
+    this.updateButtonLabel();
+    this.updateDropdownSelection();
+
+    this.placeCursorAtStart(nextBlock);
+  }
+
+  placeCursorAtStart(element) {
+    const range = document.createRange();
+    const selection = window.getSelection();
+
+    if (element.firstChild) {
+      range.setStart(element.firstChild, 0);
+    } else {
+      range.setStart(element, 0);
+    }
+    range.collapse(true);
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+    element.focus();
   }
 
   // === Utilitários ===
