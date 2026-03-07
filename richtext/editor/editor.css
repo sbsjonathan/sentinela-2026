@@ -54,6 +54,18 @@
     left: 20px;
 }
 
+/* Mantém caret e placeholder alinhados quando o editor está vazio */
+.editor-content.is-empty > .text-block:empty,
+.editor-content.is-empty > h1.text-block:empty,
+.editor-content.is-empty > h2.text-block:empty,
+.editor-content.is-empty > h3.text-block:empty {
+    margin: 0 !important;
+    padding: 0;
+    font-size: var(--placeholder-font-size, 16px) !important;
+    line-height: var(--placeholder-line-height, 1.6) !important;
+    min-height: calc(var(--placeholder-font-size, 16px) * var(--placeholder-line-height, 1.6));
+}
+
 /* Bloco de texto editável */
 .text-block {
     outline: none;

@@ -7,6 +7,9 @@ class EditorManager {
         this.currentTextBlock = null;
         this.isLoaded = false;
         this.cleanupInputTimeout = null;
+        this.touchStartY = 0;
+        this.lastEditorScrollTop = 0;
+        this.forceVisibleTimeout = null;
         this.init();
     }
 
@@ -153,7 +156,66 @@ class EditorManager {
             }
         }, true);
         
+
+        this.editorElement.addEventListener('touchstart', (e) => this.handleEditorTouchStart(e), { passive: true });
+        this.editorElement.addEventListener('touchmove', (e) => this.handleEditorTouchMove(e), { passive: true });
+        this.editorElement.addEventListener('scroll', () => this.handleEditorScroll(), { passive: true });
+
         document.addEventListener('selectionchange', () => this.handleSelectionChange());
+    }
+
+    handleEditorTouchStart(e) {
+        this.touchStartY = e.touches?.[0]?.clientY || 0;
+        this.lastEditorScrollTop = this.editorElement?.scrollTop || 0;
+    }
+
+    handleEditorTouchMove(e) {
+        if (!this.editorElement) return;
+
+        const currentY = e.touches?.[0]?.clientY || 0;
+        const deltaY = currentY - this.touchStartY;
+
+        // Qualquer gesto de puxar para baixo deve ressurgir a barra.
+        if (deltaY > 8) {
+            this.revealTopToolbar();
+            this.revealBottomNavbar();
+        }
+    }
+
+    handleEditorScroll() {
+        if (!this.editorElement) return;
+
+        const currentScrollTop = this.editorElement.scrollTop;
+        const isPullingDown = currentScrollTop < this.lastEditorScrollTop;
+
+        if (isPullingDown) {
+            this.revealTopToolbar();
+            this.revealBottomNavbar();
+        }
+
+        this.lastEditorScrollTop = currentScrollTop;
+    }
+
+    revealTopToolbar() {
+        const toolbarShelf = document.getElementById('toolbar-container');
+        if (!toolbarShelf) return;
+
+        toolbarShelf.classList.add('force-visible');
+
+        if (this.forceVisibleTimeout) {
+            clearTimeout(this.forceVisibleTimeout);
+        }
+
+        this.forceVisibleTimeout = setTimeout(() => {
+            toolbarShelf.classList.remove('force-visible');
+        }, 450);
+    }
+
+    revealBottomNavbar() {
+        if (window.UnifiedNavbar?.get) {
+            const navbar = window.UnifiedNavbar.get();
+            navbar?.show?.();
+        }
     }
 
     // ======= HANDLERS PRINCIPAIS ======= //
@@ -511,6 +573,9 @@ class EditorManager {
     destroy() {
         if (this.cleanupInputTimeout) {
             clearTimeout(this.cleanupInputTimeout);
+        }
+        if (this.forceVisibleTimeout) {
+            clearTimeout(this.forceVisibleTimeout);
         }
     }
 }
