@@ -6,7 +6,7 @@ class CoresPlugin {
   constructor() {
     this.name = 'cores'; this.slotId = 5; this.editor = null; this.textInput = null; this.bgInput = null;
     this.resetBtn = null; this.textIndicator = null; this.resetIndicator = null; this.savedRange = null;
-    this.selectionListener = null; this._retryMs = 100; 
+    this.selectionListener = null; this._retryMs = 100; this.activeColorInput = null; this.boundGlobalTouchEnd = null; 
     
     // === NOVO: Variáveis para lembrar das últimas cores aplicadas ===
     this.lastAppliedTextColor = '#111111';
@@ -76,8 +76,17 @@ class CoresPlugin {
 
   wireEvents() {
     const saveSel = () => this.saveSelection();
+
+    const markPickerOpen = (input) => {
+      this.activeColorInput = input;
+    };
+
     ['pointerdown','mousedown','touchstart'].forEach(ev => {
-      this.textLabel?.addEventListener(ev, saveSel, { passive: true }); this.bgLabel?.addEventListener(ev, saveSel, { passive: true });
+      this.textLabel?.addEventListener(ev, saveSel, { passive: true });
+      this.bgLabel?.addEventListener(ev, saveSel, { passive: true });
+
+      this.textLabel?.addEventListener(ev, () => markPickerOpen(this.textInput), { passive: true });
+      this.bgLabel?.addEventListener(ev, () => markPickerOpen(this.bgInput), { passive: true });
     });
     
     this.textInput?.addEventListener('input', (e) => { 
@@ -87,6 +96,8 @@ class CoresPlugin {
       // === NOVO: Lembra da cor aplicada ===
       this.lastAppliedTextColor = color;
     });
+
+    this.textInput?.addEventListener('change', () => this.closeColorPicker());
     
     this.bgInput?.addEventListener('input', (e) => { 
       const color = e.target.value; 
@@ -95,6 +106,12 @@ class CoresPlugin {
       // === NOVO: Lembra da cor aplicada ===
       this.lastAppliedBgColor = color;
     });
+
+    this.bgInput?.addEventListener('change', () => this.closeColorPicker());
+
+    // iOS: fecha o seletor ao soltar o dedo (inclusive ao tocar em "X").
+    this.boundGlobalTouchEnd = () => this.closeColorPicker();
+    document.addEventListener('touchend', this.boundGlobalTouchEnd, { passive: true });
     
     this.resetBtn?.addEventListener('mousedown', (e) => { e.preventDefault(); this.resetFormatting(); });
   }
@@ -229,12 +246,15 @@ class CoresPlugin {
   
   refreshIndicatorsFromSelection() {
     const info = this.getColorsAtCaret();
+    const insideToggle = this.isInsideToggleSelection();
     
     // === CORREÇÃO: Usa cor lembrada se não detectar cor VÁLIDA ===
     const finalTextColor = info.text || this.lastAppliedTextColor;
     
-    // Para background, só usa info.bg se for uma cor válida (não transparent/null/vazio)
-    const finalBgColor = this.isValidBackgroundColor(info.bg) ? info.bg : this.lastAppliedBgColor;
+    // Dentro de toggle, sempre neutraliza preview de fundo para evitar visual preto indesejado.
+    const finalBgColor = insideToggle
+      ? null
+      : (this.isValidBackgroundColor(info.bg) ? info.bg : this.lastAppliedBgColor);
     
     this.updateTextIndicator(finalTextColor);
     
@@ -263,11 +283,33 @@ class CoresPlugin {
   // === NOVO MÉTODO: Verifica se é uma cor de background válida ===
   isValidBackgroundColor(color) {
     if (!color) return false;
-    if (color === 'transparent') return false;
-    if (color === 'rgba(0, 0, 0, 0)') return false;
-    if (color === '#ffffff') return false; // Branco também considera como "sem cor"
-    if (color.includes('rgba(0, 0, 0, 0)')) return false;
+    const normalized = color.toLowerCase().replace(/\s+/g, '');
+
+    if (normalized === 'transparent') return false;
+    if (normalized === 'rgba(0,0,0,0)') return false;
+    if (normalized === '#ffffff' || normalized === 'rgb(255,255,255)') return false; // Branco também considera como "sem cor"
+    if (normalized === '#000000' || normalized === 'rgb(0,0,0)') return false; // fallback comum sem highlight real
+    if (normalized.includes('rgba(0,0,0,0)')) return false;
     return true;
+  }
+
+  isInsideToggleSelection() {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return false;
+
+    let node = selection.getRangeAt(0).commonAncestorContainer;
+    if (node.nodeType === Node.TEXT_NODE) {
+      node = node.parentElement;
+    }
+
+    while (node && node !== document.body) {
+      if (node.classList && node.classList.contains('toggle')) {
+        return true;
+      }
+      node = node.parentElement;
+    }
+
+    return false;
   }
 
   getColorsAtCaret() {
@@ -310,11 +352,21 @@ class CoresPlugin {
     const rgb = this.hexToRgb(hex); if (!rgb) return '#111111'; const luma = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000; return luma > 128 ? '#111111' : '#FFFFFF';
   }
 
+  closeColorPicker() {
+    if (!this.activeColorInput) return;
+
+    try {
+      this.activeColorInput.blur();
+    } catch (_) { /* noop */ }
+
+    this.activeColorInput = null;
+  }
+
   detachSelectionChange() { if (this.selectionListener) { document.removeEventListener('selectionchange', this.selectionListener); this.selectionListener = null; }}
   saveSelection() { const sel = window.getSelection(); if (!sel || sel.rangeCount === 0) return; const range = sel.getRangeAt(0); if (this.editor && this.editor.editorElement && this.editor.editorElement.contains(range.commonAncestorContainer)) { this.savedRange = range.cloneRange(); }}
   restoreSelection() { if (!this.savedRange) return false; const sel = window.getSelection(); if (!sel) return false; sel.removeAllRanges(); sel.addRange(this.savedRange); this.savedRange = null; return true;}
   rgbToHex(rgb) { if (!rgb) return null; const m = rgb.replace(/\s+/g,'').match(/^rgba?\((\d+),(\d+),(\d+)(?:,([\d.]+))?\)$/i); if (!m) return null; return '#' + [1, 2, 3].map(i => parseInt(m[i]).toString(16).padStart(2, '0')).join('');}
-  destroy() { this.detachSelectionChange(); }
+  destroy() { this.detachSelectionChange(); if (this.boundGlobalTouchEnd) { document.removeEventListener('touchend', this.boundGlobalTouchEnd); this.boundGlobalTouchEnd = null; } this.activeColorInput = null; }
 }
 
 const coresPlugin = new CoresPlugin();
