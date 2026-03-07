@@ -10,6 +10,10 @@ class EditorManager {
         this.touchStartY = 0;
         this.lastEditorScrollTop = 0;
         this.forceVisibleTimeout = null;
+        this.globalTouchStartY = 0;
+        this.bindedGlobalTouchStart = null;
+        this.bindedGlobalTouchMove = null;
+        this.bindedWindowScroll = null;
         this.init();
     }
 
@@ -161,6 +165,15 @@ class EditorManager {
         this.editorElement.addEventListener('touchmove', (e) => this.handleEditorTouchMove(e), { passive: true });
         this.editorElement.addEventListener('scroll', () => this.handleEditorScroll(), { passive: true });
 
+        // Fallback iOS/WebKit: gesto global de puxar para baixo também deve revelar barras.
+        this.bindedGlobalTouchStart = (e) => this.handleGlobalTouchStart(e);
+        this.bindedGlobalTouchMove = (e) => this.handleGlobalTouchMove(e);
+        this.bindedWindowScroll = () => this.handleWindowScroll();
+
+        document.addEventListener('touchstart', this.bindedGlobalTouchStart, { passive: true });
+        document.addEventListener('touchmove', this.bindedGlobalTouchMove, { passive: true });
+        window.addEventListener('scroll', this.bindedWindowScroll, { passive: true });
+
         document.addEventListener('selectionchange', () => this.handleSelectionChange());
     }
 
@@ -196,11 +209,36 @@ class EditorManager {
         this.lastEditorScrollTop = currentScrollTop;
     }
 
+    handleGlobalTouchStart(e) {
+        this.globalTouchStartY = e.touches?.[0]?.clientY || 0;
+    }
+
+    handleGlobalTouchMove(e) {
+        const currentY = e.touches?.[0]?.clientY || 0;
+        const pullingDown = currentY - this.globalTouchStartY > 8;
+
+        if (pullingDown) {
+            this.revealTopToolbar();
+            this.revealBottomNavbar();
+        }
+    }
+
+    handleWindowScroll() {
+        if (window.scrollY <= 4) {
+            this.revealTopToolbar();
+            this.revealBottomNavbar();
+        }
+    }
+
     revealTopToolbar() {
         const toolbarShelf = document.getElementById('toolbar-container');
         if (!toolbarShelf) return;
 
         toolbarShelf.classList.add('force-visible');
+        toolbarShelf.style.display = 'flex';
+        toolbarShelf.style.visibility = 'visible';
+        toolbarShelf.style.opacity = '1';
+        toolbarShelf.style.top = '0';
 
         if (this.forceVisibleTimeout) {
             clearTimeout(this.forceVisibleTimeout);
@@ -208,7 +246,11 @@ class EditorManager {
 
         this.forceVisibleTimeout = setTimeout(() => {
             toolbarShelf.classList.remove('force-visible');
-        }, 450);
+            toolbarShelf.style.removeProperty('display');
+            toolbarShelf.style.removeProperty('visibility');
+            toolbarShelf.style.removeProperty('opacity');
+            toolbarShelf.style.removeProperty('top');
+        }, 600);
     }
 
     revealBottomNavbar() {
@@ -576,6 +618,16 @@ class EditorManager {
         }
         if (this.forceVisibleTimeout) {
             clearTimeout(this.forceVisibleTimeout);
+        }
+
+        if (this.bindedGlobalTouchStart) {
+            document.removeEventListener('touchstart', this.bindedGlobalTouchStart);
+        }
+        if (this.bindedGlobalTouchMove) {
+            document.removeEventListener('touchmove', this.bindedGlobalTouchMove);
+        }
+        if (this.bindedWindowScroll) {
+            window.removeEventListener('scroll', this.bindedWindowScroll);
         }
     }
 }

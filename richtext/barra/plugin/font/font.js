@@ -258,15 +258,17 @@ class FontPlugin {
     if (!this.editor?.editorElement) return;
 
     const map = {
-      h1: { fontSize: '28px', lineHeight: '1.3' },
-      h2: { fontSize: '22px', lineHeight: '1.35' },
-      h3: { fontSize: '18px', lineHeight: '1.4' },
-      normal: { fontSize: '16px', lineHeight: '1.6' }
+      h1: { fontSize: '28px', lineHeight: '1.3', topAdjust: '0px', caretOffset: '-3px' },
+      h2: { fontSize: '22px', lineHeight: '1.35', topAdjust: '0px', caretOffset: '-2px' },
+      h3: { fontSize: '18px', lineHeight: '1.4', topAdjust: '0px', caretOffset: '-2px' },
+      normal: { fontSize: '16px', lineHeight: '1.6', topAdjust: '-1px', caretOffset: '-2px' }
     };
 
     const style = map[size] || map.normal;
     this.editor.editorElement.style.setProperty('--placeholder-font-size', style.fontSize);
     this.editor.editorElement.style.setProperty('--placeholder-line-height', style.lineHeight);
+    this.editor.editorElement.style.setProperty('--placeholder-top-adjust', style.topAdjust);
+    this.editor.editorElement.style.setProperty('--caret-offset-y', style.caretOffset);
   }
 
   handleEnterInHeading(e) {

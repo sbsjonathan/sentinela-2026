@@ -50,7 +50,7 @@
     line-height: var(--placeholder-line-height, 1.6);
     pointer-events: none;
     position: absolute;
-    top: 20px;
+    top: calc(20px + var(--placeholder-top-adjust, 0px));
     left: 20px;
 }
 
@@ -64,6 +64,7 @@
     font-size: var(--placeholder-font-size, 16px) !important;
     line-height: var(--placeholder-line-height, 1.6) !important;
     min-height: calc(var(--placeholder-font-size, 16px) * var(--placeholder-line-height, 1.6));
+    transform: translateY(var(--caret-offset-y, -2px));
 }
 
 /* Bloco de texto editável */
