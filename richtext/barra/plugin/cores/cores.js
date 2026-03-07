@@ -229,12 +229,15 @@ class CoresPlugin {
   
   refreshIndicatorsFromSelection() {
     const info = this.getColorsAtCaret();
+    const insideToggle = this.isInsideToggleSelection();
     
     // === CORREÇÃO: Usa cor lembrada se não detectar cor VÁLIDA ===
     const finalTextColor = info.text || this.lastAppliedTextColor;
     
-    // Para background, só usa info.bg se for uma cor válida (não transparent/null/vazio)
-    const finalBgColor = this.isValidBackgroundColor(info.bg) ? info.bg : this.lastAppliedBgColor;
+    // Dentro de toggle, sempre neutraliza preview de fundo para evitar visual preto indesejado.
+    const finalBgColor = insideToggle
+      ? null
+      : (this.isValidBackgroundColor(info.bg) ? info.bg : this.lastAppliedBgColor);
     
     this.updateTextIndicator(finalTextColor);
     
@@ -263,11 +266,33 @@ class CoresPlugin {
   // === NOVO MÉTODO: Verifica se é uma cor de background válida ===
   isValidBackgroundColor(color) {
     if (!color) return false;
-    if (color === 'transparent') return false;
-    if (color === 'rgba(0, 0, 0, 0)') return false;
-    if (color === '#ffffff') return false; // Branco também considera como "sem cor"
-    if (color.includes('rgba(0, 0, 0, 0)')) return false;
+    const normalized = color.toLowerCase().replace(/\s+/g, '');
+
+    if (normalized === 'transparent') return false;
+    if (normalized === 'rgba(0,0,0,0)') return false;
+    if (normalized === '#ffffff' || normalized === 'rgb(255,255,255)') return false; // Branco também considera como "sem cor"
+    if (normalized === '#000000' || normalized === 'rgb(0,0,0)') return false; // fallback comum sem highlight real
+    if (normalized.includes('rgba(0,0,0,0)')) return false;
     return true;
+  }
+
+  isInsideToggleSelection() {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return false;
+
+    let node = selection.getRangeAt(0).commonAncestorContainer;
+    if (node.nodeType === Node.TEXT_NODE) {
+      node = node.parentElement;
+    }
+
+    while (node && node !== document.body) {
+      if (node.classList && node.classList.contains('toggle')) {
+        return true;
+      }
+      node = node.parentElement;
+    }
+
+    return false;
   }
 
   getColorsAtCaret() {
