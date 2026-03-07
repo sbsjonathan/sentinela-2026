@@ -258,9 +258,10 @@ class FontPlugin {
     if (!this.editor?.editorElement) return;
 
     const map = {
-      h1: { fontSize: '28px', lineHeight: '1.3', topAdjust: '0px', caretOffset: '-3px' },
-      h2: { fontSize: '22px', lineHeight: '1.35', topAdjust: '0px', caretOffset: '-2px' },
-      h3: { fontSize: '18px', lineHeight: '1.4', topAdjust: '0px', caretOffset: '-1px' },
+      // Ajustes finos para casar placeholder com a linha de escrita em cada nível.
+      h1: { fontSize: '28px', lineHeight: '1.3', topAdjust: '-4px', caretOffset: '-3px' },
+      h2: { fontSize: '22px', lineHeight: '1.35', topAdjust: '-3px', caretOffset: '-2px' },
+      h3: { fontSize: '18px', lineHeight: '1.4', topAdjust: '-2px', caretOffset: '-1px' },
       normal: { fontSize: '16px', lineHeight: '1.6', topAdjust: '-1px', caretOffset: '-1px' }
     };
 
