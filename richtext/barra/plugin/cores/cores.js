@@ -82,18 +82,34 @@ class CoresPlugin {
     
     this.textInput?.addEventListener('input', (e) => { 
       const color = e.target.value; 
-      this.applyColor('foreColor', color); 
+      this.applyColor('foreColor', color, { keepPickerOpen: true }); 
       this.updateTextIndicator(color);
       // === NOVO: Lembra da cor aplicada ===
       this.lastAppliedTextColor = color;
     });
+
+    this.textInput?.addEventListener('change', (e) => {
+      const color = e.target.value;
+      this.applyColor('foreColor', color);
+      this.updateTextIndicator(color);
+      this.lastAppliedTextColor = color;
+      this.refreshIndicatorsFromSelection();
+    });
     
     this.bgInput?.addEventListener('input', (e) => { 
       const color = e.target.value; 
-      const ok = this.applyColor('hiliteColor', color); 
-      if (!ok) this.applyColor('backColor', color);
+      const ok = this.applyColor('hiliteColor', color, { keepPickerOpen: true }); 
+      if (!ok) this.applyColor('backColor', color, { keepPickerOpen: true });
       // === NOVO: Lembra da cor aplicada ===
       this.lastAppliedBgColor = color;
+    });
+
+    this.bgInput?.addEventListener('change', (e) => {
+      const color = e.target.value;
+      const ok = this.applyColor('hiliteColor', color);
+      if (!ok) this.applyColor('backColor', color);
+      this.lastAppliedBgColor = color;
+      this.refreshIndicatorsFromSelection();
     });
     
     this.resetBtn?.addEventListener('mousedown', (e) => { e.preventDefault(); this.resetFormatting(); });
@@ -209,9 +225,19 @@ class CoresPlugin {
     const handler = () => this.refreshIndicatorsFromSelection(); document.addEventListener('selectionchange', handler); this.selectionListener = handler;
   }
   
-  applyColor(command, color) {
+  applyColor(command, color, options = {}) {
     if (!this.editor || !this.editor.editorElement) return false;
-    this.editor.editorElement.focus(); this.restoreSelection();
+
+    const keepPickerOpen = options.keepPickerOpen === true;
+
+    // No iOS/WebKit, focar o editor a cada "input" do color picker fecha o espectro.
+    // Durante o arraste, reaplica a seleção sem roubar foco.
+    this.restoreSelection(keepPickerOpen);
+
+    if (!keepPickerOpen) {
+      this.editor.editorElement.focus();
+    }
+
     try { return document.execCommand(command, false, color) !== false; } catch (_) { return false; }
   }
 
@@ -337,7 +363,19 @@ class CoresPlugin {
 
   detachSelectionChange() { if (this.selectionListener) { document.removeEventListener('selectionchange', this.selectionListener); this.selectionListener = null; }}
   saveSelection() { const sel = window.getSelection(); if (!sel || sel.rangeCount === 0) return; const range = sel.getRangeAt(0); if (this.editor && this.editor.editorElement && this.editor.editorElement.contains(range.commonAncestorContainer)) { this.savedRange = range.cloneRange(); }}
-  restoreSelection() { if (!this.savedRange) return false; const sel = window.getSelection(); if (!sel) return false; sel.removeAllRanges(); sel.addRange(this.savedRange); this.savedRange = null; return true;}
+  restoreSelection(keepSaved = false) {
+    if (!this.savedRange) return false;
+    const sel = window.getSelection();
+    if (!sel) return false;
+
+    sel.removeAllRanges();
+    sel.addRange(this.savedRange);
+
+    if (!keepSaved) {
+      this.savedRange = null;
+    }
+    return true;
+  }
   rgbToHex(rgb) { if (!rgb) return null; const m = rgb.replace(/\s+/g,'').match(/^rgba?\((\d+),(\d+),(\d+)(?:,([\d.]+))?\)$/i); if (!m) return null; return '#' + [1, 2, 3].map(i => parseInt(m[i]).toString(16).padStart(2, '0')).join('');}
   destroy() { this.detachSelectionChange(); }
 }
