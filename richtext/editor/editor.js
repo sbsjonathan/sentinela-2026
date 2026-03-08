@@ -7,6 +7,14 @@ class EditorManager {
         this.currentTextBlock = null;
         this.isLoaded = false;
         this.cleanupInputTimeout = null;
+        this.touchStartY = 0;
+        this.lastEditorScrollTop = 0;
+        this.forceVisibleTimeout = null;
+        this.globalTouchStartY = 0;
+        this.bindedGlobalTouchStart = null;
+        this.bindedGlobalTouchMove = null;
+        this.bindedWindowScroll = null;
+        this.isTouchInsideEditor = false;
         this.init();
     }
 
@@ -153,7 +161,110 @@ class EditorManager {
             }
         }, true);
         
+
+        this.editorElement.addEventListener('touchstart', (e) => this.handleEditorTouchStart(e), { passive: true });
+        this.editorElement.addEventListener('touchmove', (e) => this.handleEditorTouchMove(e), { passive: true });
+        this.editorElement.addEventListener('scroll', () => this.handleEditorScroll(), { passive: true });
+
+        // Fallback iOS/WebKit: gesto global de puxar para baixo também deve revelar barras.
+        this.bindedGlobalTouchStart = (e) => this.handleGlobalTouchStart(e);
+        this.bindedGlobalTouchMove = (e) => this.handleGlobalTouchMove(e);
+        this.bindedWindowScroll = () => this.handleWindowScroll();
+
+        document.addEventListener('touchstart', this.bindedGlobalTouchStart, { passive: true, capture: true });
+        document.addEventListener('touchmove', this.bindedGlobalTouchMove, { passive: true, capture: true });
+        window.addEventListener('scroll', this.bindedWindowScroll, { passive: true });
+
         document.addEventListener('selectionchange', () => this.handleSelectionChange());
+    }
+
+    handleEditorTouchStart(e) {
+        this.touchStartY = e.touches?.[0]?.clientY || 0;
+        this.lastEditorScrollTop = this.editorElement?.scrollTop || 0;
+    }
+
+    handleEditorTouchMove(e) {
+        if (!this.editorElement) return;
+
+        const currentY = e.touches?.[0]?.clientY || 0;
+        const deltaY = currentY - this.touchStartY;
+
+        // Qualquer gesto de puxar para baixo deve ressurgir a barra.
+        if (deltaY > 6) {
+            this.revealTopToolbar();
+            this.revealBottomNavbar();
+        }
+    }
+
+    handleEditorScroll() {
+        if (!this.editorElement) return;
+
+        const currentScrollTop = this.editorElement.scrollTop;
+        const isPullingDown = currentScrollTop < this.lastEditorScrollTop;
+
+        if (isPullingDown) {
+            this.revealTopToolbar();
+            this.revealBottomNavbar();
+        }
+
+        this.lastEditorScrollTop = currentScrollTop;
+    }
+
+    handleGlobalTouchStart(e) {
+        this.globalTouchStartY = e.touches?.[0]?.clientY || 0;
+        const target = e.target;
+        this.isTouchInsideEditor = !!(target && (target.closest?.('.editor-area') || this.editorElement?.contains(target)));
+    }
+
+    handleGlobalTouchMove(e) {
+        if (!this.isTouchInsideEditor) return;
+
+        const currentY = e.touches?.[0]?.clientY || 0;
+        const deltaY = currentY - this.globalTouchStartY;
+
+        // No iPhone, no fundo do editor o gesto pode não gerar scroll imediato;
+        // por isso qualquer arraste para baixo dentro da área do editor já revela barras.
+        if (deltaY > 6) {
+            this.revealTopToolbar();
+            this.revealBottomNavbar();
+        }
+    }
+
+    handleWindowScroll() {
+        if (window.scrollY <= 4) {
+            this.revealTopToolbar();
+            this.revealBottomNavbar();
+        }
+    }
+
+    revealTopToolbar() {
+        const toolbarShelf = document.getElementById('toolbar-container');
+        if (!toolbarShelf) return;
+
+        toolbarShelf.classList.add('force-visible');
+        toolbarShelf.style.display = 'flex';
+        toolbarShelf.style.visibility = 'visible';
+        toolbarShelf.style.opacity = '1';
+        toolbarShelf.style.top = '0';
+
+        if (this.forceVisibleTimeout) {
+            clearTimeout(this.forceVisibleTimeout);
+        }
+
+        this.forceVisibleTimeout = setTimeout(() => {
+            toolbarShelf.classList.remove('force-visible');
+            toolbarShelf.style.removeProperty('display');
+            toolbarShelf.style.removeProperty('visibility');
+            toolbarShelf.style.removeProperty('opacity');
+            toolbarShelf.style.removeProperty('top');
+        }, 600);
+    }
+
+    revealBottomNavbar() {
+        if (window.UnifiedNavbar?.get) {
+            const navbar = window.UnifiedNavbar.get();
+            navbar?.show?.();
+        }
     }
 
     // ======= HANDLERS PRINCIPAIS ======= //
@@ -511,6 +622,20 @@ class EditorManager {
     destroy() {
         if (this.cleanupInputTimeout) {
             clearTimeout(this.cleanupInputTimeout);
+        }
+        if (this.forceVisibleTimeout) {
+            clearTimeout(this.forceVisibleTimeout);
+        }
+
+        if (this.bindedGlobalTouchStart) {
+            document.removeEventListener('touchstart', this.bindedGlobalTouchStart, { capture: true });
+        }
+        if (this.bindedGlobalTouchMove) {
+            document.removeEventListener('touchmove', this.bindedGlobalTouchMove, { capture: true });
+        }
+        this.isTouchInsideEditor = false;
+        if (this.bindedWindowScroll) {
+            window.removeEventListener('scroll', this.bindedWindowScroll);
         }
     }
 }
