@@ -1,55 +1,389 @@
-/* cores.css — Estilos do plugin Cores (slot 6) */
+/* ================================================================
+   cores.css — Botões do plugin (slot 5) + Modal do Color Picker
+   ================================================================ */
 
+/* ── VARIÁVEIS DO PICKER ── */
+:root {
+  --tab-bg: #e3e3e8;
+  --track-height: 34px;
+  --thumb-size: 34px;
+}
+
+/* ── BOTÕES DO PLUGIN NA TOOLBAR ── */
 .cores-plugin {
-  width: 100%; height: 100%; display: flex;
-  align-items: center; justify-content: center;
-  /* === MELHORIA 2: Espaçamento entre botões reduzido === */
+  width: 100%; height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 1px;
 }
 
 .color-picker-label,
-#reset-color-btn { /* Aplica a todos os botões do plugin */
+#reset-color-btn {
   min-width: 32px;
   min-height: 32px;
-  /* === MELHORIA 2: Padding interno reduzido === */
   padding: 0 4px;
-  line-height: 1; user-select: none;
+  line-height: 1;
+  user-select: none;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color 0.15s ease;
+}
+
+.color-picker-label:active,
+#reset-color-btn:active {
+  background-color: rgba(0,0,0,0.08);
+  transform: scale(0.92);
 }
 
 .color-indicator {
-  display: inline-block; font-weight: 600; font-size: 18px;
+  display: inline-block;
+  font-weight: 600;
+  font-size: 18px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  letter-spacing: 0.02em; transform: translateY(1px);
+  letter-spacing: 0.02em;
+  transform: translateY(1px);
 }
 
 .color-indicator.text {
-  transition: text-shadow 0.2s ease-in-out;
+  transition: color 0.15s ease, text-shadow 0.2s ease-in-out;
 }
 
 .color-indicator.bg {
-  padding: 2px 6px; border-radius: 6px;
+  padding: 2px 6px;
+  border-radius: 6px;
   border: 1px solid rgba(0,0,0,0.12);
-}
-
-.color-input-hidden {
-  position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;
-  top: -9999px; left: -9999px; font-size: 16px;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .reset-indicator {
-  position: relative; font-weight: 600; font-size: 18px; line-height: 1;
-  display: inline-block; padding: 2px 4px; border-radius: 3px;
-  background-color: transparent; transition: all 0.2s ease; color: #111;
+  position: relative;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-block;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background-color: transparent;
+  transition: all 0.2s ease;
+  color: #111;
 }
 
 .reset-prohibition-icon {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%); pointer-events: none;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
   width: 24px; height: 24px;
 }
 
 @keyframes shake {
-  10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); }
-  30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); }
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px);  }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px);  }
 }
 .shake { animation: shake 0.5s; }
+
+
+/* ================================================================
+   MODAL DO COLOR PICKER
+   ================================================================ */
+
+.picker-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 2000;
+  align-items: flex-end;
+  justify-content: center;
+}
+.picker-overlay.open {
+  display: flex;
+}
+
+.picker-sheet {
+  width: 100%;
+  max-width: 460px;
+  background: transparent;
+  padding: 0 6px 6px 6px;
+  animation: pickerSlideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.picker-overlay.open .picker-sheet {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+@keyframes pickerSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0);    }
+}
+
+.picker-card {
+  background: #f2f2f7;
+  border-radius: 28px;
+  padding: 20px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+}
+
+/* Cabeçalho */
+.picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.picker-title {
+  font-weight: 600;
+  font-size: 17px;
+  color: #1c1c1e;
+}
+/* Badge de modo (Texto / Fundo) */
+.picker-mode-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: #007aff;
+  border-radius: 8px;
+  padding: 3px 9px;
+  letter-spacing: 0.02em;
+}
+.picker-close {
+  font-size: 22px;
+  cursor: pointer;
+  color: #3c3c3e;
+  line-height: 1;
+  padding: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Abas */
+.picker-tabs {
+  background: var(--tab-bg);
+  border-radius: 10px;
+  display: flex;
+  padding: 3px;
+  margin-bottom: 20px;
+}
+.picker-tab {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #3c3c3e;
+  transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.picker-tab.active {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  font-weight: 600;
+}
+
+/* Container de views */
+.picker-views {
+  width: 100%;
+  height: 280px;
+  margin-bottom: 20px;
+  position: relative;
+}
+.picker-view {
+  display: none;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.picker-view.active {
+  display: block;
+}
+
+/* ── GRADE ── */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: repeat(10, 1fr);
+  height: 100%;
+}
+.color-cell {
+  width: 100%;
+  height: 100%;
+  border: none;
+  cursor: pointer;
+  position: relative;
+}
+.color-cell.selected::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 3px solid #fff;
+  box-shadow: inset 0 0 6px rgba(0,0,0,0.10);
+  border-radius: inherit;
+}
+
+/* ── ESPECTRO ── */
+#picker-view-spectrum {
+  position: relative;
+}
+#picker-spec-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+.picker-dot {
+  position: absolute;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── CONTROLES RGB ── */
+#picker-view-controls {
+  background: #ffffff;
+  padding: 10px 16px;
+  overflow-y: auto;
+}
+#picker-view-controls.active {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.slider-row     { display: flex; flex-direction: column; gap: 6px; }
+.slider-label   { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #6c6c70; text-transform: uppercase; padding-left: 2px; }
+.slider-control { display: flex; align-items: center; gap: 12px; }
+
+.track-wrapper {
+  flex: 1;
+  position: relative;
+  height: var(--track-height);
+  display: flex;
+  align-items: center;
+}
+.track-bg {
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%; transform: translateY(-50%);
+  height: var(--track-height);
+  border-radius: 22px;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+}
+.track-wrapper input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%;
+  height: var(--track-height);
+  border-radius: 22px;
+  outline: none;
+  cursor: pointer;
+  background: transparent;
+  position: relative; z-index: 2;
+  margin: -24px 0; padding: 24px 0;
+  box-sizing: content-box;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: var(--thumb-size); height: var(--thumb-size);
+  border-radius: 50%;
+  background: #ff3b30;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: var(--thumb-size); height: var(--thumb-size);
+  border-radius: 50%;
+  background: #ff3b30;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  cursor: pointer;
+}
+
+.num-input {
+  width: 70px; height: var(--track-height);
+  border-radius: 12px; border: none;
+  background: #fff; text-align: center;
+  font-size: 17px; font-weight: 500; color: #1c1c1e;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  outline: none;
+  -moz-appearance: textfield;
+  flex-shrink: 0;
+}
+.num-input::-webkit-outer-spin-button,
+.num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.hex-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+.hex-label {
+  font-size: 13px; font-weight: 500; color: #007aff;
+}
+.hex-input {
+  width: 110px; height: 40px;
+  border-radius: 10px; border: none;
+  background: #fff; text-align: center;
+  font-size: 16px; font-weight: 500; color: #1c1c1e;
+  letter-spacing: 0.04em;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  outline: none;
+  text-transform: uppercase;
+  font-family: "SF Mono", "Menlo", monospace;
+}
+
+/* ── RODAPÉ (preview + swatches) ── */
+.picker-footer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-top: 0.5px solid rgba(0,0,0,0.13);
+  padding-top: 16px;
+  margin-top: 4px;
+}
+.picker-preview {
+  width: 55px; height: 55px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.1);
+  flex-shrink: 0;
+  transition: background-color 0.05s;
+}
+.picker-swatches {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  flex: 1;
+}
+.picker-swatch {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: none; cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  position: relative;
+  transition: box-shadow 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.picker-swatch.selected {
+  /* box-shadow definido via JS com a cor real da bolinha */
+}
