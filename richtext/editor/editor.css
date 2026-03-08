@@ -1,5 +1,3 @@
-/* editor.css - Estilos otimizados e consistentes do editor de texto */
-
 .editor-wrapper {
     height: 100%;
     display: flex;
@@ -9,8 +7,7 @@
 
 .editor-content {
     flex: 1;
-    /* Alteração aqui: Top=20px, Right=20px, Bottom=80px (o respiro), Left=20px */
-    padding: 20px 20px 160px 20px; 
+    padding: 20px 20px 160px 20px;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
     font-size: 16px;
     line-height: 1.6;
@@ -22,14 +19,10 @@
     -webkit-user-select: text;
     user-select: text;
     position: relative;
-    
-    /* Garante altura mínima e área clicável */
-    min-height: calc(120vh - 12px); 
-    cursor: text; 
+    min-height: calc(120vh - 12px);
+    cursor: text;
 }
 
-
-/* === NOVO: Área clicável visual === */
 .editor-content:empty::after,
 .editor-content.is-empty::after {
     content: '';
@@ -38,27 +31,15 @@
     left: 0;
     right: 0;
     bottom: 0;
-    pointer-events: none; /* Permite cliques passarem através */
-}
-
-/* Placeholder usando CSS */
-.editor-content.is-empty::before {
-    content: attr(data-placeholder);
-    color: #999;
-    font-style: italic;
     pointer-events: none;
-    position: absolute;
-    top: 20px;
-    left: 20px;
 }
 
-/* Bloco de texto editável */
 .text-block {
     outline: none;
     border: none;
     min-height: 1.6em;
     position: relative;
-    width: 100%; /* === NOVO: Garante largura total === */
+    width: 100%;
 }
 
 .text-block:focus {
@@ -67,7 +48,37 @@
     box-shadow: none;
 }
 
-/* Formatação de texto */
+/* Estado vazio — zera margens para o placeholder não se deslocar */
+.editor-content.is-empty > .text-block:empty,
+.editor-content.is-empty > h1.text-block:empty,
+.editor-content.is-empty > h2.text-block:empty,
+.editor-content.is-empty > h3.text-block:empty {
+    margin: 0 !important;
+    padding: 0;
+}
+
+/* Placeholder — position:absolute para não ocupar espaço no fluxo */
+.editor-content.is-empty > .text-block:empty::before,
+.editor-content.is-empty > h1.text-block:empty::before,
+.editor-content.is-empty > h2.text-block:empty::before,
+.editor-content.is-empty > h3.text-block:empty::before {
+    content: attr(data-placeholder);
+    color: #999;
+    font-style: italic;
+    font-size: inherit;
+    line-height: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    font-family: inherit;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    white-space: pre-wrap;
+    pointer-events: none;
+    overflow: hidden;
+}
+
 .editor-content strong,
 .editor-content b {
     font-weight: 600;
@@ -83,13 +94,11 @@
     text-decoration: underline;
 }
 
-/* Links */
 .editor-content a {
     color: #007AFF;
     text-decoration: none;
 }
 
-/* === LISTAS - Estilos atualizados === */
 .editor-content ul {
     padding-left: 22px;
     margin: 8px 0;
@@ -100,13 +109,19 @@
     margin-bottom: 4px;
 }
 
-/* === HEADINGS - Estilos para tags H1, H2, H3 === */
+/* =====================================================
+   HEADINGS — margin-top SOMENTE quando há elemento
+   anterior (bloco de seção no meio do documento).
+   Primeiro/único bloco nunca ganha margin-top, evitando
+   o salto ao sair do estado :empty.
+   ===================================================== */
 .editor-content h1,
 .editor-content .font-h1 {
     font-size: 28px !important;
     font-weight: 600 !important;
     line-height: 1.3 !important;
-    margin: 12px 0 8px 0;
+    margin-top: 0;
+    margin-bottom: 8px;
     display: block;
 }
 
@@ -115,7 +130,8 @@
     font-size: 22px !important;
     font-weight: 600 !important;
     line-height: 1.35 !important;
-    margin: 12px 0 8px 0;
+    margin-top: 0;
+    margin-bottom: 8px;
     display: block;
 }
 
@@ -124,11 +140,27 @@
     font-size: 18px !important;
     font-weight: 500 !important;
     line-height: 1.4 !important;
-    margin: 8px 0 4px 0;
+    margin-top: 0;
+    margin-bottom: 4px;
     display: block;
 }
 
-/* Garante que headings sejam editáveis */
+/* margin-top aplicada apenas quando o heading vem depois de outro elemento */
+.editor-content > * + h1.text-block,
+.editor-content > * + .text-block.font-h1 {
+    margin-top: 12px;
+}
+
+.editor-content > * + h2.text-block,
+.editor-content > * + .text-block.font-h2 {
+    margin-top: 12px;
+}
+
+.editor-content > * + h3.text-block,
+.editor-content > * + .text-block.font-h3 {
+    margin-top: 8px;
+}
+
 .editor-content h1[contenteditable],
 .editor-content h2[contenteditable],
 .editor-content h3[contenteditable] {
@@ -136,14 +168,11 @@
     border: none;
 }
 
-
-/* Seleção de texto */
 .editor-content ::selection {
     background-color: rgba(0, 122, 255, 0.3);
     color: inherit;
 }
 
-/* Scrollbar customizada */
 .editor-content::-webkit-scrollbar {
     width: 4px;
 }
@@ -157,12 +186,10 @@
     border-radius: 2px;
 }
 
-/* Cursor */
 .editor-content:focus-within {
     caret-color: #007AFF;
 }
 
-/* Prevenção de quebras de layout */
 .editor-content * {
     max-width: 100%;
     word-wrap: break-word;
@@ -175,7 +202,6 @@
     border-radius: 4px;
 }
 
-/* === ESTILOS DOS TOGGLES === */
 .editor-content .toggle {
     margin: 8px 0;
     display: block;
@@ -188,14 +214,9 @@
     line-height: inherit;
 }
 
-/* Otimizações para iPhone */
 @supports (-webkit-touch-callout: none) {
     .editor-content {
         -webkit-touch-callout: none;
         -webkit-text-size-adjust: none;
-    }
-    
-    .editor-content.is-empty::before {
-        line-height: 1.6;
     }
 }
