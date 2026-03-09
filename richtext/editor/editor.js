@@ -300,14 +300,24 @@ class EditorManager {
     isCursorAtStart(textBlock, range) {
         if (!range.collapsed) return false;
 
-        // Calcula o deslocamento real do cursor dentro do bloco inteiro.
-        // Isso cobre casos em que o browser mantém um <br> sentinela e o
-        // startOffset vira 1 mesmo com o cursor visualmente no início.
-        const preRange = range.cloneRange();
-        preRange.selectNodeContents(textBlock);
-        preRange.setEnd(range.startContainer, range.startOffset);
+        // Fluxo principal: mantém a checagem original para preservar o
+        // comportamento de backspace em blocos com conteúdo normal.
+        const container = range.startContainer;
+        const isNativeStart = range.startOffset === 0 && (
+            container === textBlock ||
+            container === textBlock.firstChild ||
+            (container.nodeType === Node.TEXT_NODE && container.parentElement === textBlock)
+        );
 
-        return preRange.toString().length === 0;
+        if (isNativeStart) return true;
+
+        // Fallback para blocos vazios com <br> sentinela (caso "toggle primeiro").
+        // Nessa situação o cursor pode parecer no início, mas com startOffset != 0.
+        const plainText = textBlock.textContent.replace(/[\u200B\uFEFF]/g, '').trim();
+        const isEmptyBlock = plainText.length === 0;
+        const isInsideBlock = container === textBlock || textBlock.contains(container);
+
+        return isEmptyBlock && isInsideBlock;
     }
 
     handleBackspaceAtStart(textBlock) {
