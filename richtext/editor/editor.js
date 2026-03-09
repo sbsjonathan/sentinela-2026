@@ -298,13 +298,16 @@ class EditorManager {
     }
 
     isCursorAtStart(textBlock, range) {
-        if (range.startOffset !== 0) return false;
-        
-        // Verifica se está no início absoluto do bloco
-        const container = range.startContainer;
-        return container === textBlock || 
-               container === textBlock.firstChild || 
-               (container.nodeType === Node.TEXT_NODE && container.parentElement === textBlock);
+        if (!range.collapsed) return false;
+
+        // Calcula o deslocamento real do cursor dentro do bloco inteiro.
+        // Isso cobre casos em que o browser mantém um <br> sentinela e o
+        // startOffset vira 1 mesmo com o cursor visualmente no início.
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(textBlock);
+        preRange.setEnd(range.startContainer, range.startOffset);
+
+        return preRange.toString().length === 0;
     }
 
     handleBackspaceAtStart(textBlock) {
