@@ -142,6 +142,11 @@ class EditorManager {
         });
         
         this.editorElement.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+                this.handleSelectAllShortcut(e);
+                return;
+            }
+
             if (e.target.classList.contains('text-block')) {
                 this.handleTextBlockKeydown(e);
             }
@@ -580,6 +585,28 @@ class EditorManager {
     focus() {
         const target = this.currentTextBlock || this.editorElement.querySelector('.text-block');
         if (target) target.focus();
+    }
+
+    handleSelectAllShortcut(e) {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+
+        const range = selection.getRangeAt(0);
+        const editorRoot = this.editorElement;
+        if (!editorRoot || !editorRoot.contains(range.commonAncestorContainer)) return;
+
+        e.preventDefault();
+        this.selectAllEditorContent();
+    }
+
+    selectAllEditorContent() {
+        const selection = window.getSelection();
+        if (!selection || !this.editorElement) return;
+
+        const range = document.createRange();
+        range.selectNodeContents(this.editorElement);
+        selection.removeAllRanges();
+        selection.addRange(range);
     }
 
     // ======= UTILITÁRIOS ======= //
