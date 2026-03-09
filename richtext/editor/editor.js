@@ -14,6 +14,7 @@ class EditorManager {
         this.bindedGlobalTouchStart = null;
         this.bindedGlobalTouchMove = null;
         this.bindedWindowScroll = null;
+        this.bindedSelectAllShortcut = null;
         this.isTouchInsideEditor = false;
         this.init();
     }
@@ -174,6 +175,11 @@ class EditorManager {
         document.addEventListener('touchstart', this.bindedGlobalTouchStart, { passive: true, capture: true });
         document.addEventListener('touchmove', this.bindedGlobalTouchMove, { passive: true, capture: true });
         window.addEventListener('scroll', this.bindedWindowScroll, { passive: true });
+
+        // Permite selecionar TODO o conteúdo (text-blocks + toggles) com Ctrl/Cmd + A.
+        // Sem isso, cada contenteditable filho seleciona apenas o próprio bloco.
+        this.bindedSelectAllShortcut = (e) => this.handleSelectAllShortcut(e);
+        document.addEventListener('keydown', this.bindedSelectAllShortcut, true);
 
         document.addEventListener('selectionchange', () => this.handleSelectionChange());
     }
@@ -348,6 +354,25 @@ class EditorManager {
         // Plugins específicos cuidam de seus próprios estados
         // Atualiza placeholder quando houver mudança de seleção
         this.updatePlaceholder();
+    }
+
+    handleSelectAllShortcut(e) {
+        if (!this.editorElement) return;
+
+        const isSelectAll = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a';
+        if (!isSelectAll) return;
+
+        const target = e.target;
+        if (!target || !this.editorElement.contains(target)) return;
+
+        e.preventDefault();
+
+        const range = document.createRange();
+        range.selectNodeContents(this.editorElement);
+
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
     }
 
     // ======= LIMPEZA CONSOLIDADA ======= //
