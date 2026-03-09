@@ -137,12 +137,17 @@ class UnifiedNavbar {
     }
 
     setupScrollBehavior() {
-        if (this.currentPage === 'notes') {
+        if (this.shouldKeepNavbarFixed()) {
+            this.showNavbar();
             return;
         }
 
         this.setupScrollHandlers();
         this.setupTouchBehavior();
+    }
+
+    shouldKeepNavbarFixed() {
+        return ['home', 'notes', 'save'].includes(this.currentPage);
     }
 
     setupScrollHandlers() {

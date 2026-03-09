@@ -50,18 +50,26 @@
 
 /* Estado vazio — zera margens para o placeholder não se deslocar */
 .editor-content.is-empty > .text-block:empty,
+.editor-content.is-empty > .text-block.placeholder-empty,
 .editor-content.is-empty > h1.text-block:empty,
+.editor-content.is-empty > h1.text-block.placeholder-empty,
 .editor-content.is-empty > h2.text-block:empty,
-.editor-content.is-empty > h3.text-block:empty {
+.editor-content.is-empty > h2.text-block.placeholder-empty,
+.editor-content.is-empty > h3.text-block:empty,
+.editor-content.is-empty > h3.text-block.placeholder-empty {
     margin: 0 !important;
     padding: 0;
 }
 
 /* Placeholder — position:absolute para não ocupar espaço no fluxo */
 .editor-content.is-empty > .text-block:empty::before,
+.editor-content.is-empty > .text-block.placeholder-empty::before,
 .editor-content.is-empty > h1.text-block:empty::before,
+.editor-content.is-empty > h1.text-block.placeholder-empty::before,
 .editor-content.is-empty > h2.text-block:empty::before,
-.editor-content.is-empty > h3.text-block:empty::before {
+.editor-content.is-empty > h2.text-block.placeholder-empty::before,
+.editor-content.is-empty > h3.text-block:empty::before,
+.editor-content.is-empty > h3.text-block.placeholder-empty::before {
     content: attr(data-placeholder);
     color: #999;
     font-style: italic;

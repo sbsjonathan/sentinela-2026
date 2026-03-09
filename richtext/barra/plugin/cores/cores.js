@@ -318,8 +318,8 @@ class CoresPlugin {
     try {
       const fore = document.queryCommandValue('foreColor');
       const back = document.queryCommandValue('hiliteColor') || document.queryCommandValue('backColor');
-      if (fore) out.text = this._rgbToHex(fore) || fore;
-      if (back && back !== 'transparent' && back !== 'rgba(0, 0, 0, 0)') out.bg = this._rgbToHex(back) || back;
+      if (fore) out.text = this._normalizeDetectedColor(fore);
+      if (back) out.bg = this._normalizeDetectedColor(back);
     } catch (_) {}
 
     const node = range.startContainer.nodeType === 1
@@ -327,9 +327,9 @@ class CoresPlugin {
       : range.startContainer.parentElement;
     if (node) {
       const cs = getComputedStyle(node);
-      if (!out.text && cs.color) out.text = this._rgbToHex(cs.color) || cs.color;
-      if (!out.bg && cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)') {
-        out.bg = this._rgbToHex(cs.backgroundColor) || cs.backgroundColor;
+      if (!out.text && cs.color) out.text = this._normalizeDetectedColor(cs.color);
+      if (!out.bg && cs.backgroundColor) {
+        out.bg = this._normalizeDetectedColor(cs.backgroundColor);
       }
     }
     return out;
@@ -708,6 +708,25 @@ class CoresPlugin {
     if (!m) return null;
     return '#' + [1,2,3].map(i => parseInt(m[i]).toString(16).padStart(2,'0')).join('');
   }
+
+  _normalizeDetectedColor(value) {
+    if (!value) return null;
+
+    const normalized = String(value).trim();
+    if (!normalized) return null;
+    if (normalized.toLowerCase() === 'transparent') return null;
+
+    const rgbaMatch = normalized.replace(/\s+/g, '').match(/^rgba\((\d+),(\d+),(\d+),(\d*\.?\d+)\)$/i);
+    if (rgbaMatch) {
+      const alpha = parseFloat(rgbaMatch[4]);
+      if (!Number.isFinite(alpha) || alpha <= 0.05) {
+        return null;
+      }
+    }
+
+    return this._rgbToHex(normalized) || normalized;
+  }
+
   _isLight(hex) {
     const h = hex.replace('#','');
     if (h.length < 6) return false;

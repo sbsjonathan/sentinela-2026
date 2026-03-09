@@ -77,6 +77,7 @@ class EditorManager {
         block.setAttribute('spellcheck', 'true');
         block.setAttribute('autocapitalize', 'sentences');
         block.setAttribute('autocorrect', 'on');
+        block.setAttribute('data-placeholder', this.editorElement?.getAttribute('data-placeholder') || 'Digite seu texto aqui...');
         return block;
     }
 
@@ -589,16 +590,22 @@ class EditorManager {
         // 2. Qualquer lista (ul/ol) mesmo vazia
         // 3. Qualquer toggle
         // 4. Qualquer imagem
-        
+
         const hasText = this.editorElement.textContent.trim().length > 0;
         const hasList = this.editorElement.querySelector('ul, ol') !== null;
         const hasToggle = this.editorElement.querySelector('.toggle') !== null;
         const hasImage = this.editorElement.querySelector('img') !== null;
-        
+
         // Mostra placeholder apenas se NÃO tiver nenhum desses elementos
         const isEmpty = !hasText && !hasList && !hasToggle && !hasImage;
-        
+
         this.editorElement.classList.toggle('is-empty', isEmpty);
+
+        const blocks = this.editorElement.querySelectorAll('.text-block, h1.text-block, h2.text-block, h3.text-block');
+        blocks.forEach((block, index) => {
+            const blockIsEmpty = this.isBlockEmpty(block);
+            block.classList.toggle('placeholder-empty', isEmpty && index === 0 && blockIsEmpty);
+        });
     }
 
     updateStats() {
