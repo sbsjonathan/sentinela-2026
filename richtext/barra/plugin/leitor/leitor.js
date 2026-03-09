@@ -9,6 +9,8 @@ class LeitorPlugin {
         this.editor = null;
         this.processedNodes = new WeakSet();
         this._retryMs = 100;
+        this.longPressTimer = null;
+        this.longPressTriggered = false;
         
         // Padrão regex para detectar referências bíblicas (melhorado para detectar "gen 1:1")
         this.regexBiblico = /\b([1-3]?\s?[A-Za-zêÊãÃíÍóÓâÂéÉôÔúÚçÇáÁ]+\.?)\s*(\d{1,3})[:;]\s*([\d,\s\-–—]+(?:\s?[;]\s?[\d,\s\-–—]+)*)/gi;
@@ -68,15 +70,77 @@ class LeitorPlugin {
     }
 
     setupButtonEvents() {
-        this.leitorBtn.addEventListener('click', (e) => {
+        const startPress = (e) => {
             e.preventDefault();
-            this.toggleReadOnly();
-        });
+            this.longPressTriggered = false;
+            this.longPressTimer = setTimeout(async () => {
+                this.longPressTriggered = true;
+                await this.copyAllText();
+            }, 550);
+        };
 
-        this.leitorBtn.addEventListener('touchstart', (e) => {
+        const endPress = (e) => {
             e.preventDefault();
-            this.toggleReadOnly();
-        }, { passive: false });
+            clearTimeout(this.longPressTimer);
+            if (!this.longPressTriggered) {
+                this.toggleReadOnly();
+            }
+        };
+
+        const cancelPress = () => {
+            clearTimeout(this.longPressTimer);
+        };
+
+        this.leitorBtn.addEventListener('mousedown', startPress, { passive: false });
+        this.leitorBtn.addEventListener('mouseup', endPress, { passive: false });
+        this.leitorBtn.addEventListener('mouseleave', cancelPress, { passive: true });
+
+        this.leitorBtn.addEventListener('touchstart', startPress, { passive: false });
+        this.leitorBtn.addEventListener('touchend', endPress, { passive: false });
+        this.leitorBtn.addEventListener('touchcancel', cancelPress, { passive: true });
+    }
+
+    async copyAllText() {
+        if (!this.editor?.editorElement) return;
+
+        const text = this.editor.editorElement.innerText?.trim() || '';
+        if (!text) {
+            this.flashCopyState('empty');
+            return;
+        }
+
+        let copied = false;
+
+        if (navigator.clipboard?.writeText) {
+            try {
+                await navigator.clipboard.writeText(text);
+                copied = true;
+            } catch (_) {}
+        }
+
+        if (!copied) {
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(this.editor.editorElement);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            copied = document.execCommand('copy');
+        }
+
+        this.flashCopyState(copied ? 'copied' : 'error');
+    }
+
+    flashCopyState(state) {
+        if (!this.leitorBtn) return;
+
+        this.leitorBtn.classList.remove('copy-success', 'copy-empty', 'copy-error');
+        if (state === 'copied') this.leitorBtn.classList.add('copy-success');
+        if (state === 'empty') this.leitorBtn.classList.add('copy-empty');
+        if (state === 'error') this.leitorBtn.classList.add('copy-error');
+
+        setTimeout(() => {
+            this.leitorBtn?.classList.remove('copy-success', 'copy-empty', 'copy-error');
+        }, 700);
     }
 
     connectToEditor() {
@@ -330,6 +394,8 @@ class LeitorPlugin {
     }
 
     destroy() {
+        clearTimeout(this.longPressTimer);
+
         if (this.isReadOnly) {
             this.disableReadOnly();
         }

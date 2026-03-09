@@ -221,3 +221,14 @@
         touch-action: pan-y;
     }
 }
+
+.leitor-btn.copy-success {
+    background-color: rgba(16, 185, 129, 0.2);
+    color: #059669;
+}
+
+.leitor-btn.copy-empty,
+.leitor-btn.copy-error {
+    background-color: rgba(239, 68, 68, 0.18);
+    color: #b91c1c;
+}
