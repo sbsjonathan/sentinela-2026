@@ -15,6 +15,8 @@ class EditorManager {
         this.bindedGlobalTouchMove = null;
         this.bindedWindowScroll = null;
         this.bindedSelectAllShortcut = null;
+        this.pendingSelectAllRestore = null;
+        this.tempUnifiedEditables = null;
         this.isTouchInsideEditor = false;
         this.init();
     }
@@ -62,9 +64,6 @@ class EditorManager {
         this.editorElement.id = 'text-editor';
         this.editorElement.className = 'editor-content';
         this.editorElement.setAttribute('data-placeholder', 'Digite seu texto aqui...');
-        
-        // Primeiro bloco de texto
-        this.currentTextBlock = this.createTextBlock();
         this.editorElement.appendChild(this.currentTextBlock);
         
         this.editorContainer.appendChild(this.editorElement);
@@ -74,6 +73,7 @@ class EditorManager {
     createTextBlock() {
         const block = document.createElement('div');
         block.className = 'text-block';
+        block.contentEditable = true;
         block.contentEditable = true;
         block.setAttribute('spellcheck', 'true');
         block.setAttribute('autocapitalize', 'sentences');
@@ -181,8 +181,7 @@ class EditorManager {
         this.bindedSelectAllShortcut = (e) => this.handleSelectAllShortcut(e);
         document.addEventListener('keydown', this.bindedSelectAllShortcut, true);
 
-        document.addEventListener('selectionchange', () => this.handleSelectionChange());
-    }
+        // No mobile, "Selecionar tudo" costuma disparar beforeinput/selectAll.
 
     handleEditorTouchStart(e) {
         this.touchStartY = e.touches?.[0]?.clientY || 0;
@@ -367,12 +366,57 @@ class EditorManager {
 
         e.preventDefault();
 
-        const range = document.createRange();
-        range.selectNodeContents(this.editorElement);
+
+    temporarilyUnifyEditableHosts() {
+        if (this.tempUnifiedEditables) {
+            return;
+        }
+
+        const editableNodes = Array.from(this.editorElement.querySelectorAll('[contenteditable="true"]'));
+        this.tempUnifiedEditables = editableNodes;
+
+        editableNodes.forEach((el) => {
+            el.removeAttribute('contenteditable');
+        });
+
+        this.editorElement.setAttribute('contenteditable', 'true');
+    }
+
+    restoreEditableHosts() {
+        if (!this.tempUnifiedEditables) return;
+
+        this.editorElement.removeAttribute('contenteditable');
+
+        this.tempUnifiedEditables.forEach((el) => {
+            if (el && el.isConnected) {
+                el.setAttribute('contenteditable', 'true');
+            }
+        });
+
+        this.tempUnifiedEditables = null;
+    }
+
+    scheduleEditableHostsRestore() {
+        if (this.pendingSelectAllRestore) {
+            clearTimeout(this.pendingSelectAllRestore);
+        }
+
+        this.pendingSelectAllRestore = setTimeout(() => {
+            this.restoreEditableHosts();
+            this.pendingSelectAllRestore = null;
+        }, 1200);
+    }
+
+        const editableBlocks = this.editorElement.querySelectorAll('.text-block, .toggle-title, .content-invisible');
+        if (!editableBlocks.length) return;
+
+        this.temporarilyUnifyEditableHosts();
 
         const selection = window.getSelection();
         selection.removeAllRanges();
         selection.addRange(range);
+
+        this.scheduleEditableHostsRestore();
     }
 
     // ======= LIMPEZA CONSOLIDADA ======= //
