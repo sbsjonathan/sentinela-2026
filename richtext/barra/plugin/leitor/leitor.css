@@ -161,6 +161,15 @@
     background-color: rgba(0, 122, 255, 0.2);
 }
 
+
+/* Em modo leitura, permite seleção/cópia contínua entre blocos */
+.editor-content.read-only-mode,
+.editor-content.read-only-mode * {
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    -webkit-touch-callout: default !important;
+}
+
 /* === Links Bíblicos em Modo Read-Only === */
 .read-only-mode .bbl {
     color: #4A6DA7;
@@ -212,7 +221,6 @@
     }
     
     .read-only-mode {
-        -webkit-touch-callout: none;
         -webkit-overflow-scrolling: touch;
     }
     

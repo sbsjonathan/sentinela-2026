@@ -115,10 +115,14 @@ class LeitorPlugin {
         this.editor.editorElement.classList.add('read-only-mode');
         document.body.classList.add('editor-read-only');
         
+        // Notifica plugins para pausar interações (ex.: toggle)
+        document.dispatchEvent(new CustomEvent('leitor-mode-enter'));
+
         // Desabilita todos os elementos editáveis
         const editables = this.editor.editorElement.querySelectorAll('[contenteditable="true"]');
         editables.forEach(element => {
-            element.setAttribute('contenteditable', 'false');
+            element.dataset.wasEditable = 'true';
+            element.removeAttribute('contenteditable');
             element.classList.add('read-only');
         });
         
@@ -161,11 +165,15 @@ class LeitorPlugin {
         document.body.classList.remove('editor-read-only');
         
         // Restaura elementos editáveis
-        const editables = this.editor.editorElement.querySelectorAll('[contenteditable="false"].read-only');
+        const editables = this.editor.editorElement.querySelectorAll('.read-only[data-was-editable="true"]');
         editables.forEach(element => {
             element.setAttribute('contenteditable', 'true');
+            delete element.dataset.wasEditable;
             element.classList.remove('read-only');
         });
+
+        // Notifica plugins para retomar interações (ex.: toggle)
+        document.dispatchEvent(new CustomEvent('leitor-mode-exit'));
         
         // Mostra botões do toggle
         const addChildBtns = this.editor.editorElement.querySelectorAll('.add-child-btn');
