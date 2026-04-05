@@ -298,13 +298,26 @@ class EditorManager {
     }
 
     isCursorAtStart(textBlock, range) {
-        if (range.startOffset !== 0) return false;
-        
-        // Verifica se está no início absoluto do bloco
+        if (!range.collapsed) return false;
+
+        // Fluxo principal: mantém a checagem original para preservar o
+        // comportamento de backspace em blocos com conteúdo normal.
         const container = range.startContainer;
-        return container === textBlock || 
-               container === textBlock.firstChild || 
-               (container.nodeType === Node.TEXT_NODE && container.parentElement === textBlock);
+        const isNativeStart = range.startOffset === 0 && (
+            container === textBlock ||
+            container === textBlock.firstChild ||
+            (container.nodeType === Node.TEXT_NODE && container.parentElement === textBlock)
+        );
+
+        if (isNativeStart) return true;
+
+        // Fallback para blocos vazios com <br> sentinela (caso "toggle primeiro").
+        // Nessa situação o cursor pode parecer no início, mas com startOffset != 0.
+        const plainText = textBlock.textContent.replace(/[\u200B\uFEFF]/g, '').trim();
+        const isEmptyBlock = plainText.length === 0;
+        const isInsideBlock = container === textBlock || textBlock.contains(container);
+
+        return isEmptyBlock && isInsideBlock;
     }
 
     handleBackspaceAtStart(textBlock) {
