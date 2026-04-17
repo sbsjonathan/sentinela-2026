@@ -1,36 +1,62 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-program-year="2026" data-program-day="sex">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reunião de Domingo</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="navbar/navbar-unified.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Programação</title>
+
+  <script>
+    (function() {
+      try {
+        var size = localStorage.getItem('tamanho-fonte-global') || 16;
+        var safeSize = Math.min(26, Math.max(16, parseInt(size, 10)));
+        var scale = safeSize / 16;
+        var root = document.documentElement;
+        root.style.setProperty('--tamanho-fonte', safeSize + 'px');
+        root.style.setProperty('--font-base-default', '16');
+        root.style.setProperty('--font-base-global', safeSize + 'px');
+        root.style.setProperty('--font-scale-global', scale);
+        root.dataset.fontSizeGlobal = safeSize;
+
+        var theme = localStorage.getItem('tema-interface') || 'system';
+        var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        root.dataset.themeChoice = theme;
+      } catch(e) {}
+    })();
+  </script>
+
+  <link rel="stylesheet" href="stylep.css">
+  <link rel="stylesheet" href="assembleia/hora/styleh.css">
+  <link rel="stylesheet" href="assembleia/menu/menu.css">
+  <link rel="stylesheet" href="assembleia/export/export.css">
+  <link rel="stylesheet" href="navbar/navbar-unified.css">
+  <link rel="stylesheet" href="assembleia/anotacoes/clickable/click-asmb.css">
+  <link rel="stylesheet" href="richtext/biblia/stylebbl.css">
+  <link rel="stylesheet" href="programacao/programacao.css">
 </head>
 <body>
-    <!-- Cabeçalho fixo -->
-    <header class="header">
-        <h1 class="titulo-principal">Reunião de Domingo</h1>
-        <p class="semana-atual" id="semana-display">Carregando...</p>
-    </header>
 
-    <!-- Carrossel de slides -->
-    <div class="carousel-container">
-        <div class="slides-wrapper" id="slides-wrapper">
-            <!-- Os slides serão carregados dinamicamente -->
-        </div>
+  <div id="img-topo"></div>
+  <div class="programacao">
+    <div class="dia" id="programacao-dia">Sexta-feira</div>
+    <div id="menu-container"></div>
+    <div id="programacao-container" aria-live="polite"></div>
+  </div>
 
-        <!-- Setas de navegação -->
-        <button class="nav-arrow prev" id="prev-btn">‹</button>
-        <button class="nav-arrow next" id="next-btn">›</button>
-
-        <!-- Indicadores -->
-        <div class="nav-indicators" id="indicators">
-            <!-- Os indicadores serão criados dinamicamente -->
-        </div>
-    </div>
-
-    <script src="navbar/navbar-unified.js"></script>
-    <script src="main.js"></script>
+  <script src="assembleia/menu/menu.js"></script>
+  <script src="assembleia/export/export.js"></script>
+  <script src="assembleia/hora/scripth.js"></script>
+  <script src="navbar/navbar-unified.js"></script>
+  <script src="richtext/biblia/abrev.js"></script>
+  <script src="richtext/biblia/scriptbbl-container.js"></script>
+  <script src="programacao/programacao-bbl.js"></script>
+  <script src="assembleia/anotacoes/agente-ia.js"></script>
+  <script src="assembleia/anotacoes/clickable/click-asmb.js"></script>
+  <script src="programacao/dia.js"></script>
+  
+  <script src="save/config.js"></script>
+  <script src="save/supabase.js"></script>
+  <script src="save/asmb-sync.js"></script>
 </body>
 </html>
