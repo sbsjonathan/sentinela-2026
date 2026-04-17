@@ -522,7 +522,9 @@ async function irParaSentinela(event) {
     event.preventDefault();
 
     const currentPath = window.location.pathname.toLowerCase();
-    if (currentPath.includes('sentinela') && !currentPath.includes('em-breve')) {
+    // Só evita navegação quando já estamos em um artigo da Sentinela.
+    // Em páginas como sentinela/menu/*, o botão deve abrir o artigo da semana.
+    if (currentPath.includes('/sentinela/artigos/') && !currentPath.includes('em-breve')) {
         return;
     }
 
