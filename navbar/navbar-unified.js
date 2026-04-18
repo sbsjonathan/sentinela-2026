@@ -521,11 +521,6 @@ async function irParaAnotacoes(event) {
 async function irParaSentinela(event) {
     event.preventDefault();
 
-    const currentPath = window.location.pathname.toLowerCase();
-    if (currentPath.includes('sentinela') && !currentPath.includes('em-breve')) {
-        return;
-    }
-
     // SEMPRE usa a semana atual no formato DD-MM (segunda-feira da semana).
     // Isso evita que a navbar herde a semana do `?semana=` quando você está na página de anotações.
     const hoje = new Date();
@@ -544,7 +539,12 @@ async function irParaSentinela(event) {
     window.semanaAtual = semana;
 
     const basePath = getBasePath();
-    window.location.href = `${basePath}sentinela/artigos/${semana}.html`;
+    const destino = `${basePath}sentinela/artigos/${semana}.html`;
+    const paginaAtual = window.location.pathname.toLowerCase();
+    if (paginaAtual.endsWith(`/sentinela/artigos/${semana}.html`)) {
+        return;
+    }
+    window.location.href = destino;
 }
 
 async function irParaSalvar(event) {
@@ -563,18 +563,30 @@ async function irParaSalvar(event) {
 function getBasePath() {
     const path = window.location.pathname.toLowerCase();
 
-    // A home do projeto fica na raiz.
-    if (path.endsWith('index.html') || path.endsWith('/')) {
+    // Página inicial na raiz do projeto.
+    if (path.endsWith('/index.html') || path.endsWith('/')) {
         return './';
     }
 
-    // Os artigos ficam dentro de sentinela/artigos/, então dali
-    // precisamos subir dois níveis para voltar à raiz do projeto.
+    // Páginas de artigo da Sentinela: /sentinela/artigos/*.html
     if (path.includes('/sentinela/artigos/')) {
         return '../../';
     }
 
-    // Páginas como biblia/, richtext/ e save/ ficam um nível abaixo.
+    // Páginas um nível abaixo da raiz (biblia/, richtext/, save/, sentinela/*.html)
+    if (
+        path.includes('/biblia/') ||
+        path.includes('/richtext/') ||
+        path.includes('/save/') ||
+        path.includes('/sentinela/')
+    ) {
+        // Exceção para subpastas internas de sentinela (menu/, clickable/, imagem/, etc.).
+        if (path.includes('/sentinela/menu/') || path.includes('/sentinela/clickable/') || path.includes('/sentinela/imagem/')) {
+            return '../../';
+        }
+        return '../';
+    }
+
     return '../';
 }
 
