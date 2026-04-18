@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A Sentinela</title>
+
+    <meta name="color-scheme" content="light dark">
+    <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('tema-interface') || 'system';
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = savedTheme === 'dark' || (savedTheme === 'system' && prefersDark);
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+      } catch (e) {}
+    })();
+    </script>
+    <style>
+      html, body { background: #f3f4f6; }
+      html[data-theme="dark"], html[data-theme="dark"] body { background: #000000; }
+    </style>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans:wght@400;700;800&family=Noto+Serif:ital@1&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../biblia/stylebbl.css">
+    <link rel="stylesheet" href="../clickable/clickable.css">
+    <link rel="stylesheet" href="../menu/menu.css">
+    <link rel="stylesheet" href="../clickable/agente-modal/agente-modal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css">
+    <link rel="stylesheet" href="../imagem/swiper-zoom.css">
+    <link rel="stylesheet" href="../../navbar/navbar-unified.css">
+</head>
+<body  data-estudo="13-04" style="--cor-principal-estudo: #51919d;" class="with-bottom-navbar">
+<nav class="bottom-navbar booting" data-context="navbar-context-watchtower">
+    <a href="#" class="navbar-item" data-page="home" onclick="irParaHome(event)">
+        <div class="navbar-icon icon-home"></div>
+        <span class="navbar-label">Início</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="bible" onclick="irParaBiblia(event)">
+        <div class="navbar-icon icon-bible"></div>
+        <span class="navbar-label">Bíblia</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="notes" onclick="irParaAnotacoes(event)">
+        <div class="navbar-icon icon-notes"></div>
+        <span class="navbar-label">Anotações</span>
+    </a>
+    <a href="#" class="navbar-item active" data-page="watchtower" onclick="irParaSentinela(event)">
+        <div class="navbar-icon icon-watchtower"></div>
+        <span class="navbar-label">A Sentinela</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="save" onclick="irParaSalvar(event)">
+        <div class="navbar-icon icon-save"></div>
+        <span class="navbar-label">Salvar</span>
+    </a>
+</nav>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  window.semanaAtual = urlParams.get('semana') || '13-04';
+  window.estudoId = '2026282';
+</script>
+
+<div class="container">
+
+<header class="barra-estudo">
+<div>13 A 19 DE ABRIL DE 2026</div>
+</header>
+
+<main>
+
+<div class="secao-cantico"><p><span class="cantico">Cântico 52</span> <span class="cantico-titulo">Nossa dedicação</span></p></div>
+
+<h1 class="estudo-titulo">
+O significado e a importância do batismo
+</h1>
+
+<p class="citacao">
+‘Façam discípulos, batizando-os.’ — <a class="bbl">MAT. 28:19</a>.
+</p>
+
+<div class="objetivo"><p class="objetivo-titulo">OBJETIVO</p><p class="objetivo-texto">Entender por que o batismo é importante e o que está envolvido em se batizar.</p></div>
+
+<div><p class="pergunta"><span>1.</span> O que mostra que o batismo é um ensino bíblico muito importante?</p></div>
+
+<p class="paragrafo"><span>1</span> QUANDO alguém se batiza, nós ficamos muito felizes! Sabia que os primeiros cristãos também se sentiram assim? Logo na primeira reunião da congregação cristã, no Pentecostes do ano 33, eles viram muitas pessoas sendo batizadas. Nessa ocasião, o apóstolo Pedro fez um discurso explicando por que é importante se batizar. (<a class="bbl">Atos 2:38, 40, 41</a>) Mais tarde, o apóstolo Paulo escreveu que “o ensinamento sobre batismos” faz parte da “doutrina básica a respeito do Cristo”. (<a class="bbl">Heb. 6:1, 2</a>) Então, o batismo é um dos principais ensinos bíblicos, e nós precisamos entender bem seu significado. Por quê?</p>
+
+<div><p class="pergunta"><span>2.</span> Por que precisamos entender bem o significado do batismo?</p></div>
+
+<p class="paragrafo"><span>2</span> Assim como um alicerce firme pode ajudar uma casa a se manter de pé, um entendimento completo do significado e da importância do batismo pode nos ajudar a ter uma fé forte. Não importa se ainda somos estudantes da Bíblia ou se já somos batizados há muitos anos, todos nós precisamos entender esses pontos. Por isso, neste estudo, vamos responder às seguintes perguntas: Qual é o significado e a importância do batismo? O que está envolvido em se batizar? E por que nos batizamos em nome do Pai, do Filho e do espírito santo?</p>
+
+<h2 class="subtitulo">O que o batismo significa e por que é importante</h2>
+
+<div><p class="pergunta"><span>3.</span> O que o batismo mostra?</p></div>
+
+<p class="paragrafo"><span>3</span> O batismo mostra a todos que você aceitou a verdade sobre Jeová Deus e Jesus Cristo, se arrependeu dos seus pecados e fez mudanças na vida para servir a Jeová. Ele também simboliza que você entendeu que Deus usa Jesus para nos salvar do pecado e da morte. Além disso, o batismo mostra que você se dedicou a Jeová, ou seja, que fez uma oração prometendo que serviria a ele junto com a organização dele. A dedicação e o batismo são o início de uma jornada com Jeová que pode durar para sempre.</p>
+
+<div><p class="pergunta"><span>4.</span> Qual é o significado de ser totalmente imerso na água? (Veja também a imagem.)</p></div>
+
+<p class="paragrafo"><span>4</span> No batismo, uma pessoa é totalmente imersa na água e depois levantada. *  É como se ela fosse enterrada e daí ressuscitada. (Veja também <a class="bbl">Colossenses 2:12</a>.) O batismo simboliza as mudanças profundas que você fez em sua vida. Como assim? Quando você é imerso na água, você mostra que colocou um ponto final no seu modo de vida anterior. Quando é levantado, você começa uma vida nova, focada em fazer a vontade de Deus.</p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026282/univ/art/2026282_univ_cnt_1_xl.jpg">
+  <figcaption>
+    Ao se batizar, você coloca um ponto final no seu modo de vida anterior e começa uma vida nova, focada em fazer a vontade de Deus (Veja o parágrafo 4.)
+  </figcaption>
+</figure>
+
+<div><p class="pergunta"><span>5.</span> Por que podemos dizer que o esforço para chegar ao batismo se parece com o esforço feito na construção da arca? (<a class="bbl">1 Pedro 3:18-21</a>)</p></div>
+
+<p class="paragrafo"><span>5</span> <strong>Leia <a class="bbl">1 Pedro 3:18-21</a>.</strong> De certa forma, podemos comparar o esforço que alguém faz para se preparar para o batismo com o esforço que Noé fez para construir a arca. Se você começou a estudar a Bíblia há pouco tempo, pode parecer difícil demais fazer todas as mudanças necessárias para chegar ao batismo. Você talvez ache que é tão difícil quanto foi para Noé construir a arca. Será que é mesmo preciso fazer tanto esforço? Com certeza, assim como foi para Noé! O próprio Deus projetou a arca, e para sobreviver ao Dilúvio, Noé teve que seguir de perto as instruções que tinha recebido. Com fé e com a ajuda de Jeová, Noé foi obediente e construiu a arca. Ele “fez tudo que Deus lhe havia mandado”, e você pode fazer o mesmo. — <a class="bbl">Gên. 6:22</a>.</p>
+
+<div><p class="pergunta"><span>6.</span> Em que sentido o batismo salva você?</p></div>
+
+<p class="paragrafo"><span>6</span> No <a class="bbl">versículo 21</a>, o apóstolo Pedro escreveu: “O batismo . . . salva vocês.” É claro que o simples fato de ser imerso na água não traz salvação nem purifica você dos seus pecados. Isso é algo que apenas o sangue de Jesus pode fazer. (<a class="bbl">1 João 1:7</a>) Mesmo assim, ser batizado é muito importante porque Jeová diz que você deve fazer isso. O batismo é uma forma de pedir “uma boa consciência a Deus”. E Jeová vai ficar feliz de atender esse pedido, perdoando seus pecados com base no sacrifício de Jesus. É assim que o batismo salva — ele torna possível que você tenha vida eterna.</p>
+
+<h2 class="subtitulo">O que está envolvido em se batizar</h2>
+
+<div><p class="pergunta"><span>7.</span> Como o batismo deve ser feito?</p></div>
+
+<p class="paragrafo"><span>7</span> Como vimos, a imersão total em água é um requisito. Fora isso, a Bíblia não dá muitos detalhes de como o batismo deve ser feito. Mas ela traz vários princípios que mostram como agir nessa ocasião. Por exemplo, ela nos ajuda a saber como os que vão se batizar devem se vestir e como os que estão presentes devem se comportar. (<a class="bbl">1 Cor. 14:40; 1 Tim. 2:9</a>) Geralmente, quem faz a imersão é um ancião, mas nós não damos destaque para quem recebe esse privilégio. (<a class="bbl">1 Cor. 1:14, 15</a>) E para Jeová, o batismo é válido não importa se o número de pessoas presentes é grande ou pequeno. — <a class="bbl">Atos 8:36</a>.</p>
+
+<div><p class="pergunta"><span>8.</span> De acordo com a Bíblia, o que devemos fazer? E para isso, que perguntas são feitas aos que vão se batizar? (<a class="bbl">Atos 2:38-42</a>) (Veja também a imagem.)</p></div>
+
+<p class="paragrafo"><span>8</span> A Bíblia mostra que devemos fazer uma “declaração pública visando a salvação”, ou seja, devemos expressar nossa fé. (<a class="bbl">Rom. 10:9, 10</a>; veja a <a class="bbl">nota de estudo</a> “declarar publicamente”.) E fazer isso no dia do nosso batismo é bem apropriado porque o batismo é um passo muito importante para a nossa salvação. É por isso que são feitas duas perguntas para aqueles que vão se batizar. A primeira é: “Você se arrependeu dos seus pecados, dedicou sua vida a Jeová e aceitou que o meio de salvação escolhido por Jeová é Jesus Cristo?” Essa pergunta nos lembra do discurso que Pedro fez lá no Pentecostes, e o objetivo dela é saber o que a pessoa já fez para chegar ao batismo. A segunda pergunta é: “Você entende que, ao se batizar, você se torna Testemunha de Jeová e passa a fazer parte da organização de Jeová?” O foco dessa pergunta é o que a pessoa vai fazer. Ela promete seguir as orientações da organização de Jeová e servir a ele junto com seus irmãos e irmãs. Foi isso que os presentes no Pentecostes fizeram depois de se batizar. <strong>(Leia <a class="bbl">Atos 2:38-42</a>.)</strong> Aqueles que respondem “sim” de coração a essas duas perguntas podem ser batizados.</p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026282/univ/art/2026282_univ_cnt_2_xl.jpg"
+       alt="Em uma assembleia, os que vão se batizar ficam em pé para fazer uma declaração pública da sua fé.">
+  <figcaption>
+    No seu batismo, você faz uma “declaração pública visando a salvação”
+  </figcaption>
+</figure>
+
+<div><p class="pergunta"><span>9.</span> Que passos todos nós devemos dar para agradar a Deus?</p></div>
+
+<p class="paragrafo"><span>9</span> Pode ser que, mesmo antes de aprender a verdade, você fosse uma pessoa boa e não tenha cometido nenhum pecado sério. Ou pode ser que você tenha sido criado por pais cristãos que o ajudaram a amar a Jeová. Será que mesmo assim você precisa se arrepender e ser batizado para agradar a Deus? Sim, não importa como era a nossa vida, todos nós devemos reconhecer que herdamos o pecado e que isso nos impede de ser amigos de Deus. (<a class="bbl">Sal. 51:5</a>) Daí, à medida que conhecemos a Jeová, precisamos colocar a vontade dele à frente da nossa. Temos que nos arrepender do nosso modo de vida anterior e dar meia-volta, passando a viver de um modo que agrada ao nosso Pai celestial. Assim, podemos ser batizados. — <a class="bbl">Atos 3:19</a>.</p>
+
+<div><p class="pergunta"><span>10.</span> O que você precisa fazer mesmo que já tenha se batizado quando fazia parte de outra religião?</p></div>
+
+<p class="paragrafo"><span>10</span> Talvez no passado, quando fazia parte de outra religião, você já tenha se batizado. Mesmo assim, você precisa se batizar como Testemunha de Jeová. Por quê? Porque, naquela época, você não entendia claramente as verdades sobre Jeová Deus e Jesus. E mesmo que tenha feito uma oração se dedicando a Deus, sua promessa não se baseou no entendimento correto da vontade dele. Em Éfeso, o apóstolo Paulo conheceu alguns homens que já tinham se batizado, mas sem ter o entendimento necessário dos ensinos cristãos. Por isso, aqueles homens precisaram se batizar de novo. *  (<a class="bbl">Atos 19:1-5</a>) Hoje também Jeová só aprova o batismo de uma pessoa quando ela tem um conhecimento exato da vontade dele.</p>
+
+<h2 class="subtitulo">“em nome do pai, e do filho, e do espírito santo”</h2>
+
+<div><p class="pergunta"><span>11.</span> O que significa ser batizado “em nome do Pai, e do Filho, e do espírito santo”? (<a class="bbl">Mateus 28:18-20</a>)</p></div>
+
+<p class="paragrafo"><span>11</span> Jesus disse que os novos discípulos deviam ser batizados “em nome do Pai, e do Filho, e do espírito santo”. <strong>(Leia <a class="bbl">Mateus 28:18-20</a>.)</strong> O que ele quis dizer com isso? Na Bíblia, a palavra para “nome” geralmente se refere à reputação de alguém. Também pode se referir ao papel e à autoridade que certo nome representa. (Veja também <a class="bbl">Mateus 10:41</a>; veja a <a class="bbl">nota de estudo</a> “porque ele é profeta”.) Então, quando somos batizados em nome de Jeová e de Jesus, nós reconhecemos que eles têm a autoridade e o direito de nos dizer o que fazer. E quando somos batizados em nome do espírito santo, reconhecemos o papel que ele desempenha em nos orientar. Agora vamos ver mais detalhes de como podemos fazer isso.</p>
+
+<div><p class="pergunta"><span>12.</span> O que está envolvido em se batizar em nome do Pai? (<a class="bbl">Apocalipse 4:11</a>) (Veja também a imagem.)</p></div>
+
+<p class="paragrafo"><span>12</span> <strong><em>Em nome do Pai.</em></strong> Nós estamos convencidos de que Jeová é o nosso Pai celestial, aquele que nos deu a vida. Ele é o Deus Todo-Poderoso e o Criador de todas as coisas. <strong>(Leia <a class="bbl">Apocalipse 4:11</a>.)</strong> Nós reconhecemos que ele ouve nossas orações e usamos o nome dele ao orar e ao falar com outros sobre ele. (<a class="bbl">Sal. 65:2</a>) Só que ser batizado em nome do Pai envolve algo mais. Aqueles que ouviram Pedro no Pentecostes já conheciam a Jeová. Mas dali em diante, eles precisavam reconhecer Jeová como aquele que dá vida eterna por meio de Jesus Cristo. E nós também devemos reconhecer isso. — <a class="bbl">Rom. 5:8</a>.</p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026282/univ/art/2026282_univ_cnt_3_xl.jpg">
+  <figcaption>
+    Depois do batismo, continue reconhecendo a autoridade do Pai (Veja o parágrafo 12.)
+  </figcaption>
+</figure>
+
+<div><p class="pergunta"><span>13.</span> O que está envolvido em se batizar em nome do Filho? (Veja também a imagem.)</p></div>
+
+<p class="paragrafo"><span>13</span> <strong><em>Em nome do Filho.</em></strong> Nós estamos convencidos de que Jesus é o Filho unigênito de Deus. Ele é “o caminho”, ou seja, é só com a ajuda dele que podemos ser amigos de Jeová. (<a class="bbl">João 14:6</a>) Jesus também é nosso Resgatador. Ele morreu por nós para podermos ganhar a vida. Saber disso nos motiva a seguir o seu exemplo todos os dias, não apenas quando nos batizamos. (<a class="bbl">1 João 2:6</a>) Assim como Jesus, nós pregamos com zelo e não deixamos nada nos impedir de fazer isso. (<a class="bbl">Luc. 4:43</a>) Estamos dispostos até mesmo a enfrentar perseguição para servir a Deus lealmente. (<a class="bbl">2 Tim. 3:12</a>) Nós também respeitamos Jesus como “cabeça da congregação”. (<a class="bbl">Efé. 5:23</a>) Por isso, ficamos felizes de seguir as orientações daqueles que ele designa para exercer a liderança na congregação e para cuidar dos seus seguidores. — <a class="bbl">Efé. 4:8, 11, 12</a>.</p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026282/univ/art/2026282_univ_cnt_4_xl.jpg">
+  <figcaption>
+    Depois do batismo, continue reconhecendo a autoridade do Filho (Veja o parágrafo 13.)
+  </figcaption>
+</figure>
+
+<div><p class="pergunta"><span>14.</span> (a) O que está envolvido em se batizar em nome do espírito santo? (Veja também a imagem.) (b) Que outros batismos existem para os ungidos? (Veja também o quadro “ Outros batismos para os ungidos”.)</p></div>
+
+<p class="paragrafo"><span>14</span> <strong><em>Em nome do espírito santo.</em></strong> Nós reconhecemos a verdade sobre o espírito santo. Sabemos que ele não é uma pessoa nem faz parte de uma Trindade, mas é a força ativa de Deus. Entendemos que o espírito santo guiou os profetas e os escritores da Bíblia. Por isso, lemos regularmente a Palavra de Deus e seguimos o que ela ensina. (<a class="bbl">2 Ped. 1:20, 21</a>) E nós fazemos de tudo para não cometer pecados graves, porque sabemos que isso poderia impedir a nós e até mesmo a congregação de receber espírito santo. — <a class="bbl">Efé. 4:30</a>.</p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026282/univ/art/2026282_univ_cnt_5_xl.jpg">
+  <figcaption>
+    Depois do batismo, continue reconhecendo o papel do espírito santo (Veja o parágrafo 14.)
+  </figcaption>
+</figure>
+
+<div class="quadro1">
+  <h3 class="quadro1-titulo">Outros batismos para os ungidos</h3>
+  <div class="quadro1-corpo">
+<p>Além do batismo em água, existem outros batismos para os cristãos ungidos.</p>
+
+<ul class="quadro1-lista">
+    <li>Eles são batizados com espírito santo quando são convidados para servir com Cristo no céu. (<a class="bbl">Mat. 3:11</a>)</li>
+    <li>Eles são “batizados em Cristo” no sentido de que ficam tão unidos com Jesus que podem ser chamados de corpo de Cristo. (<a class="bbl">Gál. 3:27, 28; 1 Cor. 12:27</a>)</li>
+    <li>Eles são batizados na morte de Cristo no sentido de que seguem fielmente o exemplo de Jesus até terminarem sua vida na Terra e serem ressuscitados para a vida no céu. (<a class="bbl">Rom. 6:3-5</a>)</li>
+</ul>
+  </div>
+</div>
+
+<div><p class="pergunta"><span>15.</span> O que devemos estar determinados a fazer?</p></div>
+
+<p class="paragrafo"><span>15</span> Se você já é batizado, esteja determinado a entender bem o “ensinamento sobre batismos” *  e a viver de acordo com a promessa que fez para Jeová quando se dedicou e se batizou. Mas e se você ainda não é batizado? Será que algo está te impedindo? O próximo estudo vai falar sobre como você pode continuar se esforçando para chegar ao batismo.</p>
+
+<div class="secao-recapitulacao">
+  <hr class="linha-recapitulacao">
+  <h3 class="titulo-recapitulacao">COMO RESPONDERIA?</h3>
+  <ul class="lista-recapitulacao">
+          <li>O que significa ser imerso na água durante o batismo?</li>
+          <li>Que perguntas são feitas aos que vão se batizar, e por quê?</li>
+          <li>O que significa ser batizado “em nome do Pai, e do Filho, e do espírito santo”?</li>
+  </ul>
+</div>
+
+<div class="secao-cantico"><p><span class="cantico">Cântico 161</span> <span class="cantico-titulo">Fazer tua vontade é o meu prazer</span></p></div>
+
+<hr class="linha-divisoria">
+
+<p class="nota-rodape"><span class="simbolo-rodape">*</span> A palavra grega <em>báptisma,</em> traduzida como “batismo”, significa “imersão” ou “mergulho”. Então, batizar alguém é mergulhar a pessoa totalmente na água, e não apenas derramar um pouco de água sobre ela, como algumas religiões ensinam.</p>
+
+<p class="nota-rodape"><span class="simbolo-rodape">*</span> Aqueles homens em Éfeso tinham se batizado no “batismo de João”. (<a class="bbl">Atos 19:3</a>) João Batista avisou aos judeus que eles precisavam se arrepender dos seus pecados contra a Lei de Moisés e batizou os que se arrependeram. (<a class="bbl">Mar. 1:4, 5</a>) Mas Deus parou de aceitar o batismo de João quando a Lei de Moisés deixou de ser válida. Daí em diante, Deus passou a aceitar “um só batismo” que leva à salvação. — <a class="bbl">Efé. 4:5</a>.</p>
+
+<p class="nota-rodape"><span class="simbolo-rodape">*</span> Veja o artigo “<link><a href="https://jw.org/pt/ensinos-biblicos/perguntas/o-que-e-batismo/">O que é o batismo?</a></link>”, da série Perguntas Bíblicas Respondidas, no site jw.org e no aplicativo <em>JW Library.</em>®</p>
+
+</main>
+
+</div>
+
+<div id="modal-biblia">
+    <div class="modal-biblia-content">
+        <span id="modal-biblia-fechar">×</span>
+        <div id="modal-biblia-corpo"></div>
+    </div>
+</div>
+
+<script src="../biblia/abrev.js"></script>
+<script src="../biblia/scriptbbl.js"></script>
+<script src="../clickable/cache.js"></script>
+<script src="../clickable/agente_perguntas.js"></script>
+<script src="../clickable/agente_recap.js"></script>
+<script src="../clickable/agente-obj.js"></script>
+<script src="../clickable/agente-sub.js"></script>
+<script src="../clickable/agente-modal/agente-modal.js"></script>
+<script src="../clickable/clickable.js"></script>
+<script src="../menu/menu.js"></script>
+<script src="../mark.js"></script>
+<script src="../imagem/semanas/22-09/ilust/ilust-universal.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"></script>
+
+<script src="../imagem/swiper-zoom.js"></script>
+<script src="../imagem.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../save/config.js"></script>
+<script src="../../save/supabase.js"></script>
+<script src="../../navbar/navbar-unified.js"></script>
+<script src="../../save/sentinela-sync.js"></script>
+
+<div id="zoom-container" class="zoom-container">
+    <div class="zoom-header">
+        <button class="zoom-btn-fechar" aria-label="Fechar">×</button>
+    </div>
+    <div class="zoom-content"></div>
+    <div class="zoom-footer"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        document.querySelectorAll('.paragrafo').forEach((p, index) => {
+            if (!p.id) p.id = `paragrafo-sentinela-${index + 1}`;
+        });
+        if (window.CacheAnotacao) {
+            document.querySelectorAll('.paragrafo, .comentarios, .clickable').forEach(el => {
+                if (el.id) {
+                    const cachedContent = window.CacheAnotacao.carregar(el.id);
+                    if (cachedContent) el.innerHTML = cachedContent;
+                }
+            });
+        }
+        document.dispatchEvent(new CustomEvent('cacheRestored'));
+        if (window.UnifiedNavbar?.get()) {
+            window.UnifiedNavbar.get().setActivePage('watchtower');
+        }
+    }, 200);
+});
+</script>
+
+</body>
+</html>

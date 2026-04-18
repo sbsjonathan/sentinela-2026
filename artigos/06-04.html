@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A Sentinela</title>
+
+    <meta name="color-scheme" content="light dark">
+    <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('tema-interface') || 'system';
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = savedTheme === 'dark' || (savedTheme === 'system' && prefersDark);
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+      } catch (e) {}
+    })();
+    </script>
+    <style>
+      html, body { background: #f3f4f6; }
+      html[data-theme="dark"], html[data-theme="dark"] body { background: #000000; }
+    </style>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans:wght@400;700;800&family=Noto+Serif:ital@1&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../biblia/stylebbl.css">
+    <link rel="stylesheet" href="../clickable/clickable.css">
+    <link rel="stylesheet" href="../menu/menu.css">
+    <link rel="stylesheet" href="../clickable/agente-modal/agente-modal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css">
+    <link rel="stylesheet" href="../imagem/swiper-zoom.css">
+    <link rel="stylesheet" href="../../navbar/navbar-unified.css">
+</head>
+<body  data-estudo="06-04" style="--cor-principal-estudo: #59401d;" class="with-bottom-navbar">
+<nav class="bottom-navbar booting" data-context="navbar-context-watchtower">
+    <a href="#" class="navbar-item" data-page="home" onclick="irParaHome(event)">
+        <div class="navbar-icon icon-home"></div>
+        <span class="navbar-label">Início</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="bible" onclick="irParaBiblia(event)">
+        <div class="navbar-icon icon-bible"></div>
+        <span class="navbar-label">Bíblia</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="notes" onclick="irParaAnotacoes(event)">
+        <div class="navbar-icon icon-notes"></div>
+        <span class="navbar-label">Anotações</span>
+    </a>
+    <a href="#" class="navbar-item active" data-page="watchtower" onclick="irParaSentinela(event)">
+        <div class="navbar-icon icon-watchtower"></div>
+        <span class="navbar-label">A Sentinela</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="save" onclick="irParaSalvar(event)">
+        <div class="navbar-icon icon-save"></div>
+        <span class="navbar-label">Salvar</span>
+    </a>
+</nav>
+
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  window.semanaAtual = urlParams.get('semana') || '06-04';
+  window.estudoId = '2026281';
+</script>
+
+<div class="container">
+
+<header class="barra-estudo">
+<div>6 A 12 DE ABRIL DE 2026</div>
+</header>
+
+<main>
+
+<div class="secao-cantico"><p><span class="cantico">Cântico 82</span> <span class="cantico-titulo">‘Deixe a luz brilhar’</span></p></div>
+
+<h1 class="estudo-titulo">
+Como podemos ajudar nossos parentes descrentes?
+</h1>
+
+<p class="citacao">
+“Não desistamos de fazer o que é bom.” — <a class="bbl">GÁL. 6:9</a>.
+</p>
+
+<div class="objetivo"><p class="objetivo-titulo">OBJETIVO</p><p class="objetivo-texto">Aprender a manter um bom relacionamento com parentes que não servem a Jeová e ver como podemos ajudá-los em sentido espiritual, se possível.</p></div>
+
+<div><p class="pergunta"><span>1-2.</span> O que talvez tenha prejudicado seu relacionamento com seus parentes quando você começou a estudar a Bíblia?</p></div>
+
+<p class="paragrafo"><span>1</span> JESUS falou o seguinte para um homem que queria ser seu seguidor: “Vá para casa, para seus parentes, e conte-lhes tudo o que Jeová fez por você.” (<a class="bbl">Mar. 5:19</a>) Jesus disse isso porque sabia que a maioria das pessoas gosta de compartilhar boas notícias com parentes e amigos.</p>
+
+<p class="paragrafo"><span>2</span> Você se lembra de como se sentiu quando começou a estudar a Bíblia? Talvez tenha ficado tão empolgado que queria falar com todos os seus parentes sobre o que estava aprendendo. Mas pode ser que eles não tenham reagido muito bem. Ou talvez a forma como você falou da verdade tenha causado algum desentendimento entre vocês. Se esse for o caso, como você pode manter ou voltar a ter um bom relacionamento com seus parentes sem abrir mão dos princípios bíblicos?</p>
+
+<div><p class="pergunta"><span>3.</span> O que vamos ver neste estudo?</p></div>
+
+<p class="paragrafo"><span>3</span> Neste estudo, vamos ver quatro passos que podemos dar para termos um bom relacionamento com nossos parentes descrentes: *  (1) ter empatia, mesmo que eles não queiram aprender sobre Jeová; (2) ser sábios ao lidar com palavras e ações negativas; (3) ser pacientes e não perder a esperança; e (4) mostrar amor.</p>
+
+<h2 class="subtitulo">Tenha empatia</h2>
+
+<div><p class="pergunta"><span>4.</span> Como Jesus lidava com as pessoas que não mostravam interesse na mensagem dele?</p></div>
+
+<p class="paragrafo"><span>4</span> Jesus não desistia rapidamente das pessoas que não davam atenção à mensagem dele. Numa ilustração, ele se comparou a um agricultor que usou vários métodos para fazer uma figueira dar frutos. (<a class="bbl">Luc. 13:6-9</a>) Quando Jesus contou essa ilustração, já fazia mais de três anos que ele estava tentando ajudar os judeus a desenvolver fé. Por que Jesus continuou tentando? Porque ele tinha empatia pelas pessoas, e isso o ajudava a ser paciente com elas.</p>
+
+<div><p class="pergunta"><span>5.</span> Por que Jesus sentia pena dos judeus?</p></div>
+
+<p class="paragrafo"><span>5</span> Jesus sentia pena dos judeus porque os líderes religiosos não os ajudavam a desenvolver verdadeira fé em Deus. Para ele, aqueles judeus eram “como ovelhas sem pastor”. (<a class="bbl">Mar. 6:34</a>) Pouco antes de morrer, Jesus até chorou por Jerusalém porque ele sabia que a maioria dos seus habitantes morreria por causa da falta de fé deles. (<a class="bbl">Luc. 19:41-44</a>) Da mesma forma, se tivermos empatia e pensarmos em por que nossos parentes precisam aprender a verdade, vamos querer ajudá-los.</p>
+
+<div><p class="pergunta"><span>6.</span> Por que devemos ser pacientes com nossos parentes descrentes? (<a class="bbl">Gálatas 6:9</a>)</p></div>
+
+<p class="paragrafo"><span>6</span> <strong>Leia <a class="bbl">Gálatas 6:9</a>.</strong> Pode ser que nossos parentes ainda não tenham mostrado interesse no que acreditamos. Mesmo assim, devemos ser pacientes e não desistir de “fazer o que é bom”. Todos nós sabemos que leva tempo para uma pessoa que tem opiniões fortes mudar a forma de pensar e desenvolver fé. Talvez, no passado, você também ‘não tinha esperança e estava sem Deus no mundo’. (<a class="bbl">Efé. 2:12</a>) Mas alguém foi paciente e o ajudou. Pensar nisso pode motivar você a, se possível, ajudar seus parentes a conhecer a Jeová.</p>
+
+<h2 class="subtitulo">Seja sábio ao lidar com palavras e ações negativas</h2>
+
+<div><p class="pergunta"><span>7.</span> O que pode ter levado os irmãos de Jesus a não ter fé nele?</p></div>
+
+<p class="paragrafo"><span>7</span> Os irmãos de Jesus provavelmente ficaram sabendo dos milagres que ele realizou na Galileia. (<a class="bbl">Luc. 4:14, 22-24</a>) Mas no começo, eles não tiveram fé em Jesus. (<a class="bbl">João 7:5</a>) Por quê? A Bíblia não diz. Mas ela fala de pelo menos duas coisas que impediram alguns judeus de se tornar seguidores de Jesus. Alguns tinham medo de ser rejeitados ou perseguidos pelas pessoas à sua volta. (<a class="bbl">João 9:18-22</a>) Outros viram Jesus crescer e achavam difícil acreditar que aquele homem simples era o Filho de Deus. (<a class="bbl">Mar. 6:1-4</a>) Pode ser que os irmãos de Jesus também pensassem assim. Será que algo parecido pode estar acontecendo com nossos parentes?</p>
+
+<div><p class="pergunta"><span>8.</span> O que pode levar nossos parentes a falar e agir de modo negativo?</p></div>
+
+<p class="paragrafo"><span>8</span> <strong><em>Pense no que está por trás das palavras e ações dos seus parentes.</em></strong> É possível que os irmãos de Jesus estivessem entre aqueles que disseram que ele tinha ‘perdido o juízo’. (<a class="bbl">Mar. 3:21</a>) Por que eles talvez pensassem assim? O contexto mostra que Jesus estava tão ocupado pregando e curando as pessoas que não tinha tempo nem mesmo para comer. (<a class="bbl">Mar. 3:20</a>) Será que os parentes dele achavam que ele era um fanático? É possível. Nossos parentes também podem pensar que gastamos tempo demais com a nossa religião. Nesse caso, o melhor que podemos fazer é mostrar por ações que, na verdade, somos pessoas equilibradas.</p>
+
+<div><p class="pergunta"><span>9.</span> O que pode ajudar nossos parentes a mudar de opinião sobre as Testemunhas de Jeová? (<a class="bbl">1 Pedro 3:1, 2</a>) (Veja também as imagens.)</p></div>
+
+<p class="paragrafo"><span>9</span> <strong><em>Continue sendo bondoso e equilibrado.</em></strong> Nossas palavras e ações bondosas podem fazer nossos parentes mudar de opinião sobre as Testemunhas de Jeová. <strong>(Leia <a class="bbl">1 Pedro 3:1, 2</a>.)</strong> É comum um marido descrente se sentir deixado de lado ou até irritado quando sua esposa vai para as reuniões ou para a pregação. Uma esposa cristã jamais vai querer que seu marido se sinta assim. Por isso, ela talvez decida ajustar suas atividades espirituais e, assim, passar mais tempo com ele. Por exemplo, ela poderia sair para pregar num horário em que seu marido está ocupado ou não está em casa. Por ser equilibrada e adaptável, ela talvez ajude seu marido a repensar a opinião dele sobre as Testemunhas de Jeová.</p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026281/univ/art/2026281_univ_cnt_1_xl.jpg"
+       alt="Antes de ir pregar, uma irmã fica feliz de preparar algo para o marido comer.">
+  <figcaption>
+    Palavras e ações bondosas podem mudar a opinião que um marido ou esposa descrente tem sobre as Testemunhas de Jeová
+  </figcaption>
+</figure>
+
+<div><p class="pergunta"><span>10.</span> Como podemos imitar Jesus quando somos criticados?</p></div>
+
+<p class="paragrafo"><span>10</span> <strong><em>Não se sinta na obrigação de se defender sempre que for criticado.</em></strong> Quando alguns acusaram Jesus de comer e beber demais, ele não ficou se defendendo. Em vez disso, ele incentivou as pessoas a analisar os fatos. (<a class="bbl">Mat. 11:19</a>) Ele também mostrou por ações que era equilibrado e gostava de aproveitar as coisas boas da vida. (Veja também <a class="bbl">João 2:2, 6-10</a>.) Quando seus parentes criticarem você, não fique tentando provar que eles estão errados. Assim como Jesus, mostre por ações que você é uma pessoa equilibrada e feliz, e deixe que eles tirem suas próprias conclusões. Seu bom exemplo pode ajudá-los a perceber que as coisas negativas que ouviram sobre nós não são verdade.</p>
+
+<h2 class="subtitulo">Seja paciente e não perca a esperança</h2>
+
+<div><p class="pergunta"><span>11.</span> Como Jesus lidou com os irmãos dele?</p></div>
+
+<p class="paragrafo"><span>11</span> Os Evangelhos mostram que Jesus era paciente com seus irmãos. Por exemplo, tudo indica que eles estavam presentes quando Jesus realizou o seu primeiro milagre em Caná. (<a class="bbl">João 2:11, 12</a>) Mesmo assim, os irmãos de Jesus não tiveram fé nele. Mas Jesus não se afastou deles. E a Bíblia mostra que, uns três anos depois do milagre em Caná, Jesus continuava sendo bondoso com seus irmãos. — <a class="bbl">João 7:5-8</a>.</p>
+
+<div><p class="pergunta"><span>12.</span> O que pode nos ajudar a não perder a esperança de que alguns dos nossos parentes vão servir a Jeová?</p></div>
+
+<p class="paragrafo"><span>12</span> Nós sabemos que Jeová é muito misericordioso. Lembrar disso pode nos ajudar a não perder a esperança de que um dia alguns dos nossos parentes vão se achegar a ele. Quando a religião falsa for destruída, nossos parentes talvez lembrem que falamos que isso ia acontecer. *  (<a class="bbl">Apo. 17:16</a>) Pode até ser que eles decidam servir a Jeová junto com a gente depois que a grande tribulação começar. Até lá, dê todo o apoio que puder aos seus parentes quando eles passarem por dificuldades. Ao sentir que são amados de verdade, talvez eles aceitem melhor os ensinos da Bíblia.</p>
+
+<h2 class="subtitulo">Mostre amor</h2>
+
+<div><p class="pergunta"><span>13.</span> Que impressão não queremos dar aos nossos parentes?</p></div>
+
+<p class="paragrafo"><span>13</span> É verdade que estamos bem ocupados no nosso serviço a Jeová. Mas não queremos dar aos nossos parentes a impressão de que não temos tempo para eles ou que não os amamos mais. (<a class="bbl">Mat. 7:12</a>) Como podemos mostrar que nos importamos com eles? Vamos ver algumas maneiras.</p>
+
+<div><p class="pergunta"><span>14-15.</span> Como podemos mostrar que amamos nossos parentes que não são cristãos? Dê um exemplo.</p></div>
+
+<p class="paragrafo"><span>14</span> <strong><em>Mantenha contato e mostre seu amor por eles.</em></strong> Uma forma de mostrar que amamos nossos parentes é sempre contar para eles como estamos. Algo que podemos fazer é mandar uma mensagem junto com algumas fotos que tiramos numa festinha com os amigos ou numa viagem. Um presente simples ou uma cartinha podem ser o suficiente para melhorar nosso relacionamento com eles. Quando fazemos todo o possível para ser bondosos com nossos parentes, eles conseguem sentir nosso amor.</p>
+
+<p class="paragrafo"><span>15</span> Veja o exemplo de uma irmã na Armênia chamada Anna. Os parentes dela passam bastante tempo juntos, principalmente em aniversários e feriados. Quando Anna aprendeu a verdade, seus parentes ficaram preocupados achando que isso ia atrapalhar o relacionamento entre eles. Eles também ficaram com medo de que a religião fosse deixar a vida dela mais difícil. O que Anna fez para deixar os parentes mais tranquilos? Ela conta: “Quando visito meus parentes, eu conto para eles como está a minha vida e o que eu ando fazendo. Eu também costumo convidá-los para ir na minha casa e apresento meus amigos para eles. Assim, eles conhecem as pessoas com quem eu convivo e se sentem à vontade perto delas. Muitos parentes já me disseram que dá pra ver como eu estou feliz, e eles não ficam mais preocupados comigo.”</p>
+
+<div><p class="pergunta"><span>16.</span> Como Jesus mostrou que se importava com seu irmão Tiago? (Veja também a nota.)</p></div>
+
+<p class="paragrafo"><span>16</span> <strong><em>Mostre que você se importa com eles.</em></strong> Depois de ser ressuscitado, Jesus fez questão de aparecer para o seu irmão Tiago e conversar com ele. (<a class="bbl">1 Cor. 15:7</a>) Consegue imaginar como Tiago se sentiu quando percebeu que Jesus não tinha desistido dele? Provavelmente, foi nessa ocasião que Tiago se convenceu de que Jesus era o Messias. Depois disso, Tiago talvez tenha ajudado outros membros da família a chegar à mesma conclusão. *  — <a class="bbl">Atos 1:14</a>.</p>
+
+<div><p class="pergunta"><span>17.</span> Como podemos colocar em prática o que diz <a class="bbl">Romanos 12:15</a>? (Veja também a imagem.)</p></div>
+
+<p class="paragrafo"><span>17</span> <strong>Leia <a class="bbl">Romanos 12:15</a>.</strong> Quando ficamos do lado dos nossos parentes nos momentos mais importantes, tanto nos bons como nos ruins, podemos ajudá-los a ter um ponto de vista diferente sobre nós. *  Por exemplo, quando um parente vai ter um filho, podemos dar os parabéns e também um presente para mostrar que estamos felizes por ele. Quando nossos parentes perdem alguém na morte, podemos falar algo ou escrever uma mensagem para consolá-los e também dar alguma ajuda prática. E é claro que não devemos nos esquecer de ligar, mandar uma mensagem ou visitá-los, principalmente quando eles estiverem enfrentando uma situação difícil.</p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026281/univ/art/2026281_univ_cnt_2_xl.jpg"
+       alt="A mesma irmã tira um tempo para visitar a sogra, que não é Testemunha de Jeová.">
+  <figcaption>
+    Ficar do lado dos seus parentes quando eles mais precisam pode mudar o que eles pensam sobre você e suas crenças
+  </figcaption>
+</figure>
+
+<div class="quadro1">
+  <h3 class="quadro1-titulo">Devo ir ao casamento ou ao funeral de um parente?</h3>
+  <div class="quadro1-corpo">
+<p>Casamentos e funerais são ocasiões em que as famílias normalmente se reúnem. Antes de decidir se você vai estar presente, talvez seja bom considerar os seguintes princípios bíblicos:</p>
+
+<ul class="quadro1-lista">
+    <li>Será que o casamento ou o funeral vai incluir cerimônias ou costumes religiosos que desagradam a Jeová? (<a class="bbl">2 Cor. 6:14, 15</a>)</li>
+    <li>Se eu estiver presente, vou me sentir pressionado a participar de alguma forma? (<a class="bbl">Pro. 22:3</a>)</li>
+    <li>Seus parentes sabem que você não vai participar de nada que seja contra o que a Bíblia ensina?</li>
+    <li>Se você for a um local onde acontecem cultos religiosos, como outros irmãos vão se sentir? (<a class="bbl">Fil. 1:10</a>)</li>
+</ul>
+
+<p>Não importa sua decisão, sempre deixe claro para seus parentes qual é sua posição, mas faça isso de maneira bondosa. E lembre-se que o mais importante é ter uma consciência limpa e agradar a Jeová. *</p>
+  </div>
+</div>
+
+<div><p class="pergunta"><span>18.</span> Como podemos imitar André?</p></div>
+
+<p class="paragrafo"><span>18</span> <strong><em>Apresente alguns irmãos para os seus parentes.</em></strong> Logo que entendeu que Jesus era o Messias, André o apresentou para seu irmão Pedro. (<a class="bbl">João 1:40-42</a>) Será que você pode fazer algo parecido? Por exemplo, o que acha de convidar um parente para assistir a uma reunião ou para sair com seus amigos? À medida que nossos parentes conhecerem outras Testemunhas de Jeová, eles vão perceber que somos pessoas normais e que só queremos fazer o bem.</p>
+
+<div><p class="pergunta"><span>19.</span> Mesmo que nossos parentes não entendam nossas crenças, como devemos tratá-los? (<a class="bbl">1 Pedro 3:15</a>)</p></div>
+
+<p class="paragrafo"><span>19</span> <strong>Leia <a class="bbl">1 Pedro 3:15</a>.</strong> Nossos parentes podem até não entender por que não fazemos certas coisas, mas eles sempre vão lembrar que os tratamos com bondade e respeito. Já que não passamos tempo com eles em algumas celebrações e feriados, eles vão ficar felizes se compensarmos esse tempo em outro momento. Por exemplo, podemos visitá-los, convidá-los para um almoço e dar presentes para eles em outras ocasiões.</p>
+
+<h2 class="subtitulo">Jamais desista dos seus parentes</h2>
+
+<div><p class="pergunta"><span>20.</span> Por que o exemplo de Tiago nos anima?</p></div>
+
+<p class="paragrafo"><span>20</span> Tiago não seguiu a Jesus durante o ministério dele na Terra. Mas com o tempo, ele se tornou um discípulo e passou a dar muito valor às coisas que Jesus tinha ensinado. (<a class="bbl">Gál. 1:18, 19; 2:9</a>) Por exemplo, ele escreveu uma carta aos cristãos que contém muitas lições parecidas com as que Jesus ensinou no Sermão do Monte. *</p>
+
+<div><p class="pergunta"><span>21.</span> Por que não devemos desistir dos nossos parentes descrentes?</p></div>
+
+<p class="paragrafo"><span>21</span> Mesmo nos esforçando bastante, pode ser que nossos parentes continuem com uma atitude negativa ou não queiram aprender sobre Jeová. Mas por que não devemos desistir deles? Porque cada vez que somos bondosos, estamos imitando o nosso Deus misericordioso, Jeová, e seu Filho, Jesus. (<a class="bbl">Luc. 6:33, 36</a>) Com o tempo, nossa atitude amorosa pode levar nossos parentes a mudar de opinião sobre as Testemunhas de Jeová. Pode até ser que eles se lembrem de alguns ensinos da Bíblia que compartilhamos com eles no passado. Se não desistirmos de nossos parentes, poderemos ter a alegria de ver alguns deles se juntar a nós para servir a Jeová!</p>
+
+<div class="secao-recapitulacao">
+  <hr class="linha-recapitulacao">
+  <h3 class="titulo-recapitulacao">COMO RESPONDERIA?</h3>
+  <ul class="lista-recapitulacao">
+          <li>Por que devemos ter empatia pelos nossos parentes descrentes?</li>
+          <li>Por que precisamos ser pacientes e não perder a esperança?</li>
+          <li>Como podemos mostrar que amamos nossos parentes descrentes?</li>
+  </ul>
+</div>
+
+<div class="secao-cantico"><p><span class="cantico">Cântico 60</span> <span class="cantico-titulo">A mensagem de vida</span></p></div>
+
+<hr class="linha-divisoria">
+
+<p class="nota-rodape"><span class="simbolo-rodape">*</span> <strong>ENTENDA MELHOR:</strong> Na Bíblia, a palavra <strong>“descrente”</strong> pode se referir a uma pessoa que não tem religião, a alguém que não acredita em Deus ou a uma pessoa que não adora a Jeová. (<a class="bbl">1 Cor. 7:12</a>; veja também a <a class="bbl">nota de estudo</a> “esposa descrente”.) Neste estudo, a palavra “descrente” é usada para se referir a uma pessoa que não é Testemunha de Jeová.</p>
+
+<p class="nota-rodape"><span class="simbolo-rodape">*</span> Veja o artigo “Como Jeová vai julgar as pessoas no futuro?”, na <link><a href="https://jw.org/pt/biblioteca/revistas/sentinela-estudo-maio-2024/Como-Jeov%C3%A1-vai-julgar-as-pessoas-no-futuro/#p19">Sentinela de maio de 2024, p. 11, pars. 11-13</a></link>.</p>
+
+<p class="nota-rodape"><span class="simbolo-rodape">*</span> Pelo menos dois irmãos de Jesus, Tiago e Judas, se tornaram cristãos depois que Jesus morreu e foi ressuscitado.</p>
+
+<p class="nota-rodape"><span class="simbolo-rodape">*</span> Veja o quadro “ <link><a href="https://jw.org/pt/biblioteca/revistas/sentinela-estudo-fevereiro-2026/Como-podemos-ajudar-nossos-parentes-descrentes/#link0">Devo ir ao casamento ou ao funeral de um parente?</a></link>”.</p>
+
+<p class="nota-rodape"><span class="simbolo-rodape">*</span> Compare <a class="bbl">Tiago 1:2</a> com <a class="bbl">Mateus 5:11, 12</a>; <a class="bbl">Tiago 1:19</a> com <a class="bbl">Mateus 5:22</a>; <a class="bbl">Tiago 1:22; 2:24</a> com <a class="bbl">Mateus 7:21</a>; <a class="bbl">Tiago 2:13</a> com <a class="bbl">Mateus 5:7; 6:14, 15</a>.</p>
+
+<p class="nota-rodape"><span class="simbolo-rodape">*</span> Para ver mais princípios relacionados a esse assunto, leia “Perguntas dos Leitores” na <link><a href="https://jw.org/pt/biblioteca/revistas/w20020515/Perguntas-dos-Leitores/">Sentinela de 15 de maio de 2002</a></link> e na <link><a href="https://jw.org/pt/biblioteca/revistas/w20071115/Perguntas-dos-Leitores/">Sentinela de 15 de novembro de 2007</a></link>.</p>
+
+</main>
+
+</div>
+
+<div id="modal-biblia">
+    <div class="modal-biblia-content">
+        <span id="modal-biblia-fechar">×</span>
+        <div id="modal-biblia-corpo"></div>
+    </div>
+</div>
+
+<script src="../biblia/abrev.js"></script>
+<script src="../biblia/scriptbbl.js"></script>
+<script src="../clickable/cache.js"></script>
+<script src="../clickable/agente_perguntas.js"></script>
+<script src="../clickable/agente_recap.js"></script>
+<script src="../clickable/agente-obj.js"></script>
+<script src="../clickable/agente-sub.js"></script>
+<script src="../clickable/agente-modal/agente-modal.js"></script>
+<script src="../clickable/clickable.js"></script>
+<script src="../menu/menu.js"></script>
+<script src="../mark.js"></script>
+<script src="../imagem/semanas/22-09/ilust/ilust-universal.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"></script>
+
+<script src="../imagem/swiper-zoom.js"></script>
+<script src="../imagem.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../save/config.js"></script>
+<script src="../../save/supabase.js"></script>
+<script src="../../navbar/navbar-unified.js"></script>
+<script src="../../save/sentinela-sync.js"></script>
+
+<div id="zoom-container" class="zoom-container">
+    <div class="zoom-header">
+        <button class="zoom-btn-fechar" aria-label="Fechar">×</button>
+    </div>
+    <div class="zoom-content"></div>
+    <div class="zoom-footer"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        document.querySelectorAll('.paragrafo').forEach((p, index) => {
+            if (!p.id) p.id = `paragrafo-sentinela-${index + 1}`;
+        });
+        if (window.CacheAnotacao) {
+            document.querySelectorAll('.paragrafo, .comentarios, .clickable').forEach(el => {
+                if (el.id) {
+                    const cachedContent = window.CacheAnotacao.carregar(el.id);
+                    if (cachedContent) el.innerHTML = cachedContent;
+                }
+            });
+        }
+        document.dispatchEvent(new CustomEvent('cacheRestored'));
+        if (window.UnifiedNavbar?.get()) {
+            window.UnifiedNavbar.get().setActivePage('watchtower');
+        }
+    }, 200);
+});
+</script>
+
+</body>
+</html>
