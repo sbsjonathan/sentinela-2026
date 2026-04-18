@@ -31,6 +31,19 @@
         </div>
     </div>
 
+    <section class="offline-panel" aria-label="Download offline">
+        <button id="offline-download-btn" class="offline-btn" type="button">
+            📥 Baixar modo offline
+        </button>
+        <div class="offline-progress-wrap" aria-live="polite">
+            <div class="offline-progress-track">
+                <div id="offline-progress-bar" class="offline-progress-bar"></div>
+            </div>
+            <p id="offline-progress-text" class="offline-progress-text">0%</p>
+        </div>
+        <p id="offline-status" class="offline-status" hidden>✅ Offline ativo permanentemente neste aparelho.</p>
+    </section>
+
     <script>
     (() => {
         const egg = document.getElementById('dev-egg');
@@ -83,5 +96,6 @@
     </script>
     <script src="navbar/navbar-unified.js"></script>
     <script src="main.js"></script>
+    <script src="offline-manager.js"></script>
 </body>
 </html>
