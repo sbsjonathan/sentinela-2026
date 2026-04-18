@@ -56,7 +56,8 @@
 
     async function cacheAssetsWithProgress(assets) {
         const cache = await caches.open(CACHE_NAME);
-        const allAssets = ['/', ...assets.filter(Boolean)];
+        const uniqueAssets = Array.from(new Set(['index.html', ...assets.filter(Boolean)]));
+        const allAssets = uniqueAssets;
         let completed = 0;
         const failures = [];
 
@@ -91,13 +92,16 @@
             const failures = await cacheAssetsWithProgress(assets);
             setProgress(100, '100% concluído');
 
+            if (failures.length > 0) {
+                progressText.textContent = `Concluído com ${failures.length} falha(s). Toque para tentar novamente.`;
+                button.disabled = false;
+                button.textContent = '📥 Repetir download offline';
+                console.warn('Falhas de cache offline:', failures);
+                return;
+            }
+
             persistOfflineFlag();
             showOfflineState();
-
-            if (failures.length > 0) {
-                progressText.textContent = `100% com ${failures.length} falhas`;
-                console.warn('Falhas de cache offline:', failures);
-            }
         } catch (error) {
             console.error('Erro no download offline:', error);
             setProgress(0, 'Erro ao baixar');

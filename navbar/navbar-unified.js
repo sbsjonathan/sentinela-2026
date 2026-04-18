@@ -562,17 +562,32 @@ async function irParaSalvar(event) {
 // Lógica de basePath simplificada para funcionar no Koder
 function getBasePath() {
     const path = window.location.pathname.toLowerCase();
-    if (path.endsWith('/') || path.endsWith('/index.html') || path === '/index.html') {
+
+    // Página inicial na raiz do projeto.
+    if (path.endsWith('/index.html') || path.endsWith('/')) {
         return './';
     }
 
-    const partes = path.split('/').filter(Boolean);
-    if (partes.length <= 1) {
-        return './';
+    // Páginas de artigo da Sentinela: /sentinela/artigos/*.html
+    if (path.includes('/sentinela/artigos/')) {
+        return '../../';
     }
 
-    const profundidade = Math.max(0, partes.length - 1);
-    return '../'.repeat(profundidade);
+    // Páginas um nível abaixo da raiz (biblia/, richtext/, save/, sentinela/*.html)
+    if (
+        path.includes('/biblia/') ||
+        path.includes('/richtext/') ||
+        path.includes('/save/') ||
+        path.includes('/sentinela/')
+    ) {
+        // Exceção para subpastas internas de sentinela (menu/, clickable/, imagem/, etc.).
+        if (path.includes('/sentinela/menu/') || path.includes('/sentinela/clickable/') || path.includes('/sentinela/imagem/')) {
+            return '../../';
+        }
+        return '../';
+    }
+
+    return '../';
 }
 
 function getSemanaParam() {
