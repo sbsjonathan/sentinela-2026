@@ -521,11 +521,6 @@ async function irParaAnotacoes(event) {
 async function irParaSentinela(event) {
     event.preventDefault();
 
-    const currentPath = window.location.pathname.toLowerCase();
-    if (currentPath.includes('sentinela') && !currentPath.includes('em-breve')) {
-        return;
-    }
-
     // SEMPRE usa a semana atual no formato DD-MM (segunda-feira da semana).
     // Isso evita que a navbar herde a semana do `?semana=` quando você está na página de anotações.
     const hoje = new Date();
@@ -544,7 +539,12 @@ async function irParaSentinela(event) {
     window.semanaAtual = semana;
 
     const basePath = getBasePath();
-    window.location.href = `${basePath}sentinela/artigos/${semana}.html`;
+    const destino = `${basePath}sentinela/artigos/${semana}.html`;
+    const paginaAtual = window.location.pathname.toLowerCase();
+    if (paginaAtual.endsWith(`/sentinela/artigos/${semana}.html`)) {
+        return;
+    }
+    window.location.href = destino;
 }
 
 async function irParaSalvar(event) {
@@ -562,20 +562,17 @@ async function irParaSalvar(event) {
 // Lógica de basePath simplificada para funcionar no Koder
 function getBasePath() {
     const path = window.location.pathname.toLowerCase();
-
-    // A home do projeto fica na raiz.
-    if (path.endsWith('index.html') || path.endsWith('/')) {
+    if (path.endsWith('/') || path.endsWith('/index.html') || path === '/index.html') {
         return './';
     }
 
-    // Os artigos ficam dentro de sentinela/artigos/, então dali
-    // precisamos subir dois níveis para voltar à raiz do projeto.
-    if (path.includes('/sentinela/artigos/')) {
-        return '../../';
+    const partes = path.split('/').filter(Boolean);
+    if (partes.length <= 1) {
+        return './';
     }
 
-    // Páginas como biblia/, richtext/ e save/ ficam um nível abaixo.
-    return '../';
+    const profundidade = Math.max(0, partes.length - 1);
+    return '../'.repeat(profundidade);
 }
 
 function getSemanaParam() {
