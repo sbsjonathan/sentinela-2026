@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reunião de Domingo</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Reunião">
+    <link rel="apple-touch-icon" href="icone-192.png">
+
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="navbar/navbar-unified.css">
+</head>
+<body>
+    <header class="header">
+        <button id="dev-egg" class="dev-egg" type="button" aria-label="Área do desenvolvedor"></button>
+        <h1 class="titulo-principal">Reunião de Domingo</h1>
+        <p class="semana-atual" id="semana-display">Carregando...</p>
+    </header>
+
+    <div class="carousel-container">
+        <div class="slides-wrapper" id="slides-wrapper">
+        </div>
+
+        <button class="nav-arrow prev" id="prev-btn">‹</button>
+        <button class="nav-arrow next" id="next-btn">›</button>
+
+        <div class="nav-indicators" id="indicators">
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        const egg = document.getElementById('dev-egg');
+        if (!egg) return;
+
+        const TARGET_URL = 'worker/worker.html';
+        const REQUIRED_TAPS = 5;
+        const TAP_GAP_MS = 650;
+
+        let tapCount = 0;
+        let lastTapAt = 0;
+
+        const reset = () => {
+            tapCount = 0;
+            lastTapAt = 0;
+        };
+
+        const registerTap = () => {
+            const now = Date.now();
+
+            if (!lastTapAt || (now - lastTapAt) > TAP_GAP_MS) {
+                tapCount = 0;
+            }
+
+            tapCount += 1;
+            lastTapAt = now;
+
+            egg.classList.remove('tap-1', 'tap-2', 'tap-3', 'tap-4', 'tap-5');
+            egg.classList.add(`tap-${Math.min(tapCount, REQUIRED_TAPS)}`);
+
+            if (tapCount >= REQUIRED_TAPS) {
+                reset();
+                window.location.href = TARGET_URL;
+                return;
+            }
+
+            clearTimeout(egg._tapTimer);
+            egg._tapTimer = setTimeout(() => {
+                egg.classList.remove('tap-1', 'tap-2', 'tap-3', 'tap-4', 'tap-5');
+                reset();
+            }, TAP_GAP_MS);
+        };
+
+        egg.addEventListener('click', registerTap);
+        egg.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            registerTap();
+        }, { passive: false });
+    })();
+    </script>
+    
+    <script src="navbar/navbar-unified.js"></script>
+    <script src="main.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js');
+            });
+        }
+    </script>
+</body>
+</html>
