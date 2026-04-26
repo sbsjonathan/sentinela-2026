@@ -19,8 +19,8 @@
 
 
 html.ios-webapp {
-    --safe-area-inset-top: max(env(safe-area-inset-top, 0px), 44px);
-    --safe-area-inset-bottom: max(env(safe-area-inset-bottom, 0px), 34px);
+    --safe-area-inset-top: min(max(env(safe-area-inset-top, 0px), 24px), 52px);
+    --safe-area-inset-bottom: min(max(env(safe-area-inset-bottom, 0px), 16px), 40px);
 }
 
 .bottom-navbar {

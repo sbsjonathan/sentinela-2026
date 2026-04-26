@@ -134,5 +134,9 @@ html, body {
 
 
 html.ios-webapp .editor-scroll {
-  padding-top: calc(28px * var(--font-scale-global));
+  padding-top: calc(34px * var(--font-scale-global));
+}
+
+html.ios-webapp .app {
+  padding-top: calc(var(--safe-area-inset-top) + 8px);
 }
