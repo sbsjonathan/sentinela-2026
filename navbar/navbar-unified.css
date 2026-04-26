@@ -37,6 +37,7 @@
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
+    height: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
     background: var(--navbar-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -44,10 +45,10 @@
     display: flex !important;
     justify-content: space-around !important;
     align-items: center !important;
-    padding-top: 10px !important;
+    padding-top: 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
-    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
     z-index: 1000 !important;
     box-shadow: var(--navbar-shadow);
     transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease, background 0.3s ease;
@@ -88,24 +89,21 @@
     text-decoration: none !important;
     color: var(--navbar-inactive);
     transition: all 0.2s ease;
-    padding: 6px 12px !important;
-    border-radius: 8px;
+    padding: 0 !important;
+    height: 65px !important;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    min-width: 60px !important;
-    max-width: 60px !important;
+    width: 20% !important;
     position: relative;
     cursor: pointer;
     margin: 0 !important;
     box-sizing: border-box !important;
-    flex-shrink: 0 !important;
-    flex-grow: 0 !important;
-    flex-basis: auto !important;
 }
 
 .navbar-item:active {
     transform: scale(0.92);
     background: var(--navbar-hover-bg);
+    border-radius: 8px;
 }
 
 .navbar-item.active {
@@ -115,7 +113,7 @@
 .navbar-item.active::before {
     content: '';
     position: absolute;
-    top: -8px;
+    top: 4px;
     left: 50%;
     transform: translateX(-50%);
     width: 4px;
@@ -138,10 +136,6 @@
     background-repeat: no-repeat !important;
     background-position: center !important;
     transition: filter 0.2s ease;
-    flex-shrink: 0 !important;
-    margin-top: 0 !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
 }
 
 .navbar-item.active .navbar-icon {
@@ -159,7 +153,7 @@
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    max-width: 60px !important;
+    width: 100% !important;
 }
 
 .icon-home { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2'%3E%3Cpath d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3Cpolyline points='9,22 9,12 15,12 15,22'/%3E%3C/svg%3E"); }
@@ -186,8 +180,8 @@
 .navbar-item[data-page="save"].logged-in::before {
     content: '';
     position: absolute;
-    top: 2px;
-    right: 8px;
+    top: 12px;
+    right: 18px;
     width: 8px;
     height: 8px;
     background: #10b981;
@@ -198,7 +192,7 @@
 [data-theme="dark"] .navbar-item[data-page="save"].logged-in::before { border-color: #000; }
 
 .page-save .sync-status-badge {
-    position: fixed; top: 50px; right: 15px; background: #10b981; color: white;
+    position: fixed; top: calc(20px + env(safe-area-inset-top)); right: 15px; background: #10b981; color: white;
     padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600;
     z-index: 999; opacity: 0; transform: translateX(100%); transition: all 0.3s ease;
     box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
@@ -226,17 +220,7 @@
     75% { transform: translateX(3px); }
 }
 
-@media (max-width: 390px) {
-    .navbar-item { min-width: 50px; padding: 6px 8px !important; }
-    .navbar-icon { width: 20px !important; height: 20px !important; }
-    .navbar-label { font-size: 9px !important; }
-}
-@media (max-width: 320px) {
-    .navbar-item { min-width: 45px; padding: 6px 6px !important; }
-    .navbar-label { font-size: 8px !important; }
-}
-
-.with-bottom-navbar { padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+.with-bottom-navbar { padding-bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important; }
 .bottom-navbar { -webkit-transform: translateZ(0); transform: translateZ(0); will-change: transform, opacity; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 
 .navbar-context-home .navbar-item[data-page="home"] { color: var(--navbar-active); }
