@@ -67,6 +67,17 @@
     });
 })();
 
+
+(function applyMobileSafeAreaProfile() {
+    const root = document.documentElement;
+    const ua = navigator.userAgent || '';
+    const isiOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+
+    root.classList.toggle('ios-device', !!isiOS);
+    root.classList.toggle('ios-webapp', !!(isiOS && isStandalone));
+})();
+
 class UnifiedNavbar {
     constructor() {
         this.navbar = null;

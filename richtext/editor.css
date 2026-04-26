@@ -58,7 +58,7 @@ html, body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--safe-area-inset-top);
 }
 
 .editor-scroll {
@@ -68,7 +68,7 @@ html, body {
   -webkit-overflow-scrolling: touch; 
   overscroll-behavior-y: contain; 
   padding: calc(18px * var(--font-scale-global)) calc(24px * var(--font-scale-global)) 0;
-  padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(75px + var(--safe-area-inset-bottom));
 }
 
 .page {

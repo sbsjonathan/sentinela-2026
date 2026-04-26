@@ -57,7 +57,7 @@ body {
     background: var(--bg-body);
     margin: 0;
     padding: 0;
-    padding-top: env(safe-area-inset-top, 0px);
+    padding-top: var(--safe-area-inset-top);
     transition: background-color 0.3s ease;
 }
 

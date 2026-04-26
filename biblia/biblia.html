@@ -65,7 +65,8 @@
     font-size: var(--font-base-global);
     background-color: var(--bg-color);
     padding: calc(20px * var(--font-scale-global));
-    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    padding-top: calc(20px * var(--font-scale-global) + var(--safe-area-inset-top));
+    padding-bottom: calc(80px + var(--safe-area-inset-bottom));
     transition: background-color 0.3s ease, color 0.3s ease;
     }
 
