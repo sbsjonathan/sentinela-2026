@@ -44,10 +44,10 @@
     display: flex !important;
     justify-content: space-around !important;
     align-items: center !important;
-    padding-top: 8px !important;
+    padding-top: 10px !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
-    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
     z-index: 1000 !important;
     box-shadow: var(--navbar-shadow);
     transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease, background 0.3s ease;
@@ -236,7 +236,7 @@
     .navbar-label { font-size: 8px !important; }
 }
 
-.with-bottom-navbar { padding-bottom: calc(85px + env(safe-area-inset-bottom, 0px)); }
+.with-bottom-navbar { padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
 .bottom-navbar { -webkit-transform: translateZ(0); transform: translateZ(0); will-change: transform, opacity; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 
 .navbar-context-home .navbar-item[data-page="home"] { color: var(--navbar-active); }
