@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Livros Bíblicos</title>
     
     <script>
@@ -68,6 +68,20 @@
     padding-top: calc(20px * var(--font-scale-global) + var(--safe-area-inset-top));
     padding-bottom: calc(80px + var(--safe-area-inset-bottom));
     transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+
+
+    html.ios-webapp body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--safe-area-inset-top);
+        background: var(--bg-color);
+        z-index: 10;
+        pointer-events: none;
     }
 
     .search-container {

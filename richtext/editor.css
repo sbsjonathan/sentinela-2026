@@ -131,3 +131,8 @@ html, body {
 :root.perf-low .toggle-title,
 :root.perf-low .text-content,
 :root.perf-low .paragraph-content { transition: none !important; animation: none !important; }
+
+
+html.ios-webapp .editor-scroll {
+  padding-top: calc(28px * var(--font-scale-global));
+}

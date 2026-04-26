@@ -162,3 +162,16 @@ figure figcaption a.alt-link, figure figcaption .alt-link { text-decoration: non
 .quadro1-lista li{ position: relative; padding-left: calc(18px * var(--font-scale-global)); margin: 0 0 calc(16px * var(--font-scale-global)) 0; line-height: 1.45; color: var(--text-main); }
 .quadro1-lista li::before{ content: ""; position: absolute; left: 0; top: 0.68em; width: calc(6px * var(--font-scale-global)); height: calc(6px * var(--font-scale-global)); border-radius: 50%; background: var(--text-main); }
 .quadro1 .footnote-link{ margin-left: calc(2px * var(--font-scale-global)); padding: calc(2px * var(--font-scale-global)) calc(6px * var(--font-scale-global)); border-radius: calc(8px * var(--font-scale-global)); }
+
+
+html.ios-webapp body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--safe-area-inset-top);
+    background: var(--cor-principal-estudo);
+    z-index: 1200;
+    pointer-events: none;
+}
