@@ -67,6 +67,7 @@ html, body {
   -webkit-overflow-scrolling: touch; 
   overscroll-behavior-y: contain; 
   padding: calc(18px * var(--font-scale-global)) calc(24px * var(--font-scale-global)) 0;
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
 }
 
 .page {
@@ -122,7 +123,6 @@ html, body {
   100% { background-position: 0% 50%; filter: saturate(0.96) brightness(0.98); }
 }
 
-
 :root.perf-low .row,
 :root.perf-low .toggle-arrow,
 :root.perf-low .toggle-arrow .triangle,
@@ -130,3 +130,7 @@ html, body {
 :root.perf-low .toggle-title,
 :root.perf-low .text-content,
 :root.perf-low .paragraph-content { transition: none !important; animation: none !important; }
+
+body.with-bottom-navbar {
+    padding-bottom: 0 !important;
+}
