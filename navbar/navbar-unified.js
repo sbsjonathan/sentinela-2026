@@ -112,16 +112,16 @@ class UnifiedNavbar {
         if (path.includes('index.html') || path === '/' || path.endsWith('/')) {
             return 'home';
         }
-        if (path.includes('biblia') || path.includes('livro') || path.includes('capitulo')) {
+        if (path.includes('/biblia/') || path.includes('livro') || path.includes('capitulo')) {
             return 'bible';
         }
-        if (path.includes('richtext') || path.includes('anotacoes') || path.includes('container')) {
+        if (path.includes('/richtext/') || path.includes('container.html')) {
             return 'notes';
         }
-        if (path.includes('sentinela') || path.includes('em-breve')) {
+        if (path.includes('/sentinela/artigos/')) {
             return 'watchtower';
         }
-        if (path.includes('save') || path.includes('auth')) {
+        if (path.includes('/save/')) {
             return 'save';
         }
         
@@ -193,37 +193,6 @@ class UnifiedNavbar {
                 </a>
             </nav>
         `;
-    }
-
-    getSemanaParam() {
-        if (window.semanaAtual) {
-            return `?semana=${window.semanaAtual}`;
-        }
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const semanaURL = urlParams.get('semana');
-        if (semanaURL) {
-            return `?semana=${semanaURL}`;
-        }
-
-        const semanaCalculada = this.calcularSemanaAtual();
-        return `?semana=${semanaCalculada}`;
-    }
-
-    getBasePath() {
-        // LÓGICA SIMPLIFICADA PARA KODER:
-        // Se o nome do arquivo for index.html (e estivermos na raiz), usamos ./
-        // Qualquer outro arquivo do seu projeto (container.html, biblia.html, etc) 
-        // está dentro de pastas, então usamos ../
-        
-        const path = window.location.pathname;
-        
-        // Verifica se termina exatamente com index.html ou é apenas uma barra /
-        if (path.endsWith('index.html') || path.endsWith('/')) {
-            return './';
-        }
-        
-        return '../';
     }
 
     setupScrollBehavior() {
@@ -375,31 +344,6 @@ class UnifiedNavbar {
         });
     }
 
-    detectCurrentWeek() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const semanaURL = urlParams.get('semana');
-        if (semanaURL) {
-            return semanaURL;
-        }
-
-        if (window.semanaAtual) {
-            return window.semanaAtual;
-        }
-
-        return this.calcularSemanaAtual();
-    }
-
-    showFeedback(item, type) {
-        item.classList.remove('loading', 'success', 'error');
-        item.classList.add(type);
-        
-        if (type !== 'loading') {
-            setTimeout(() => {
-                item.classList.remove(type);
-            }, 600);
-        }
-    }
-
     updateActiveState() {
         if (!this.navbar) return;
 
@@ -438,27 +382,9 @@ class UnifiedNavbar {
         }
     }
 
-    onLogout() {
-        localStorage.removeItem('supabase_user');
-        localStorage.removeItem('last_login');
-        
-        const saveButton = this.navbar?.querySelector('[data-page="save"]');
-        if (saveButton) {
-            saveButton.classList.remove('logged-in');
-        }
-    }
-
     setActivePage(page) {
         this.currentPage = page;
         this.updateActiveState();
-    }
-
-    show() {
-        this.showNavbar();
-    }
-
-    hide() {
-        this.hideNavbar();
     }
 
     destroy() {
@@ -477,42 +403,34 @@ class UnifiedNavbar {
 
 async function irParaHome(event) {
     event.preventDefault();
-    
     const currentPath = window.location.pathname.toLowerCase();
-    
-    if (currentPath.includes('index.html') || currentPath === '/' || currentPath.endsWith('/')) {
+    if (currentPath.endsWith('index.html') || currentPath.endsWith('/') || !currentPath.includes('.html')) {
         if (window.carousel && window.carousel.currentSlide !== 3) {
             window.carousel.goToSlide(3, true);
         }
         return;
     }
-    
     const basePath = getBasePath();
     window.location.href = `${basePath}index.html`;
 }
 
 async function irParaBiblia(event) {
     event.preventDefault();
-    
     const basePath = getBasePath();
     const currentPath = window.location.pathname.toLowerCase();
-    
-    if (currentPath.includes('biblia') || currentPath.includes('livro') || currentPath.includes('capitulo')) {
+    if (currentPath.includes('/biblia/')) {
         window.location.href = `${basePath}biblia/biblia.html?from=navbar`;
-    } 
-    else {
+    } else {
         window.location.href = `${basePath}biblia/biblia.html`;
     }
 }
 
 async function irParaAnotacoes(event) {
     event.preventDefault();
-    
     const currentPath = window.location.pathname.toLowerCase();
-    if (currentPath.includes('richtext') || currentPath.includes('anotacoes') || currentPath.includes('container')) {
+    if (currentPath.includes('/richtext/')) {
         return;
     }
-    
     const basePath = getBasePath();
     const semanaParam = getSemanaParam();
     window.location.href = `${basePath}richtext/container.html${semanaParam}`;
@@ -520,61 +438,53 @@ async function irParaAnotacoes(event) {
 
 async function irParaSentinela(event) {
     event.preventDefault();
-
     const currentPath = window.location.pathname.toLowerCase();
-    if (currentPath.includes('sentinela') && !currentPath.includes('em-breve')) {
+    
+    if (currentPath.includes('/artigos/') && !currentPath.includes('em-breve')) {
         return;
     }
 
-    // SEMPRE usa a semana atual no formato DD-MM (segunda-feira da semana).
-    // Isso evita que a navbar herde a semana do `?semana=` quando você está na página de anotações.
-    const hoje = new Date();
-    const diaDaSemana = hoje.getDay(); // 0 = Domingo, 1 = Segunda, etc.
-    const diasParaSegunda = diaDaSemana === 0 ? -6 : 1 - diaDaSemana;
+    let semana = window.semanaAtual;
+    if (!semana) {
+        const urlParams = new URLSearchParams(window.location.search);
+        semana = urlParams.get('semana');
+    }
+    
+    if (!semana) {
+        const hoje = new Date();
+        const diaDaSemana = hoje.getDay();
+        const diasParaSegunda = diaDaSemana === 0 ? -6 : 1 - diaDaSemana;
+        const segundaFeira = new Date(hoje);
+        segundaFeira.setDate(hoje.getDate() + diasParaSegunda);
+        segundaFeira.setHours(0, 0, 0, 0);
+        const dia = String(segundaFeira.getDate()).padStart(2, '0');
+        const mes = String(segundaFeira.getMonth() + 1).padStart(2, '0');
+        semana = `${dia}-${mes}`;
+    }
 
-    const segundaFeira = new Date(hoje);
-    segundaFeira.setDate(hoje.getDate() + diasParaSegunda);
-    segundaFeira.setHours(0, 0, 0, 0);
-
-    const dia = String(segundaFeira.getDate()).padStart(2, '0');
-    const mes = String(segundaFeira.getMonth() + 1).padStart(2, '0');
-    const semana = `${dia}-${mes}`;
-
-    // Mantém disponível globalmente para outras rotas/uso futuro.
     window.semanaAtual = semana;
-
     const basePath = getBasePath();
     window.location.href = `${basePath}sentinela/artigos/${semana}.html`;
 }
 
 async function irParaSalvar(event) {
     event.preventDefault();
-    
     const currentPath = window.location.pathname.toLowerCase();
-    if (currentPath.includes('save') || currentPath.includes('auth')) {
+    if (currentPath.includes('/save/')) {
         return;
     }
-    
     const basePath = getBasePath();
     window.location.href = `${basePath}save/auth-supabase.html`;
 }
 
-// Lógica de basePath simplificada para funcionar no Koder
 function getBasePath() {
     const path = window.location.pathname.toLowerCase();
-
-    // A home do projeto fica na raiz.
-    if (path.endsWith('index.html') || path.endsWith('/')) {
+    if (path.endsWith('index.html') || path.endsWith('/') || path.indexOf('.html') === -1) {
         return './';
     }
-
-    // Os artigos ficam dentro de sentinela/artigos/, então dali
-    // precisamos subir dois níveis para voltar à raiz do projeto.
     if (path.includes('/sentinela/artigos/')) {
         return '../../';
     }
-
-    // Páginas como biblia/, richtext/ e save/ ficam um nível abaixo.
     return '../';
 }
 
@@ -582,30 +492,23 @@ function getSemanaParam() {
     if (window.semanaAtual) {
         return `?semana=${window.semanaAtual}`;
     }
-
     const urlParams = new URLSearchParams(window.location.search);
     const semanaURL = urlParams.get('semana');
     if (semanaURL) {
         return `?semana=${semanaURL}`;
     }
-
     const hoje = new Date();
     const diaDaSemana = hoje.getDay();
     const diasParaSegunda = diaDaSemana === 0 ? -6 : 1 - diaDaSemana;
-    
     const segundaFeira = new Date(hoje);
     segundaFeira.setDate(hoje.getDate() + diasParaSegunda);
-    
     const dia = String(segundaFeira.getDate()).padStart(2, '0');
     const mes = String(segundaFeira.getMonth() + 1).padStart(2, '0');
-    const semanaCalculada = `${dia}-${mes}`;
-    
-    return `?semana=${semanaCalculada}`;
+    return `?semana=${dia}-${mes}`;
 }
 
 window.UnifiedNavbar = {
     instance: null,
-    
     init(options = {}) {
         if (this.instance) {
             this.instance.destroy();
@@ -613,22 +516,13 @@ window.UnifiedNavbar = {
         this.instance = new UnifiedNavbar(options);
         return this.instance;
     },
-    
     get() {
         return this.instance;
     },
-    
     setActivePage(page) {
         if (this.instance) {
             this.instance.setActivePage(page);
         }
-    },
-
-    getSemanaCalculada() {
-        if (this.instance) {
-            return this.instance.getSemanaCalculada();
-        }
-        return null;
     }
 };
 
@@ -637,11 +531,9 @@ function bootUnifiedNavbarWhenPossible() {
         document.addEventListener('DOMContentLoaded', bootUnifiedNavbarWhenPossible, { once: true });
         return;
     }
-
     if (window.UnifiedNavbar.instance) {
         return;
     }
-
     window.UnifiedNavbar.init();
 }
 
