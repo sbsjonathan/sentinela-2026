@@ -69,6 +69,19 @@ body {
     overflow-x: hidden;
 }
 
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--safe-top);
+    background: var(--cor-principal-estudo);
+    z-index: 995;
+    pointer-events: none;
+}
+
 .container {
     max-width: 640px;
     margin: 40px auto;
