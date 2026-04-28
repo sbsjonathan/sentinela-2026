@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#e4e3e8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Salmos - Capítulos</title>
+
+  
+  <script>
+    (function() {
+      try {
+        var size = localStorage.getItem('tamanho-fonte-global') || 16;
+        var safeSize = Math.min(26, Math.max(16, parseInt(size, 10)));
+        var scale = safeSize / 16;
+        var root = document.documentElement;
+        root.style.setProperty('--tamanho-fonte', safeSize + 'px');
+        root.style.setProperty('--font-base-default', '16');
+        root.style.setProperty('--font-base-global', safeSize + 'px');
+        root.style.setProperty('--font-scale-global', scale);
+        root.dataset.fontSizeGlobal = safeSize;
+
+        var theme = localStorage.getItem('tema-interface') || 'system';
+        var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        root.dataset.themeChoice = theme;
+      } catch(e) {}
+    })();
+  </script>
+
+<!-- Estilo global da pasta 'livro' -->
+  <link rel="stylesheet" href="../style-bbl.css">
+  <!-- Navbar unificada -->
+  <link rel="stylesheet" href="../../../navbar/navbar-unified.css">
+</head>
+<body>
+
+  <div class="container">
+    <!-- Cabeçalho -->
+    <div class="header">
+      <a href="../../biblia.html?resume=0" class="back-button">< Voltar</a>
+      <span class="title">Salmos</span>
+    </div>
+
+    <!-- Grade de Capítulos (1 a 150) -->
+    <div class="chapters-grid">
+      <a href="../../capitulo.html?livro=salmos&cap=1" class="chapter-button">1</a>
+      <a href="../../capitulo.html?livro=salmos&cap=2" class="chapter-button">2</a>
+      <a href="../../capitulo.html?livro=salmos&cap=3" class="chapter-button">3</a>
+      <a href="../../capitulo.html?livro=salmos&cap=4" class="chapter-button">4</a>
+      <a href="../../capitulo.html?livro=salmos&cap=5" class="chapter-button">5</a>
+      <a href="../../capitulo.html?livro=salmos&cap=6" class="chapter-button">6</a>
+      <a href="../../capitulo.html?livro=salmos&cap=7" class="chapter-button">7</a>
+      <a href="../../capitulo.html?livro=salmos&cap=8" class="chapter-button">8</a>
+      <a href="../../capitulo.html?livro=salmos&cap=9" class="chapter-button">9</a>
+      <a href="../../capitulo.html?livro=salmos&cap=10" class="chapter-button">10</a>
+      <a href="../../capitulo.html?livro=salmos&cap=11" class="chapter-button">11</a>
+      <a href="../../capitulo.html?livro=salmos&cap=12" class="chapter-button">12</a>
+      <a href="../../capitulo.html?livro=salmos&cap=13" class="chapter-button">13</a>
+      <a href="../../capitulo.html?livro=salmos&cap=14" class="chapter-button">14</a>
+      <a href="../../capitulo.html?livro=salmos&cap=15" class="chapter-button">15</a>
+      <a href="../../capitulo.html?livro=salmos&cap=16" class="chapter-button">16</a>
+      <a href="../../capitulo.html?livro=salmos&cap=17" class="chapter-button">17</a>
+      <a href="../../capitulo.html?livro=salmos&cap=18" class="chapter-button">18</a>
+      <a href="../../capitulo.html?livro=salmos&cap=19" class="chapter-button">19</a>
+      <a href="../../capitulo.html?livro=salmos&cap=20" class="chapter-button">20</a>
+      <a href="../../capitulo.html?livro=salmos&cap=21" class="chapter-button">21</a>
+      <a href="../../capitulo.html?livro=salmos&cap=22" class="chapter-button">22</a>
+      <a href="../../capitulo.html?livro=salmos&cap=23" class="chapter-button">23</a>
+      <a href="../../capitulo.html?livro=salmos&cap=24" class="chapter-button">24</a>
+      <a href="../../capitulo.html?livro=salmos&cap=25" class="chapter-button">25</a>
+      <a href="../../capitulo.html?livro=salmos&cap=26" class="chapter-button">26</a>
+      <a href="../../capitulo.html?livro=salmos&cap=27" class="chapter-button">27</a>
+      <a href="../../capitulo.html?livro=salmos&cap=28" class="chapter-button">28</a>
+      <a href="../../capitulo.html?livro=salmos&cap=29" class="chapter-button">29</a>
+      <a href="../../capitulo.html?livro=salmos&cap=30" class="chapter-button">30</a>
+      <a href="../../capitulo.html?livro=salmos&cap=31" class="chapter-button">31</a>
+      <a href="../../capitulo.html?livro=salmos&cap=32" class="chapter-button">32</a>
+      <a href="../../capitulo.html?livro=salmos&cap=33" class="chapter-button">33</a>
+      <a href="../../capitulo.html?livro=salmos&cap=34" class="chapter-button">34</a>
+      <a href="../../capitulo.html?livro=salmos&cap=35" class="chapter-button">35</a>
+      <a href="../../capitulo.html?livro=salmos&cap=36" class="chapter-button">36</a>
+      <a href="../../capitulo.html?livro=salmos&cap=37" class="chapter-button">37</a>
+      <a href="../../capitulo.html?livro=salmos&cap=38" class="chapter-button">38</a>
+      <a href="../../capitulo.html?livro=salmos&cap=39" class="chapter-button">39</a>
+      <a href="../../capitulo.html?livro=salmos&cap=40" class="chapter-button">40</a>
+      <a href="../../capitulo.html?livro=salmos&cap=41" class="chapter-button">41</a>
+      <a href="../../capitulo.html?livro=salmos&cap=42" class="chapter-button">42</a>
+      <a href="../../capitulo.html?livro=salmos&cap=43" class="chapter-button">43</a>
+      <a href="../../capitulo.html?livro=salmos&cap=44" class="chapter-button">44</a>
+      <a href="../../capitulo.html?livro=salmos&cap=45" class="chapter-button">45</a>
+      <a href="../../capitulo.html?livro=salmos&cap=46" class="chapter-button">46</a>
+      <a href="../../capitulo.html?livro=salmos&cap=47" class="chapter-button">47</a>
+      <a href="../../capitulo.html?livro=salmos&cap=48" class="chapter-button">48</a>
+      <a href="../../capitulo.html?livro=salmos&cap=49" class="chapter-button">49</a>
+      <a href="../../capitulo.html?livro=salmos&cap=50" class="chapter-button">50</a>
+      <a href="../../capitulo.html?livro=salmos&cap=51" class="chapter-button">51</a>
+      <a href="../../capitulo.html?livro=salmos&cap=52" class="chapter-button">52</a>
+      <a href="../../capitulo.html?livro=salmos&cap=53" class="chapter-button">53</a>
+      <a href="../../capitulo.html?livro=salmos&cap=54" class="chapter-button">54</a>
+      <a href="../../capitulo.html?livro=salmos&cap=55" class="chapter-button">55</a>
+      <a href="../../capitulo.html?livro=salmos&cap=56" class="chapter-button">56</a>
+      <a href="../../capitulo.html?livro=salmos&cap=57" class="chapter-button">57</a>
+      <a href="../../capitulo.html?livro=salmos&cap=58" class="chapter-button">58</a>
+      <a href="../../capitulo.html?livro=salmos&cap=59" class="chapter-button">59</a>
+      <a href="../../capitulo.html?livro=salmos&cap=60" class="chapter-button">60</a>
+      <a href="../../capitulo.html?livro=salmos&cap=61" class="chapter-button">61</a>
+      <a href="../../capitulo.html?livro=salmos&cap=62" class="chapter-button">62</a>
+      <a href="../../capitulo.html?livro=salmos&cap=63" class="chapter-button">63</a>
+      <a href="../../capitulo.html?livro=salmos&cap=64" class="chapter-button">64</a>
+      <a href="../../capitulo.html?livro=salmos&cap=65" class="chapter-button">65</a>
+      <a href="../../capitulo.html?livro=salmos&cap=66" class="chapter-button">66</a>
+      <a href="../../capitulo.html?livro=salmos&cap=67" class="chapter-button">67</a>
+      <a href="../../capitulo.html?livro=salmos&cap=68" class="chapter-button">68</a>
+      <a href="../../capitulo.html?livro=salmos&cap=69" class="chapter-button">69</a>
+      <a href="../../capitulo.html?livro=salmos&cap=70" class="chapter-button">70</a>
+      <a href="../../capitulo.html?livro=salmos&cap=71" class="chapter-button">71</a>
+      <a href="../../capitulo.html?livro=salmos&cap=72" class="chapter-button">72</a>
+      <a href="../../capitulo.html?livro=salmos&cap=73" class="chapter-button">73</a>
+      <a href="../../capitulo.html?livro=salmos&cap=74" class="chapter-button">74</a>
+      <a href="../../capitulo.html?livro=salmos&cap=75" class="chapter-button">75</a>
+      <a href="../../capitulo.html?livro=salmos&cap=76" class="chapter-button">76</a>
+      <a href="../../capitulo.html?livro=salmos&cap=77" class="chapter-button">77</a>
+      <a href="../../capitulo.html?livro=salmos&cap=78" class="chapter-button">78</a>
+      <a href="../../capitulo.html?livro=salmos&cap=79" class="chapter-button">79</a>
+      <a href="../../capitulo.html?livro=salmos&cap=80" class="chapter-button">80</a>
+      <a href="../../capitulo.html?livro=salmos&cap=81" class="chapter-button">81</a>
+      <a href="../../capitulo.html?livro=salmos&cap=82" class="chapter-button">82</a>
+      <a href="../../capitulo.html?livro=salmos&cap=83" class="chapter-button">83</a>
+      <a href="../../capitulo.html?livro=salmos&cap=84" class="chapter-button">84</a>
+      <a href="../../capitulo.html?livro=salmos&cap=85" class="chapter-button">85</a>
+      <a href="../../capitulo.html?livro=salmos&cap=86" class="chapter-button">86</a>
+      <a href="../../capitulo.html?livro=salmos&cap=87" class="chapter-button">87</a>
+      <a href="../../capitulo.html?livro=salmos&cap=88" class="chapter-button">88</a>
+      <a href="../../capitulo.html?livro=salmos&cap=89" class="chapter-button">89</a>
+      <a href="../../capitulo.html?livro=salmos&cap=90" class="chapter-button">90</a>
+      <a href="../../capitulo.html?livro=salmos&cap=91" class="chapter-button">91</a>
+      <a href="../../capitulo.html?livro=salmos&cap=92" class="chapter-button">92</a>
+      <a href="../../capitulo.html?livro=salmos&cap=93" class="chapter-button">93</a>
+      <a href="../../capitulo.html?livro=salmos&cap=94" class="chapter-button">94</a>
+      <a href="../../capitulo.html?livro=salmos&cap=95" class="chapter-button">95</a>
+      <a href="../../capitulo.html?livro=salmos&cap=96" class="chapter-button">96</a>
+      <a href="../../capitulo.html?livro=salmos&cap=97" class="chapter-button">97</a>
+      <a href="../../capitulo.html?livro=salmos&cap=98" class="chapter-button">98</a>
+      <a href="../../capitulo.html?livro=salmos&cap=99" class="chapter-button">99</a>
+      <a href="../../capitulo.html?livro=salmos&cap=100" class="chapter-button">100</a>
+      <a href="../../capitulo.html?livro=salmos&cap=101" class="chapter-button">101</a>
+      <a href="../../capitulo.html?livro=salmos&cap=102" class="chapter-button">102</a>
+      <a href="../../capitulo.html?livro=salmos&cap=103" class="chapter-button">103</a>
+      <a href="../../capitulo.html?livro=salmos&cap=104" class="chapter-button">104</a>
+      <a href="../../capitulo.html?livro=salmos&cap=105" class="chapter-button">105</a>
+      <a href="../../capitulo.html?livro=salmos&cap=106" class="chapter-button">106</a>
+      <a href="../../capitulo.html?livro=salmos&cap=107" class="chapter-button">107</a>
+      <a href="../../capitulo.html?livro=salmos&cap=108" class="chapter-button">108</a>
+      <a href="../../capitulo.html?livro=salmos&cap=109" class="chapter-button">109</a>
+      <a href="../../capitulo.html?livro=salmos&cap=110" class="chapter-button">110</a>
+      <a href="../../capitulo.html?livro=salmos&cap=111" class="chapter-button">111</a>
+      <a href="../../capitulo.html?livro=salmos&cap=112" class="chapter-button">112</a>
+      <a href="../../capitulo.html?livro=salmos&cap=113" class="chapter-button">113</a>
+      <a href="../../capitulo.html?livro=salmos&cap=114" class="chapter-button">114</a>
+      <a href="../../capitulo.html?livro=salmos&cap=115" class="chapter-button">115</a>
+      <a href="../../capitulo.html?livro=salmos&cap=116" class="chapter-button">116</a>
+      <a href="../../capitulo.html?livro=salmos&cap=117" class="chapter-button">117</a>
+      <a href="../../capitulo.html?livro=salmos&cap=118" class="chapter-button">118</a>
+      <a href="../../capitulo.html?livro=salmos&cap=119" class="chapter-button">119</a>
+      <a href="../../capitulo.html?livro=salmos&cap=120" class="chapter-button">120</a>
+      <a href="../../capitulo.html?livro=salmos&cap=121" class="chapter-button">121</a>
+      <a href="../../capitulo.html?livro=salmos&cap=122" class="chapter-button">122</a>
+      <a href="../../capitulo.html?livro=salmos&cap=123" class="chapter-button">123</a>
+      <a href="../../capitulo.html?livro=salmos&cap=124" class="chapter-button">124</a>
+      <a href="../../capitulo.html?livro=salmos&cap=125" class="chapter-button">125</a>
+      <a href="../../capitulo.html?livro=salmos&cap=126" class="chapter-button">126</a>
+      <a href="../../capitulo.html?livro=salmos&cap=127" class="chapter-button">127</a>
+      <a href="../../capitulo.html?livro=salmos&cap=128" class="chapter-button">128</a>
+      <a href="../../capitulo.html?livro=salmos&cap=129" class="chapter-button">129</a>
+      <a href="../../capitulo.html?livro=salmos&cap=130" class="chapter-button">130</a>
+      <a href="../../capitulo.html?livro=salmos&cap=131" class="chapter-button">131</a>
+      <a href="../../capitulo.html?livro=salmos&cap=132" class="chapter-button">132</a>
+      <a href="../../capitulo.html?livro=salmos&cap=133" class="chapter-button">133</a>
+      <a href="../../capitulo.html?livro=salmos&cap=134" class="chapter-button">134</a>
+      <a href="../../capitulo.html?livro=salmos&cap=135" class="chapter-button">135</a>
+      <a href="../../capitulo.html?livro=salmos&cap=136" class="chapter-button">136</a>
+      <a href="../../capitulo.html?livro=salmos&cap=137" class="chapter-button">137</a>
+      <a href="../../capitulo.html?livro=salmos&cap=138" class="chapter-button">138</a>
+      <a href="../../capitulo.html?livro=salmos&cap=139" class="chapter-button">139</a>
+      <a href="../../capitulo.html?livro=salmos&cap=140" class="chapter-button">140</a>
+      <a href="../../capitulo.html?livro=salmos&cap=141" class="chapter-button">141</a>
+      <a href="../../capitulo.html?livro=salmos&cap=142" class="chapter-button">142</a>
+      <a href="../../capitulo.html?livro=salmos&cap=143" class="chapter-button">143</a>
+      <a href="../../capitulo.html?livro=salmos&cap=144" class="chapter-button">144</a>
+      <a href="../../capitulo.html?livro=salmos&cap=145" class="chapter-button">145</a>
+      <a href="../../capitulo.html?livro=salmos&cap=146" class="chapter-button">146</a>
+      <a href="../../capitulo.html?livro=salmos&cap=147" class="chapter-button">147</a>
+      <a href="../../capitulo.html?livro=salmos&cap=148" class="chapter-button">148</a>
+      <a href="../../capitulo.html?livro=salmos&cap=149" class="chapter-button">149</a>
+      <a href="../../capitulo.html?livro=salmos&cap=150" class="chapter-button">150</a>
+    </div>
+  </div>
+
+  <!-- Navbar é carregada aqui -->
+  <script src="../../../navbar/navbar-unified.js"></script>
+  
+  <!-- SCRIPT DE CORREÇÃO PARA A NAVEGAÇÃO (idêntico às outras páginas de livro) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const navbar = document.querySelector('.bottom-navbar');
+      if (!navbar) return;
+
+      // 1. Força a navbar a ficar sempre visível nesta página
+      navbar.classList.remove('hidden');
+      navbar.style.transform = 'transformY(0)';
+      navbar.style.transition = 'none';
+
+      // 2. Garante que o ícone "Bíblia" esteja ativo
+      const activeItem = navbar.querySelector('[data-page="bible"]');
+      if (activeItem) {
+          navbar.querySelectorAll('.navbar-item').forEach(item => item.classList.remove('active'));
+          activeItem.classList.add('active');
+      }
+
+      // 3. Helper para obter o parâmetro da semana (compatível com navbar-unified.js)
+      function getSemanaParam() {
+        if (window.semanaAtual) return `?semana=${window.semanaAtual}`;
+        const urlParams = new URLSearchParams(window.location.search);
+        const semanaURL = urlParams.get('semana');
+        if (semanaURL) return `?semana=${semanaURL}`;
+        
+        const hoje = new Date();
+        const diaDaSemana = hoje.getDay();
+        const diasParaSegunda = diaDaSemana === 0 ? -6 : 1 - diaDaSemana;
+        const segundaFeira = new Date(hoje);
+        segundaFeira.setDate(hoje.getDate() + diasParaSegunda);
+        const dia = String(segundaFeira.getDate()).padStart(2, '0');
+        const mes = String(segundaFeira.getMonth() + 1).padStart(2, '0');
+        return `?semana=${dia}-${mes}`;
+      }
+
+      // 4. Sobrescreve os links da navbar com os caminhos corretos para esta página
+      const navLinks = {
+        'home': '../../../index.html',
+        'bible': '../../biblia.html?resume=0',
+        'notes': `../../../richtext/container.html${getSemanaParam()}`,
+        'save': '../../../save/auth-supabase.html'
+      };
+
+      for (const [page, url] of Object.entries(navLinks)) {
+        const item = navbar.querySelector(`.navbar-item[data-page="${page}"]`);
+        if (item) {
+          item.setAttribute('onclick', ''); 
+          item.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = url;
+          });
+        }
+      }
+      
+      // Lógica especial para A Sentinela
+      const sentinelaItem = navbar.querySelector('.navbar-item[data-page="watchtower"]');
+      if (sentinelaItem) {
+        sentinelaItem.setAttribute('onclick', '');
+        sentinelaItem.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const semana = getSemanaParam().substring(8); // Extrai 'dd-mm'
+          const basePath = '../../../';
+          try {
+            const response = await fetch(`${basePath}sentinela/artigos/${semana}.html`, { method: 'HEAD' });
+            if (response.ok) {
+              window.location.href = `${basePath}sentinela/artigos/${semana}.html`;
+            } else {
+              window.location.href = `${basePath}sentinela/em-breve.html?semana=${semana}`;
+            }
+          } catch (error) {
+            window.location.href = `${basePath}sentinela/em-breve.html?semana=${semana}`;
+          }
+        });
+      }
+    });
+  </script>
+
+  <!-- Script para salvar/retomar posição da página (mantido igual) -->
+  <script>
+  (function () {
+    const LAST_KEY = 'bbl:lastPage';
+    const el = document.scrollingElement || document.documentElement;
+
+    const book = (function(){
+      const file = (location.pathname.split('/').pop() || '').toLowerCase();
+      return file.replace(/\.html$/, '');
+    })();
+
+    const POS_KEY = 'bbl:pos:livro:' + book;
+    const debounce = (fn,ms)=>{ let t; return ()=>{ clearTimeout(t); t=setTimeout(fn,ms); }; };
+
+    function save(){
+      try{
+        localStorage.setItem(POS_KEY, String(el.scrollTop|0));
+        localStorage.setItem(LAST_KEY, JSON.stringify({
+          page:'livro',
+          href: location.href,
+          book,
+          scrollTop: el.scrollTop|0,
+          t: Date.now(),
+          schema: 1
+        }));
+      }catch(e){}
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const y = parseInt(localStorage.getItem(POS_KEY)||'0',10);
+      if (y) el.scrollTop = y;
+      save();
+    });
+
+    window.addEventListener('scroll', debounce(save, 200), {passive:true});
+    window.addEventListener('pagehide', save);
+  })();
+  </script>
+</body>
+</html>
