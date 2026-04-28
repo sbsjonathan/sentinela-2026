@@ -211,19 +211,7 @@ class UnifiedNavbar {
     }
 
     getBasePath() {
-        // LÓGICA SIMPLIFICADA PARA KODER:
-        // Se o nome do arquivo for index.html (e estivermos na raiz), usamos ./
-        // Qualquer outro arquivo do seu projeto (container.html, biblia.html, etc) 
-        // está dentro de pastas, então usamos ../
-        
-        const path = window.location.pathname;
-        
-        // Verifica se termina exatamente com index.html ou é apenas uma barra /
-        if (path.endsWith('index.html') || path.endsWith('/')) {
-            return './';
-        }
-        
-        return '../';
+        return getProjectRootPath();
     }
 
     setupScrollBehavior() {
@@ -559,23 +547,25 @@ async function irParaSalvar(event) {
     window.location.href = `${basePath}save/auth-supabase.html`;
 }
 
-// Lógica de basePath simplificada para funcionar no Koder
+function getProjectRootPath() {
+    const path = window.location.pathname;
+    const folders = path.split('/').filter(Boolean);
+    const topFolders = ['sentinela', 'biblia', 'richtext', 'save', 'navbar', 'worker'];
+    const folderIndex = folders.findIndex(part => topFolders.includes(part.toLowerCase()));
+
+    if (folderIndex >= 0) {
+        return '/' + folders.slice(0, folderIndex).join('/') + '/';
+    }
+
+    if (path.endsWith('/')) {
+        return path;
+    }
+
+    return path.replace(/[^/]*$/, '');
+}
+
 function getBasePath() {
-    const path = window.location.pathname.toLowerCase();
-
-    // A home do projeto fica na raiz.
-    if (path.endsWith('index.html') || path.endsWith('/')) {
-        return './';
-    }
-
-    // Os artigos ficam dentro de sentinela/artigos/, então dali
-    // precisamos subir dois níveis para voltar à raiz do projeto.
-    if (path.includes('/sentinela/artigos/')) {
-        return '../../';
-    }
-
-    // Páginas como biblia/, richtext/ e save/ ficam um nível abaixo.
-    return '../';
+    return getProjectRootPath();
 }
 
 function getSemanaParam() {
