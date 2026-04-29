@@ -52,7 +52,9 @@ body {
     background-color: var(--bg-header);
     margin: 0 calc((-15px * var(--font-scale-global)) - var(--safe-right)) calc(15px * var(--font-scale-global)) calc((-15px * var(--font-scale-global)) - var(--safe-left));
     box-sizing: border-box;
-    position: relative;
+    position: sticky;
+    top: 0;
+    z-index: 100;
     transition: background-color 0.3s ease;
 }
 
