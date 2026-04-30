@@ -107,24 +107,25 @@ class UnifiedNavbar {
     }
 
     detectCurrentPage() {
-        const path = window.location.pathname.toLowerCase();
-        
-        if (path.includes('index.html') || path === '/' || path.endsWith('/')) {
-            return 'home';
-        }
-        if (path.includes('biblia') || path.includes('livro') || path.includes('capitulo')) {
-            return 'bible';
-        }
-        if (path.includes('richtext') || path.includes('anotacoes') || path.includes('container')) {
+        const info = getPathInfo();
+        const path = info.path;
+
+        if (isCurrentNotesPath(info)) {
             return 'notes';
         }
-        if (path.includes('sentinela') || path.includes('em-breve')) {
+        if (info.segments.includes('biblia') || info.segments.includes('livro') || info.fileName === 'capitulo.html') {
+            return 'bible';
+        }
+        if (info.segments.includes('sentinela') || info.fileName === 'em-breve.html') {
             return 'watchtower';
         }
-        if (path.includes('save') || path.includes('auth')) {
+        if (info.segments.includes('save') || info.fileName.includes('auth')) {
             return 'save';
         }
-        
+        if (info.fileName === 'index.html' || path === '/' || path.endsWith('/')) {
+            return 'home';
+        }
+
         return 'home';
     }
 
@@ -211,19 +212,7 @@ class UnifiedNavbar {
     }
 
     getBasePath() {
-        // LÓGICA SIMPLIFICADA PARA KODER:
-        // Se o nome do arquivo for index.html (e estivermos na raiz), usamos ./
-        // Qualquer outro arquivo do seu projeto (container.html, biblia.html, etc) 
-        // está dentro de pastas, então usamos ../
-        
-        const path = window.location.pathname;
-        
-        // Verifica se termina exatamente com index.html ou é apenas uma barra /
-        if (path.endsWith('index.html') || path.endsWith('/')) {
-            return './';
-        }
-        
-        return '../';
+        return getBasePath();
     }
 
     setupScrollBehavior() {
@@ -507,12 +496,14 @@ async function irParaBiblia(event) {
 
 async function irParaAnotacoes(event) {
     event.preventDefault();
-    
-    const currentPath = window.location.pathname.toLowerCase();
-    if (currentPath.includes('richtext') || currentPath.includes('anotacoes') || currentPath.includes('container')) {
+
+    // Importante: não use `pathname.includes('anotacoes')` aqui.
+    // Em navegador real o projeto pode estar dentro de uma pasta chamada
+    // "anotacoes", e isso fazia o botão parecer morto.
+    if (isCurrentNotesPath()) {
         return;
     }
-    
+
     const basePath = getBasePath();
     const semanaParam = getSemanaParam();
     window.location.href = `${basePath}richtext/container.html${semanaParam}`;
@@ -559,23 +550,62 @@ async function irParaSalvar(event) {
     window.location.href = `${basePath}save/auth-supabase.html`;
 }
 
-// Lógica de basePath simplificada para funcionar no Koder
-function getBasePath() {
-    const path = window.location.pathname.toLowerCase();
+// Resolve o caminho até a raiz do projeto de forma robusta.
+// Funciona no Koder, no navegador local e em subpastas do servidor.
+function getPathInfo() {
+    const rawPath = window.location.pathname || '/';
+    const path = rawPath.toLowerCase();
+    const segments = path.split('/').filter(Boolean).map(segment => {
+        try {
+            return decodeURIComponent(segment).toLowerCase();
+        } catch (error) {
+            return segment.toLowerCase();
+        }
+    });
 
-    // A home do projeto fica na raiz.
-    if (path.endsWith('index.html') || path.endsWith('/')) {
+    const last = segments[segments.length - 1] || '';
+    const hasFileName = /\.[a-z0-9]+$/i.test(last);
+    const fileName = hasFileName ? last : '';
+
+    return { path, segments, fileName, hasFileName };
+}
+
+function isCurrentNotesPath(info = getPathInfo()) {
+    const { segments, fileName } = info;
+
+    // Página real das anotações/richtext.
+    // Não confunda com uma pasta externa do projeto chamada "anotacoes".
+    return segments.includes('richtext') || fileName === 'container.html';
+}
+
+function getBasePath() {
+    const info = getPathInfo();
+    const { segments, hasFileName } = info;
+
+    const rootFolders = ['biblia', 'sentinela', 'richtext', 'save', 'navbar'];
+    let rootIndex = -1;
+
+    for (const folder of rootFolders) {
+        const index = segments.indexOf(folder);
+        if (index !== -1 && (rootIndex === -1 || index < rootIndex)) {
+            rootIndex = index;
+        }
+    }
+
+    // Se não achou uma pasta conhecida, assume que já está na raiz.
+    if (rootIndex === -1) {
         return './';
     }
 
-    // Os artigos ficam dentro de sentinela/artigos/, então dali
-    // precisamos subir dois níveis para voltar à raiz do projeto.
-    if (path.includes('/sentinela/artigos/')) {
-        return '../../';
-    }
+    // Quantos níveis existem entre a pasta atual e a raiz do projeto.
+    // Ex.: /biblia/biblia.html -> ../
+    // Ex.: /biblia/livro/01-genesis/genesis.html -> ../../../
+    // Ex.: /sentinela/artigos/15-09.html -> ../../
+    const levelsUp = hasFileName
+        ? segments.length - rootIndex - 1
+        : segments.length - rootIndex;
 
-    // Páginas como biblia/, richtext/ e save/ ficam um nível abaixo.
-    return '../';
+    return levelsUp > 0 ? '../'.repeat(levelsUp) : './';
 }
 
 function getSemanaParam() {
