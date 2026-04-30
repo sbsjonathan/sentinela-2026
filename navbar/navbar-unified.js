@@ -106,6 +106,191 @@ function joinProjectPath(relativePath) {
     return new URL(relativePath.replace(/^\/+/, ''), getProjectRootURL()).href;
 }
 
+
+function isIndexPageNavbar() {
+    const path = window.location.pathname.toLowerCase();
+    return path.includes('index.html') || path === '/' || path.endsWith('/');
+}
+
+function buildIndexEmBreveURL(semana) {
+    const url = new URL('index.html', getProjectRootURL());
+    if (semana) url.searchParams.set('semana', semana);
+    url.searchParams.set('estado', 'em-breve');
+    return url.href;
+}
+
+function formatSemanaNavbar(semana) {
+    const normalized = normalizeSemana(semana);
+    if (!normalized) return '';
+    const [dia, mes] = normalized.split('-');
+    return dia + '/' + mes;
+}
+
+function installIndexEmBreveStyles() {
+    if (document.getElementById('navbarSentinelaEmBreveStyles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'navbarSentinelaEmBreveStyles';
+    style.textContent = `
+        body.sentinela-em-breve-mode { min-height: 100dvh; }
+
+        #navbarSentinelaEmBreve {
+            min-height: calc(100dvh - 96px);
+            padding: max(26px, env(safe-area-inset-top)) 18px calc(96px + env(safe-area-inset-bottom));
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: color-mix(in srgb, var(--cor-global, #2a7d7d) 6%, #f5f6f7);
+            color: #1f2933;
+        }
+
+        [data-theme="dark"] #navbarSentinelaEmBreve,
+        .dark #navbarSentinelaEmBreve {
+            background: color-mix(in srgb, var(--cor-global, #2a7d7d) 10%, #050505);
+            color: #f2f2f7;
+        }
+
+        .navbar-sentinela-embreve-card {
+            width: min(420px, 100%);
+            border-radius: 26px;
+            padding: 26px 22px 24px;
+            text-align: center;
+            background: color-mix(in srgb, #fff 88%, var(--cor-global, #2a7d7d) 12%);
+            box-shadow: 0 14px 42px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.08);
+        }
+
+        [data-theme="dark"] .navbar-sentinela-embreve-card,
+        .dark .navbar-sentinela-embreve-card {
+            background: color-mix(in srgb, #1c1c1e 82%, var(--cor-global, #2a7d7d) 18%);
+            box-shadow: 0 14px 42px rgba(0,0,0,.42), 0 0 0 .5px rgba(255,255,255,.10);
+        }
+
+        .navbar-sentinela-embreve-kicker {
+            margin: 0 0 8px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: color-mix(in srgb, var(--cor-global, #2a7d7d) 72%, #555);
+        }
+
+        .navbar-sentinela-embreve-title {
+            margin: 0;
+            font-size: calc(25px * var(--font-scale-global, 1));
+            line-height: 1.12;
+            font-weight: 800;
+        }
+
+        .navbar-sentinela-embreve-text {
+            margin: 13px 0 0;
+            font-size: calc(15px * var(--font-scale-global, 1));
+            line-height: 1.45;
+            opacity: .76;
+        }
+
+        .navbar-sentinela-embreve-week {
+            display: inline-flex;
+            margin-top: 18px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+            background: color-mix(in srgb, var(--cor-global, #2a7d7d) 14%, transparent);
+            color: color-mix(in srgb, var(--cor-global, #2a7d7d) 72%, #111);
+        }
+
+        [data-theme="dark"] .navbar-sentinela-embreve-week,
+        .dark .navbar-sentinela-embreve-week {
+            color: color-mix(in srgb, var(--cor-global, #2a7d7d) 70%, #fff);
+            background: color-mix(in srgb, var(--cor-global, #2a7d7d) 22%, transparent);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function renderIndexEmBreveFallback(semana) {
+    if (!document.body) return false;
+
+    let host = document.getElementById('navbarSentinelaEmBreve');
+    if (!host) {
+        host = document.createElement('section');
+        host.id = 'navbarSentinelaEmBreve';
+        host.setAttribute('aria-live', 'polite');
+        const firstVisible = Array.from(document.body.children).find((el) => {
+            if (!el || !el.tagName) return false;
+            const tag = el.tagName.toLowerCase();
+            if (tag === 'script' || tag === 'style') return false;
+            if (el.classList?.contains('bottom-navbar')) return false;
+            return true;
+        });
+        document.body.insertBefore(host, firstVisible || document.body.firstChild);
+    }
+
+    const semanaLabel = formatSemanaNavbar(semana);
+    host.innerHTML = `
+        <div class="navbar-sentinela-embreve-card">
+            <p class="navbar-sentinela-embreve-kicker">A Sentinela</p>
+            <h1 class="navbar-sentinela-embreve-title">Estudo em breve</h1>
+            <p class="navbar-sentinela-embreve-text">O artigo dessa semana ainda não está disponível neste projeto.</p>
+            ${semanaLabel ? '<span class="navbar-sentinela-embreve-week">Semana de ' + semanaLabel + '</span>' : ''}
+        </div>
+    `;
+
+    return true;
+}
+
+function callIndexEmBreveHook(semana) {
+    const detail = {
+        semana,
+        artigoURL: joinProjectPath('sentinela/artigos/' + semana + '.html')
+    };
+
+    window.dispatchEvent(new CustomEvent('sentinela:em-breve', { detail }));
+
+    const candidates = [
+        window.mostrarEstudoEmBreve,
+        window.mostrarSentinelaEmBreve,
+        window.renderEstudoEmBreve,
+        window.renderSentinelaEmBreve,
+        window.desenharEstudoEmBreve,
+        window.carousel?.mostrarEstudoEmBreve,
+        window.carousel?.mostrarSentinelaEmBreve,
+        window.carousel?.renderEstudoEmBreve,
+        window.carousel?.desenharEstudoEmBreve
+    ];
+
+    for (const fn of candidates) {
+        if (typeof fn !== 'function') continue;
+        try {
+            fn.call(window.carousel || window, semana, detail);
+            return true;
+        } catch (error) {}
+    }
+
+    return false;
+}
+
+function setupIndexEmBreveState() {
+    const params = new URLSearchParams(window.location.search);
+    const estado = String(params.get("estado") || params.get("modo") || "").toLowerCase();
+    if (!["em-breve", "embreve", "em_breve"].includes(estado)) return;
+    if (!isIndexPageNavbar()) return;
+
+    const semana = normalizeSemana(params.get("semana")) || detectSemanaAtualNavbar();
+    window.semanaAtual = semana;
+    window.__SENTINELA_EM_BREVE_REQUEST__ = { semana };
+
+    try {
+        localStorage.setItem("semanaAtual", semana);
+        localStorage.setItem("semana-atual", semana);
+    } catch (error) {}
+
+    window.dispatchEvent(new CustomEvent("sentinela:em-breve", {
+        detail: { semana, artigoURL: joinProjectPath("sentinela/artigos/" + semana + ".html") }
+    }));
+}
+
 function normalizeSemana(value) {
     const match = String(value || '').match(/\b(\d{2}-\d{2})\b/);
     return match ? match[1] : '';
@@ -145,16 +330,26 @@ function detectSemanaAtualNavbar() {
 
 async function urlExiste(url) {
     try {
-        const head = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-        if (head.ok) return true;
-        if (head.status && head.status !== 405) return false;
-    } catch (error) {
-        // Alguns servidores locais/Koder podem não aceitar HEAD.
-    }
+        const response = await fetch(url, {
+            method: "GET",
+            cache: "no-store",
+            credentials: "same-origin"
+        });
 
-    try {
-        const get = await fetch(url, { method: 'GET', cache: 'no-store' });
-        return get.ok;
+        if (!response.ok) return false;
+
+        const finalURL = String(response.url || "").toLowerCase();
+        if (finalURL.includes("/404") || finalURL.endsWith("404.html")) return false;
+
+        const html = await response.text();
+        const sample = html.slice(0, 7000).toLowerCase();
+
+        if (sample.includes("page not found") || sample.includes("file not found")) return false;
+        if (sample.includes("github pages") && sample.includes("404")) return false;
+
+        return /data-estudo=["\x27]?\d{2}-\d{2}/i.test(html)
+            || /<title>\s*a sentinela\s*<\/title>/i.test(html)
+            || /--cor-principal-estudo/i.test(html);
     } catch (error) {
         return false;
     }
@@ -439,17 +634,6 @@ class UnifiedNavbar {
         return detectSemanaAtualNavbar();
     }
 
-    showFeedback(item, type) {
-        item.classList.remove('loading', 'success', 'error');
-        item.classList.add(type);
-        
-        if (type !== 'loading') {
-            setTimeout(() => {
-                item.classList.remove(type);
-            }, 600);
-        }
-    }
-
     updateActiveState() {
         if (!this.navbar) return;
 
@@ -569,40 +753,37 @@ async function irParaAnotacoes(event) {
 }
 
 async function irParaSentinela(event) {
-    event.preventDefault();
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
 
-    const item = event?.currentTarget || event?.target?.closest?.('.navbar-item');
-    const semana = detectSemanaAtualNavbar();
+    const semana = normalizeSemana(window.carousel?.getCurrentSlideConfig?.()?.parametro)
+        || normalizeSemana(window.carousel?.semanas?.[window.carousel?.currentSlide]?.parametro)
+        || detectSemanaAtualNavbar();
+
     window.semanaAtual = semana;
 
-    const artigoURL = joinProjectPath(`sentinela/artigos/${semana}.html`);
-    const emBreveURL = joinProjectPath(`sentinela/em-breve.html?semana=${semana}`);
-    const fallbackURL = joinProjectPath(`index.html?semana=${semana}`);
+    if (isIndexPageNavbar() && typeof window.carousel?.verificarESentinela === "function") {
+        await window.carousel.verificarESentinela(semana);
+        return false;
+    }
+
+    const artigoURL = joinProjectPath("sentinela/artigos/" + semana + ".html");
+    const fallbackURL = buildIndexEmBreveURL(semana);
 
     const currentPath = window.location.pathname.toLowerCase();
-    if (currentPath.includes('/sentinela/artigos/') && currentPath.endsWith(`/${semana}.html`)) {
-        return;
+    if (currentPath.includes("/sentinela/artigos/") && currentPath.endsWith("/" + semana + ".html")) {
+        return false;
     }
 
-    try {
-        if (item && window.UnifiedNavbar?.instance?.showFeedback) {
-            window.UnifiedNavbar.instance.showFeedback(item, 'loading');
-        }
-
-        if (await urlExiste(artigoURL)) {
-            window.location.href = artigoURL;
-            return;
-        }
-
-        if (await urlExiste(joinProjectPath('sentinela/em-breve.html'))) {
-            window.location.href = emBreveURL;
-            return;
-        }
-
-        window.location.href = fallbackURL;
-    } catch (error) {
-        window.location.href = emBreveURL;
+    if (await urlExiste(artigoURL)) {
+        window.location.href = artigoURL;
+        return false;
     }
+
+    window.location.href = fallbackURL;
+    return false;
 }
 
 async function irParaSalvar(event) {
@@ -668,6 +849,7 @@ function bootUnifiedNavbarWhenPossible() {
     window.UnifiedNavbar.init();
 }
 
+setupIndexEmBreveState();
 bootUnifiedNavbarWhenPossible();
 
 let lastTouchEnd = 0;
