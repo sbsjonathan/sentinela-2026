@@ -67,6 +67,99 @@
     });
 })();
 
+
+
+const NAVBAR_SCRIPT_SRC = (() => {
+    const current = document.currentScript && document.currentScript.src;
+    if (current) return current;
+
+    const scripts = Array.from(document.scripts || []);
+    const ownScript = scripts.find(script => /navbar-unified\.js(?:\?|#|$)/.test(script.src || ''));
+    return ownScript ? ownScript.src : '';
+})();
+
+function getProjectRootURL() {
+    try {
+        if (NAVBAR_SCRIPT_SRC) {
+            // navbar-unified.js fica dentro de /navbar/.
+            // Subir um nível a partir dele leva à raiz real do projeto,
+            // mesmo no GitHub Pages, Koder ou subpastas.
+            return new URL('../', NAVBAR_SCRIPT_SRC).href;
+        }
+    } catch (error) {}
+
+    const originPath = window.location.origin + window.location.pathname;
+    const knownFolders = ['/biblia/', '/richtext/', '/sentinela/', '/save/', '/navbar/'];
+    const lower = originPath.toLowerCase();
+
+    for (const folder of knownFolders) {
+        const index = lower.indexOf(folder);
+        if (index !== -1) {
+            return originPath.slice(0, index + 1);
+        }
+    }
+
+    return new URL('./', window.location.href).href;
+}
+
+function joinProjectPath(relativePath) {
+    return new URL(relativePath.replace(/^\/+/, ''), getProjectRootURL()).href;
+}
+
+function normalizeSemana(value) {
+    const match = String(value || '').match(/\b(\d{2}-\d{2})\b/);
+    return match ? match[1] : '';
+}
+
+function calcularSemanaAtualNavbar() {
+    const hoje = new Date();
+    const diaDaSemana = hoje.getDay();
+    const diasParaSegunda = diaDaSemana === 0 ? -6 : 1 - diaDaSemana;
+    const segundaFeira = new Date(hoje);
+    segundaFeira.setDate(hoje.getDate() + diasParaSegunda);
+    segundaFeira.setHours(0, 0, 0, 0);
+
+    const dia = String(segundaFeira.getDate()).padStart(2, '0');
+    const mes = String(segundaFeira.getMonth() + 1).padStart(2, '0');
+    return `${dia}-${mes}`;
+}
+
+function detectSemanaAtualNavbar() {
+    const fromWindow = normalizeSemana(window.semanaAtual);
+    if (fromWindow) return fromWindow;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromQuery = normalizeSemana(urlParams.get('semana'));
+    if (fromQuery) return fromQuery;
+
+    const fromPath = normalizeSemana(window.location.pathname);
+    if (fromPath) return fromPath;
+
+    try {
+        const saved = normalizeSemana(localStorage.getItem('semanaAtual') || localStorage.getItem('semana-atual'));
+        if (saved) return saved;
+    } catch (error) {}
+
+    return calcularSemanaAtualNavbar();
+}
+
+async function urlExiste(url) {
+    try {
+        const head = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+        if (head.ok) return true;
+        if (head.status && head.status !== 405) return false;
+    } catch (error) {
+        // Alguns servidores locais/Koder podem não aceitar HEAD.
+    }
+
+    try {
+        const get = await fetch(url, { method: 'GET', cache: 'no-store' });
+        return get.ok;
+    } catch (error) {
+        return false;
+    }
+}
+
 class UnifiedNavbar {
     constructor() {
         this.navbar = null;
@@ -107,40 +200,29 @@ class UnifiedNavbar {
     }
 
     detectCurrentPage() {
-        const info = getPathInfo();
-        const path = info.path;
-
-        if (isCurrentNotesPath(info)) {
-            return 'notes';
-        }
-        if (info.segments.includes('biblia') || info.segments.includes('livro') || info.fileName === 'capitulo.html') {
-            return 'bible';
-        }
-        if (info.segments.includes('sentinela') || info.fileName === 'em-breve.html') {
-            return 'watchtower';
-        }
-        if (info.segments.includes('save') || info.fileName.includes('auth')) {
-            return 'save';
-        }
-        if (info.fileName === 'index.html' || path === '/' || path.endsWith('/')) {
+        const path = window.location.pathname.toLowerCase();
+        
+        if (path.includes('index.html') || path === '/' || path.endsWith('/')) {
             return 'home';
         }
-
+        if (path.includes('biblia') || path.includes('livro') || path.includes('capitulo')) {
+            return 'bible';
+        }
+        if (path.includes('richtext') || path.includes('anotacoes') || path.includes('container')) {
+            return 'notes';
+        }
+        if (path.includes('sentinela') || path.includes('em-breve')) {
+            return 'watchtower';
+        }
+        if (path.includes('save') || path.includes('auth')) {
+            return 'save';
+        }
+        
         return 'home';
     }
 
     calcularSemanaAtual() {
-        const hoje = new Date();
-        const diaDaSemana = hoje.getDay();
-        const diasParaSegunda = diaDaSemana === 0 ? -6 : 1 - diaDaSemana;
-        
-        const segundaFeira = new Date(hoje);
-        segundaFeira.setDate(hoje.getDate() + diasParaSegunda);
-        
-        const dia = String(segundaFeira.getDate()).padStart(2, '0');
-        const mes = String(segundaFeira.getMonth() + 1).padStart(2, '0');
-        
-        return `${dia}-${mes}`;
+        return calcularSemanaAtualNavbar();
     }
 
     createNavbar() {
@@ -197,22 +279,11 @@ class UnifiedNavbar {
     }
 
     getSemanaParam() {
-        if (window.semanaAtual) {
-            return `?semana=${window.semanaAtual}`;
-        }
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const semanaURL = urlParams.get('semana');
-        if (semanaURL) {
-            return `?semana=${semanaURL}`;
-        }
-
-        const semanaCalculada = this.calcularSemanaAtual();
-        return `?semana=${semanaCalculada}`;
+        return `?semana=${detectSemanaAtualNavbar()}`;
     }
 
     getBasePath() {
-        return getBasePath();
+        return getProjectRootURL();
     }
 
     setupScrollBehavior() {
@@ -365,17 +436,7 @@ class UnifiedNavbar {
     }
 
     detectCurrentWeek() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const semanaURL = urlParams.get('semana');
-        if (semanaURL) {
-            return semanaURL;
-        }
-
-        if (window.semanaAtual) {
-            return window.semanaAtual;
-        }
-
-        return this.calcularSemanaAtual();
+        return detectSemanaAtualNavbar();
     }
 
     showFeedback(item, type) {
@@ -496,14 +557,12 @@ async function irParaBiblia(event) {
 
 async function irParaAnotacoes(event) {
     event.preventDefault();
-
-    // Importante: não use `pathname.includes('anotacoes')` aqui.
-    // Em navegador real o projeto pode estar dentro de uma pasta chamada
-    // "anotacoes", e isso fazia o botão parecer morto.
-    if (isCurrentNotesPath()) {
+    
+    const currentPath = window.location.pathname.toLowerCase();
+    if (currentPath.includes('richtext') || currentPath.includes('anotacoes') || currentPath.includes('container')) {
         return;
     }
-
+    
     const basePath = getBasePath();
     const semanaParam = getSemanaParam();
     window.location.href = `${basePath}richtext/container.html${semanaParam}`;
@@ -512,30 +571,38 @@ async function irParaAnotacoes(event) {
 async function irParaSentinela(event) {
     event.preventDefault();
 
+    const item = event?.currentTarget || event?.target?.closest?.('.navbar-item');
+    const semana = detectSemanaAtualNavbar();
+    window.semanaAtual = semana;
+
+    const artigoURL = joinProjectPath(`sentinela/artigos/${semana}.html`);
+    const emBreveURL = joinProjectPath(`sentinela/em-breve.html?semana=${semana}`);
+    const fallbackURL = joinProjectPath(`index.html?semana=${semana}`);
+
     const currentPath = window.location.pathname.toLowerCase();
-    if (currentPath.includes('sentinela') && !currentPath.includes('em-breve')) {
+    if (currentPath.includes('/sentinela/artigos/') && currentPath.endsWith(`/${semana}.html`)) {
         return;
     }
 
-    // SEMPRE usa a semana atual no formato DD-MM (segunda-feira da semana).
-    // Isso evita que a navbar herde a semana do `?semana=` quando você está na página de anotações.
-    const hoje = new Date();
-    const diaDaSemana = hoje.getDay(); // 0 = Domingo, 1 = Segunda, etc.
-    const diasParaSegunda = diaDaSemana === 0 ? -6 : 1 - diaDaSemana;
+    try {
+        if (item && window.UnifiedNavbar?.instance?.showFeedback) {
+            window.UnifiedNavbar.instance.showFeedback(item, 'loading');
+        }
 
-    const segundaFeira = new Date(hoje);
-    segundaFeira.setDate(hoje.getDate() + diasParaSegunda);
-    segundaFeira.setHours(0, 0, 0, 0);
+        if (await urlExiste(artigoURL)) {
+            window.location.href = artigoURL;
+            return;
+        }
 
-    const dia = String(segundaFeira.getDate()).padStart(2, '0');
-    const mes = String(segundaFeira.getMonth() + 1).padStart(2, '0');
-    const semana = `${dia}-${mes}`;
+        if (await urlExiste(joinProjectPath('sentinela/em-breve.html'))) {
+            window.location.href = emBreveURL;
+            return;
+        }
 
-    // Mantém disponível globalmente para outras rotas/uso futuro.
-    window.semanaAtual = semana;
-
-    const basePath = getBasePath();
-    window.location.href = `${basePath}sentinela/artigos/${semana}.html`;
+        window.location.href = fallbackURL;
+    } catch (error) {
+        window.location.href = emBreveURL;
+    }
 }
 
 async function irParaSalvar(event) {
@@ -550,87 +617,13 @@ async function irParaSalvar(event) {
     window.location.href = `${basePath}save/auth-supabase.html`;
 }
 
-// Resolve o caminho até a raiz do projeto de forma robusta.
-// Funciona no Koder, no navegador local e em subpastas do servidor.
-function getPathInfo() {
-    const rawPath = window.location.pathname || '/';
-    const path = rawPath.toLowerCase();
-    const segments = path.split('/').filter(Boolean).map(segment => {
-        try {
-            return decodeURIComponent(segment).toLowerCase();
-        } catch (error) {
-            return segment.toLowerCase();
-        }
-    });
-
-    const last = segments[segments.length - 1] || '';
-    const hasFileName = /\.[a-z0-9]+$/i.test(last);
-    const fileName = hasFileName ? last : '';
-
-    return { path, segments, fileName, hasFileName };
-}
-
-function isCurrentNotesPath(info = getPathInfo()) {
-    const { segments, fileName } = info;
-
-    // Página real das anotações/richtext.
-    // Não confunda com uma pasta externa do projeto chamada "anotacoes".
-    return segments.includes('richtext') || fileName === 'container.html';
-}
-
+// Lógica de basePath simplificada para funcionar no Koder
 function getBasePath() {
-    const info = getPathInfo();
-    const { segments, hasFileName } = info;
-
-    const rootFolders = ['biblia', 'sentinela', 'richtext', 'save', 'navbar'];
-    let rootIndex = -1;
-
-    for (const folder of rootFolders) {
-        const index = segments.indexOf(folder);
-        if (index !== -1 && (rootIndex === -1 || index < rootIndex)) {
-            rootIndex = index;
-        }
-    }
-
-    // Se não achou uma pasta conhecida, assume que já está na raiz.
-    if (rootIndex === -1) {
-        return './';
-    }
-
-    // Quantos níveis existem entre a pasta atual e a raiz do projeto.
-    // Ex.: /biblia/biblia.html -> ../
-    // Ex.: /biblia/livro/01-genesis/genesis.html -> ../../../
-    // Ex.: /sentinela/artigos/15-09.html -> ../../
-    const levelsUp = hasFileName
-        ? segments.length - rootIndex - 1
-        : segments.length - rootIndex;
-
-    return levelsUp > 0 ? '../'.repeat(levelsUp) : './';
+    return getProjectRootURL();
 }
 
 function getSemanaParam() {
-    if (window.semanaAtual) {
-        return `?semana=${window.semanaAtual}`;
-    }
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const semanaURL = urlParams.get('semana');
-    if (semanaURL) {
-        return `?semana=${semanaURL}`;
-    }
-
-    const hoje = new Date();
-    const diaDaSemana = hoje.getDay();
-    const diasParaSegunda = diaDaSemana === 0 ? -6 : 1 - diaDaSemana;
-    
-    const segundaFeira = new Date(hoje);
-    segundaFeira.setDate(hoje.getDate() + diasParaSegunda);
-    
-    const dia = String(segundaFeira.getDate()).padStart(2, '0');
-    const mes = String(segundaFeira.getMonth() + 1).padStart(2, '0');
-    const semanaCalculada = `${dia}-${mes}`;
-    
-    return `?semana=${semanaCalculada}`;
+    return `?semana=${detectSemanaAtualNavbar()}`;
 }
 
 window.UnifiedNavbar = {
