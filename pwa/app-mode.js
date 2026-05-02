@@ -9,6 +9,7 @@
   root.classList.toggle("is-browser",!standalone);
   root.dataset.appMode=standalone?"pwa":"browser";
   root.dataset.deviceMode=ios?"ios":"other";
+  root.style.setProperty("--navbar-ios-bottom-fallback",(ios&&standalone)?"34px":"0px");
   function applySize(){
     root.style.setProperty("--app-height",window.innerHeight+"px");
     if(window.visualViewport){root.style.setProperty("--visual-viewport-height",window.visualViewport.height+"px");}
