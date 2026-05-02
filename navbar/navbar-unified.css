@@ -8,6 +8,10 @@
     --navbar-hover-bg: rgba(0, 0, 0, 0.05);
     --navbar-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
     --navbar-height: 70px;
+    --navbar-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --navbar-ios-bottom-fallback: 0px;
+    --navbar-bottom-fix: max(var(--navbar-safe-bottom), var(--navbar-ios-bottom-fallback));
+    --navbar-reserve-height: var(--navbar-height);
 }
 
 /* --- TEMA ESCURO --- */[data-theme="dark"] {
@@ -267,8 +271,45 @@
     .navbar-label { font-size: 8px; }
 }
 
-.with-bottom-navbar { padding-bottom: var(--navbar-height); }
+.with-bottom-navbar { padding-bottom: var(--navbar-reserve-height, var(--navbar-height)); }
 .bottom-navbar { -webkit-transform: translateZ(0); transform: translateZ(0); will-change: transform, opacity; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+
+
+/* Correção iPhone/PWA
+   O iOS às vezes posiciona fixed bottom:0 no fim da área segura,
+   deixando a barra visualmente alta. Esta regra puxa a navbar para a
+   borda física inferior sem mudar a estrutura dos itens. */
+html.is-ios .bottom-navbar,
+html[data-device-mode="ios"] .bottom-navbar {
+    bottom: calc(-1 * var(--navbar-bottom-fix)) !important;
+}
+
+html.is-ios .bottom-navbar.hidden,
+html[data-device-mode="ios"] .bottom-navbar.hidden {
+    transform: translateY(calc(100% + var(--navbar-bottom-fix))) !important;
+}
+
+html.is-ios,
+html[data-device-mode="ios"] {
+    --navbar-reserve-height: calc(var(--navbar-height) + var(--navbar-bottom-fix));
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+    @supports (-webkit-touch-callout: none) {
+        :root {
+            --navbar-ios-bottom-fallback: 34px;
+            --navbar-reserve-height: calc(var(--navbar-height) + var(--navbar-bottom-fix));
+        }
+
+        .bottom-navbar {
+            bottom: calc(-1 * var(--navbar-bottom-fix)) !important;
+        }
+
+        .bottom-navbar.hidden {
+            transform: translateY(calc(100% + var(--navbar-bottom-fix))) !important;
+        }
+    }
+}
 
 .navbar-context-home .navbar-item[data-page="home"] { color: var(--navbar-active); }
 .navbar-context-bible .navbar-item[data-page="bible"] { color: var(--navbar-active); }
