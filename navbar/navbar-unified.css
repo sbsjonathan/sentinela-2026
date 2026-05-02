@@ -7,6 +7,8 @@
     --navbar-inactive: #8E8E93;
     --navbar-hover-bg: rgba(0, 0, 0, 0.05);
     --navbar-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
+    --navbar-reserve-height: 70px;
+    --navbar-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* --- TEMA ESCURO --- */[data-theme="dark"] {
@@ -49,7 +51,7 @@
     justify-content: space-around !important;
     align-items: center !important;
     padding: 8px 0 !important;
-    padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    padding-bottom: max(8px, var(--navbar-safe-bottom)) !important;
     z-index: 1000 !important;
     box-shadow: var(--navbar-shadow);
     
@@ -263,7 +265,7 @@
     .navbar-label { font-size: 8px; }
 }
 
-.with-bottom-navbar { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
+.with-bottom-navbar { padding-bottom: var(--navbar-reserve-height); }
 .bottom-navbar { -webkit-transform: translateZ(0); transform: translateZ(0); will-change: transform, opacity; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 
 .navbar-context-home .navbar-item[data-page="home"] { color: var(--navbar-active); }
