@@ -180,12 +180,62 @@ class UnifiedNavbar {
     init() {
         this.addBodyClass();
         this.createNavbar();
+        this.applyIosNavbarPositionFix();
         this.updateActiveState();
         this.updateSaveButtonVisual();
         this.setupScrollBehavior();
         this.setupKeyboardBehavior();
         this.setupNavigation();
         this.finishInitialPaint();
+    }
+
+
+    applyIosNavbarPositionFix() {
+        const root = document.documentElement;
+        const ua = navigator.userAgent || '';
+        const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        let standalone = false;
+        try {
+            standalone = window.navigator.standalone === true
+                || window.matchMedia('(display-mode: standalone)').matches
+                || window.matchMedia('(display-mode: fullscreen)').matches;
+        } catch (error) {}
+
+        root.classList.toggle('is-ios', ios);
+        root.classList.toggle('is-pwa', standalone);
+        root.classList.toggle('is-browser', !standalone);
+        root.dataset.deviceMode = ios ? 'ios' : 'other';
+        root.dataset.appMode = standalone ? 'pwa' : 'browser';
+
+        if (!ios || !this.navbar) return;
+
+        const apply = () => {
+            let standaloneNow = standalone;
+            try {
+                standaloneNow = window.navigator.standalone === true
+                    || window.matchMedia('(display-mode: standalone)').matches
+                    || window.matchMedia('(display-mode: fullscreen)').matches;
+            } catch (error) {}
+
+            root.classList.toggle('is-pwa', standaloneNow);
+            root.classList.toggle('is-browser', !standaloneNow);
+            root.dataset.appMode = standaloneNow ? 'pwa' : 'browser';
+            root.style.setProperty('--navbar-ios-bottom-fallback', standaloneNow ? '34px' : '0px');
+
+            this.navbar.style.setProperty(
+                'bottom',
+                'calc(-1 * max(env(safe-area-inset-bottom, 0px), var(--navbar-ios-bottom-fallback, 0px)))',
+                'important'
+            );
+        };
+
+        apply();
+        window.addEventListener('resize', apply, { passive: true });
+        window.addEventListener('orientationchange', () => setTimeout(apply, 250), { passive: true });
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', apply, { passive: true });
+        }
     }
 
     finishInitialPaint() {
