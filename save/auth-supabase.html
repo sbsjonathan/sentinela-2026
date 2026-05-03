@@ -115,8 +115,12 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: calc(20px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(var(--navbar-height) + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
+        padding: calc(20px + env(safe-area-inset-top, 0px)) calc(20px + env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) calc(20px + env(safe-area-inset-left, 0px));
         transition: background 0.3s ease;
+    }
+
+    body.with-bottom-navbar {
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     }
 
     .auth-container {
@@ -800,7 +804,7 @@
         }, 200);
     });
 </script>
-
+ 
 
 </body>
 </html>
