@@ -74,21 +74,18 @@
             --border-error: rgba(239, 68, 68, 0.3);
         }
 
-        /* Trava total da tela - Igual ao Index */
         html {
-            width: 100%;
             height: 100%;
-            height: 100dvh;
-            overflow: hidden;
+            background: var(--bg-gradient-start);
             overscroll-behavior: none;
         }
 
         body {
             font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            width: 100%;
             height: 100%;
             margin: 0;
+            padding: 0;
             overflow: hidden;
             overscroll-behavior: none;
             -webkit-tap-highlight-color: transparent;
@@ -98,7 +95,6 @@
             transition: background 0.3s ease;
         }
 
-        /* O wrapper usa apenas o espaço disponível, zerando as sobras */
         .page-wrapper {
             flex: 1;
             width: 100%;
@@ -107,7 +103,7 @@
             justify-content: center;
             padding: 20px;
             box-sizing: border-box;
-            overflow-y: auto; /* Permite scroll interno SOMENTE se o teclado espremer muito a tela */
+            overflow-y: auto; 
             -webkit-overflow-scrolling: touch;
         }
 
@@ -472,7 +468,6 @@
         </div>
     </div>
 
-    <!-- Badge de status de login -->
     <div class="sync-status-badge" id="sync-status-badge">
         <span id="sync-status-text">Não logado</span>
     </div>
@@ -525,22 +520,15 @@
                     
                     if (error) {
                         if (error.code === 'PGRST301' || error.message.includes('network') || error.message.includes('fetch')) {
-                            console.log('⚠️ Erro de rede na validação - mantendo login');
                             return;
                         }
                         
                         if (error.code === 'PGRST116') {
-                            console.log('❌ Usuário não existe no banco - removendo login');
                             localStorage.removeItem('supabase_user');
                             this.checkExistingLogin();
                         }
-                    } else if (validUser) {
-                        console.log('✅ Login validado com sucesso');
-                    }
-                    
-                } catch (networkError) {
-                    console.log('⚠️ Erro de rede na validação - mantendo login:', networkError.message);
-                }
+                    } 
+                } catch (networkError) {}
             }
 
             showLoggedUserScreen(userData) {
@@ -579,7 +567,6 @@
                     }, 1500);
 
                 } catch (error) {
-                    console.error('Erro no logout:', error);
                     this.showStatusBadge('❌ Erro no logout', 'error');
                 }
 
@@ -608,7 +595,6 @@
                     }
 
                 } catch (error) {
-                    console.error('Erro ao carregar conteúdo:', error);
                     this.showStatusBadge('❌ Erro ao carregar', 'error');
                 }
 
@@ -668,6 +654,12 @@
                         if (this.currentScreen === 'login') this.handleLogin();
                         else if (this.currentScreen === 'register') this.handleRegister();
                     }
+                });
+
+                document.querySelectorAll('.form-input').forEach(input => {
+                    input.addEventListener('blur', () => {
+                        window.scrollTo(0, 0);
+                    });
                 });
             }
 
