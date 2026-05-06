@@ -163,15 +163,8 @@ class UnifiedNavbar {
     constructor() {
         this.navbar = null;
         this.lastScrollY = 0;
-        this.scrollThreshold = 50;
-        this.hideTimeout = null;
         this.isHidden = false;
-        this.scrollDirection = 'up';
-        this.touchStartY = 0;
-        this.consecutiveScrollDown = 0;
         this.isKeyboardOpen = false;
-        this.baseViewportHeight = 0;
-        this.keyboardHeightThreshold = 150;
         this.currentPage = this.detectCurrentPage();
         
         this.init();
@@ -253,26 +246,25 @@ class UnifiedNavbar {
     }
 
     setupScrollBehavior() {
-        // Trava de Scroll: A navbar NÃO some no Início, Anotações e Salvar
-        if (['home', 'notes', 'save'].includes(this.currentPage)) {
-            this.showNavbar();
-            return;
-        }
         window.addEventListener('scroll', () => this.onScroll(), { passive: true });
     }
 
     onScroll() {
         if (this.isKeyboardOpen) return;
         const currentScrollY = window.scrollY;
+        
         if (currentScrollY > this.lastScrollY && currentScrollY > 10) {
-            this.hideNavbar();
+            this.hideNavbar('scroll');
         } else {
             this.showNavbar();
         }
         this.lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
     }
 
-    hideNavbar() {
+    hideNavbar(reason = 'scroll') {
+        if (reason === 'scroll' && ['home', 'notes', 'save'].includes(this.currentPage)) {
+            return;
+        }
         if (!this.isHidden && this.navbar) {
             this.navbar.classList.add('hidden');
             this.isHidden = true;
@@ -284,51 +276,37 @@ class UnifiedNavbar {
         if (this.isHidden && this.navbar) {
             this.navbar.classList.remove('hidden');
             this.isHidden = false;
-            clearTimeout(this.hideTimeout);
         }
     }
 
     setupKeyboardBehavior() {
-        if (!window.visualViewport) {
-            this.setupKeyboardFocusFallback();
-            return;
-        }
-
-        this.baseViewportHeight = window.visualViewport.height;
-
-        const onViewportResize = () => {
-            const currentViewportHeight = window.visualViewport.height;
-            if (currentViewportHeight > this.baseViewportHeight) {
-                this.baseViewportHeight = currentViewportHeight;
-            }
-            const viewportReduction = this.baseViewportHeight - currentViewportHeight;
-            const keyboardOpen = viewportReduction > this.keyboardHeightThreshold;
-            this.toggleKeyboardState(keyboardOpen);
+        const onKeyboardOpen = () => {
+            this.isKeyboardOpen = true;
+            this.hideNavbar('keyboard');
         };
 
-        window.visualViewport.addEventListener('resize', onViewportResize);
-        this.setupKeyboardFocusFallback();
-    }
+        const onKeyboardClose = () => {
+            this.isKeyboardOpen = false;
+            this.showNavbar();
+        };
 
-    setupKeyboardFocusFallback() {
-        document.addEventListener('focusin', (event) => {
-            const element = event.target;
-            if (!element) return;
-            const tagName = element.tagName;
-            const isEditable = element.isContentEditable || tagName === 'INPUT' || tagName === 'TEXTAREA';
-            if (isEditable) this.toggleKeyboardState(true);
+        document.addEventListener('focusin', (e) => {
+            const tag = e.target.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) {
+                onKeyboardOpen();
+            }
         });
 
-        document.addEventListener('focusout', () => {
-            if (window.visualViewport) {
-                requestAnimationFrame(() => {
-                    const viewportReduction = this.baseViewportHeight - window.visualViewport.height;
-                    const keyboardOpen = viewportReduction > this.keyboardHeightThreshold;
-                    this.toggleKeyboardState(keyboardOpen);
-                });
-                return;
+        document.addEventListener('focusout', (e) => {
+            const tag = e.target.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) {
+                setTimeout(() => {
+                    const active = document.activeElement;
+                    if (!active || (active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA' && !active.isContentEditable)) {
+                        onKeyboardClose();
+                    }
+                }, 50);
             }
-            this.toggleKeyboardState(false);
         });
     }
 
@@ -353,8 +331,6 @@ class UnifiedNavbar {
 
     addBodyClass() {
         document.body.classList.add('with-bottom-navbar');
-        
-        // Detecção nativa infalível se está no modo PWA do iOS (Standalone)
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
             document.body.classList.add('is-pwa');
         }
@@ -392,7 +368,6 @@ class UnifiedNavbar {
             this.navbar.remove();
             this.navbar = null;
         }
-        clearTimeout(this.hideTimeout);
         document.body.classList.remove('with-bottom-navbar');
     }
 }
