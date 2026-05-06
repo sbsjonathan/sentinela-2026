@@ -90,7 +90,7 @@ window.getGlobalWeek = function(paramValue) {
 const NAVBAR_SCRIPT_SRC = (() => {
     const current = document.currentScript && document.currentScript.src;
     if (current) return current;
-    const scripts = Array.from(document.scripts || []);
+    const scripts = Array.from(document.scripts ||[]);
     const ownScript = scripts.find(script => /navbar-unified\.js(?:\?|#|$)/.test(script.src || ''));
     return ownScript ? ownScript.src : '';
 })();
@@ -103,7 +103,7 @@ function getProjectRootURL() {
     } catch (error) {}
 
     const originPath = window.location.origin + window.location.pathname;
-    const knownFolders = ['/biblia/', '/richtext/', '/sentinela/', '/save/', '/navbar/'];
+    const knownFolders =['/biblia/', '/richtext/', '/sentinela/', '/save/', '/navbar/'];
     const lower = originPath.toLowerCase();
 
     for (const folder of knownFolders) {
@@ -171,7 +171,7 @@ class UnifiedNavbar {
         this.consecutiveScrollDown = 0;
         this.isKeyboardOpen = false;
         this.baseViewportHeight = 0;
-        this.keyboardHeightThreshold = 120;
+        this.keyboardHeightThreshold = 150;
         this.currentPage = this.detectCurrentPage();
         
         this.init();
@@ -253,7 +253,8 @@ class UnifiedNavbar {
     }
 
     setupScrollBehavior() {
-        if (['notes', 'save'].includes(this.currentPage)) {
+        // Trava de Scroll: A navbar NÃO some no Início, Anotações e Salvar
+        if (['home', 'notes', 'save'].includes(this.currentPage)) {
             this.showNavbar();
             return;
         }
@@ -306,7 +307,6 @@ class UnifiedNavbar {
         };
 
         window.visualViewport.addEventListener('resize', onViewportResize);
-        window.visualViewport.addEventListener('scroll', onViewportResize);
         this.setupKeyboardFocusFallback();
     }
 
@@ -332,16 +332,6 @@ class UnifiedNavbar {
         });
     }
 
-    toggleKeyboardState(isOpen) {
-        if (this.isKeyboardOpen === isOpen) return;
-        this.isKeyboardOpen = isOpen;
-        if (isOpen) {
-            this.hideNavbar();
-        } else {
-            this.showNavbar();
-        }
-    }
-
     setupNavigation() {
         if (!this.navbar) return;
         this.navbar.addEventListener('click', (e) => {
@@ -363,6 +353,11 @@ class UnifiedNavbar {
 
     addBodyClass() {
         document.body.classList.add('with-bottom-navbar');
+        
+        // Detecção nativa infalível se está no modo PWA do iOS (Standalone)
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            document.body.classList.add('is-pwa');
+        }
     }
 
     updateSaveButtonVisual() {
