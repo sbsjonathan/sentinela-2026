@@ -5,11 +5,9 @@
     --navbar-inactive: #8E8E93;
     --navbar-hover-bg: rgba(0, 0, 0, 0.05);
     --navbar-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
-    --navbar-bottom-padding: 8px;
+    --navbar-bottom-padding: 8px; /* Trocado de volta para 8px global */
     --navbar-safe-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-[data-theme="dark"] {
+}[data-theme="dark"] {
     --navbar-bg: rgba(0, 0, 0, 0.95);
     --navbar-border: rgba(255, 255, 255, 0.1);
     --navbar-inactive: #8E8E93;
@@ -238,3 +236,33 @@
 .navbar-context-notes .navbar-item[data-page="notes"] { color: var(--navbar-active); }
 .navbar-context-watchtower .navbar-item[data-page="watchtower"] { color: var(--navbar-active); }
 .navbar-context-save .navbar-item[data-page="save"] { color: var(--navbar-active); }
+
+
+/* =========================================================
+   MODO PWA (STANDALONE) - Ajustes Finos ("Slim Mode")
+   Aplicado SOMENTE quando adicionado à Tela de Início
+   ========================================================= */
+@media (display-mode: standalone) {
+    :root {
+        --navbar-bottom-padding: 4px;
+    }
+    .bottom-navbar {
+        padding: 5px 0 !important;
+        padding-bottom: calc(var(--navbar-bottom-padding) + var(--navbar-safe-bottom)) !important;
+    }
+    .navbar-item { padding: 4px 10px !important; }
+    .navbar-icon { width: 22px !important; height: 22px !important; margin-bottom: 2px !important; }
+    .navbar-item.active::before { top: -6px; }
+    .with-bottom-navbar { padding-bottom: calc(56px + var(--navbar-safe-bottom)) !important; }
+}
+
+/* Fallback garantido via JS para cobrir 100% das versões de iOS PWA */
+body.is-pwa { --navbar-bottom-padding: 4px; }
+body.is-pwa .bottom-navbar {
+    padding: 5px 0 !important;
+    padding-bottom: calc(var(--navbar-bottom-padding) + var(--navbar-safe-bottom)) !important;
+}
+body.is-pwa .navbar-item { padding: 4px 10px !important; }
+body.is-pwa .navbar-icon { width: 22px !important; height: 22px !important; margin-bottom: 2px !important; }
+body.is-pwa .navbar-item.active::before { top: -6px; }
+body.is-pwa.with-bottom-navbar { padding-bottom: calc(56px + var(--navbar-safe-bottom)) !important; }
