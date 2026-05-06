@@ -5,7 +5,7 @@
     --navbar-inactive: #8E8E93;
     --navbar-hover-bg: rgba(0, 0, 0, 0.05);
     --navbar-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
-    --navbar-bottom-padding: 8px; /* Trocado de volta para 8px global */
+    --navbar-bottom-padding: 8px;
     --navbar-safe-bottom: env(safe-area-inset-bottom, 0px);
 }[data-theme="dark"] {
     --navbar-bg: rgba(0, 0, 0, 0.95);
@@ -221,12 +221,8 @@
 
 @media (max-width: 390px) {
     .navbar-item { min-width: 50px; padding: 6px 8px !important; }
-    .navbar-icon { width: 20px !important; height: 20px !important; }
+    .navbar-icon { width: 20px !important; height: 20px !important; } /* Mantem proporção se a tela for menor que iPhone SE */
     .navbar-label { font-size: 9px !important; }
-}
-@media (max-width: 320px) {
-    .navbar-item { min-width: 45px; padding: 6px 6px !important; }
-    .navbar-label { font-size: 8px !important; }
 }
 
 .with-bottom-navbar { padding-bottom: calc(70px + var(--navbar-safe-bottom)) !important; }
@@ -237,32 +233,30 @@
 .navbar-context-watchtower .navbar-item[data-page="watchtower"] { color: var(--navbar-active); }
 .navbar-context-save .navbar-item[data-page="save"] { color: var(--navbar-active); }
 
-
 /* =========================================================
-   MODO PWA (STANDALONE) - Ajustes Finos ("Slim Mode")
-   Aplicado SOMENTE quando adicionado à Tela de Início
+   MODO PWA (STANDALONE) - Ajustes Finos
+   Abaixa a altura da barra removendo padding, MAS NÃO TOCA NOS ÍCONES
    ========================================================= */
 @media (display-mode: standalone) {
     :root {
-        --navbar-bottom-padding: 4px;
+        --navbar-bottom-padding: 0px;
     }
     .bottom-navbar {
-        padding: 5px 0 !important;
+        padding: 4px 0 !important;
         padding-bottom: calc(var(--navbar-bottom-padding) + var(--navbar-safe-bottom)) !important;
     }
     .navbar-item { padding: 4px 10px !important; }
-    .navbar-icon { width: 22px !important; height: 22px !important; margin-bottom: 2px !important; }
-    .navbar-item.active::before { top: -6px; }
-    .with-bottom-navbar { padding-bottom: calc(56px + var(--navbar-safe-bottom)) !important; }
+    .navbar-icon { width: 24px !important; height: 24px !important; margin-bottom: 2px !important; }
+    .navbar-item.active::before { top: -4px; }
+    .with-bottom-navbar { padding-bottom: calc(52px + var(--navbar-safe-bottom)) !important; }
 }
 
-/* Fallback garantido via JS para cobrir 100% das versões de iOS PWA */
-body.is-pwa { --navbar-bottom-padding: 4px; }
+body.is-pwa { --navbar-bottom-padding: 0px; }
 body.is-pwa .bottom-navbar {
-    padding: 5px 0 !important;
+    padding: 4px 0 !important;
     padding-bottom: calc(var(--navbar-bottom-padding) + var(--navbar-safe-bottom)) !important;
 }
 body.is-pwa .navbar-item { padding: 4px 10px !important; }
-body.is-pwa .navbar-icon { width: 22px !important; height: 22px !important; margin-bottom: 2px !important; }
-body.is-pwa .navbar-item.active::before { top: -6px; }
-body.is-pwa.with-bottom-navbar { padding-bottom: calc(56px + var(--navbar-safe-bottom)) !important; }
+body.is-pwa .navbar-icon { width: 24px !important; height: 24px !important; margin-bottom: 2px !important; }
+body.is-pwa .navbar-item.active::before { top: -4px; }
+body.is-pwa.with-bottom-navbar { padding-bottom: calc(52px + var(--navbar-safe-bottom)) !important; }
