@@ -53,7 +53,9 @@
             --bg-error: #fee2e2;
             --text-error: #991b1b;
             --border-error: #ef4444;
-        }[data-theme="dark"] {
+        }
+
+        [data-theme="dark"] {
             --cor-principal: #6c66b8;
             --bg-gradient-start: #1a1a24;
             --bg-gradient-end: #121212;
@@ -70,6 +72,30 @@
             --bg-error: rgba(239, 68, 68, 0.15);
             --text-error: #f87171;
             --border-error: rgba(239, 68, 68, 0.3);
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overscroll-behavior: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            transition: background 0.3s ease;
+        }
+
+        .page-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100%;
+            min-height: 100dvh;
+            padding: calc(20px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(90px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
+            box-sizing: border-box;
         }
 
         .sync-status-badge {
@@ -96,25 +122,6 @@
 
         .sync-status-badge.logged-out {
             background: #6b7280;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            min-height: 100vh;
-            min-height: 100dvh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: calc(20px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(90px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
-            transition: background 0.3s ease;
         }
 
         .auth-container {
@@ -189,6 +196,7 @@
             transition: all 0.3s ease;
             background: var(--bg-input);
             color: var(--text-input);
+            box-sizing: border-box;
         }
 
         .form-input:focus {
@@ -249,9 +257,7 @@
         .btn-load {
             background: #17a2b8;
             color: white;
-        }
-
-        [data-theme="dark"] .btn-load {
+        }[data-theme="dark"] .btn-load {
             background: #0c7489;
         }
 
@@ -337,123 +343,125 @@
     </style>
 </head>
 <body>
-    <div class="auth-container">
-        <div class="logo">
-            <div class="logo-icon">💾</div>
-            <h1 class="logo-title">Sincronização</h1>
-            <p class="logo-subtitle">Suas anotações em todos os dispositivos</p>
-        </div>
-
-        <!-- Tela de Login -->
-        <div class="screen active" id="login-screen">
-            <div class="form-group">
-                <label class="form-label" for="login-usuario">Nome de usuário</label>
-                <input type="text" id="login-usuario" class="form-input" placeholder="Digite seu nome de usuário" autocomplete="username">
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label" for="login-senha">Senha</label>
-                <input type="password" id="login-senha" class="form-input" placeholder="Digite sua senha" autocomplete="current-password">
-            </div>
-            
-            <button class="btn btn-primary" id="btn-login">
-                Entrar
-            </button>
-            
-            <button class="btn btn-secondary" id="btn-voltar">
-                Voltar sem Sincronizar
-            </button>
-            
-            <div class="auth-switch">
-                Primeira vez aqui? 
-                <button id="switch-to-register">Criar conta</button>
-            </div>
-        </div>
-
-        <!-- Tela de Cadastro -->
-        <div class="screen" id="register-screen">
-            <div class="form-group">
-                <label class="form-label" for="register-usuario">Nome de usuário</label>
-                <input type="text" id="register-usuario" class="form-input" placeholder="Escolha um nome único" autocomplete="username">
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label" for="register-senha">Senha</label>
-                <input type="password" id="register-senha" class="form-input" placeholder="Crie uma senha" autocomplete="new-password">
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label" for="register-nome">Nome completo</label>
-                <input type="text" id="register-nome" class="form-input" placeholder="Como você gostaria de ser chamado?">
-            </div>
-            
-            <button class="btn btn-primary" id="btn-register">
-                Criar Conta
-            </button>
-            
-            <button class="btn btn-secondary" id="btn-voltar-register">
-                Voltar sem Sincronizar
-            </button>
-            
-            <div class="auth-switch">
-                Já tem uma conta? 
-                <button id="switch-to-login">Fazer login</button>
-            </div>
-        </div>
-
-        <!-- Tela de Usuário Logado -->
-        <div class="screen" id="logged-screen">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <div style="font-size: 2.5rem; margin-bottom: 15px;">👤</div>
-                <h2 style="color: var(--text-title); margin-bottom: 10px;" id="logged-user-name">Usuário Logado</h2>
-                <p style="color: var(--text-subtitle); font-size: 0.9rem;" id="logged-user-info">Suas anotações estão sincronizadas</p>
+    <div class="page-wrapper">
+        <div class="auth-container">
+            <div class="logo">
+                <div class="logo-icon">💾</div>
+                <h1 class="logo-title">Sincronização</h1>
+                <p class="logo-subtitle">Suas anotações em todos os dispositivos</p>
             </div>
 
-            <div class="message success">
-                ✅ Você já está logado e sincronizando suas anotações automaticamente
+            <!-- Tela de Login -->
+            <div class="screen active" id="login-screen">
+                <div class="form-group">
+                    <label class="form-label" for="login-usuario">Nome de usuário</label>
+                    <input type="text" id="login-usuario" class="form-input" placeholder="Digite seu nome de usuário" autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="login-senha">Senha</label>
+                    <input type="password" id="login-senha" class="form-input" placeholder="Digite sua senha" autocomplete="current-password">
+                </div>
+                
+                <button class="btn btn-primary" id="btn-login">
+                    Entrar
+                </button>
+                
+                <button class="btn btn-secondary" id="btn-voltar">
+                    Voltar sem Sincronizar
+                </button>
+                
+                <div class="auth-switch">
+                    Primeira vez aqui? 
+                    <button id="switch-to-register">Criar conta</button>
+                </div>
             </div>
-            
-            <button class="btn btn-load" id="btn-carregar-conteudo">
-                📥 Carregar Conteúdo Salvo
-            </button>
-            
-            <button class="btn btn-primary" id="btn-continuar-logged">
-                Continuar
-            </button>
-            
-            <button class="btn btn-secondary" id="btn-logout">
-                Fazer Logout
-            </button>
-        </div>
 
-        <!-- Tela de Sucesso -->
-        <div class="screen" id="success-screen">
-            <div class="message success" id="success-message">
-                Login realizado com sucesso!
+            <!-- Tela de Cadastro -->
+            <div class="screen" id="register-screen">
+                <div class="form-group">
+                    <label class="form-label" for="register-usuario">Nome de usuário</label>
+                    <input type="text" id="register-usuario" class="form-input" placeholder="Escolha um nome único" autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="register-senha">Senha</label>
+                    <input type="password" id="register-senha" class="form-input" placeholder="Crie uma senha" autocomplete="new-password">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="register-nome">Nome completo</label>
+                    <input type="text" id="register-nome" class="form-input" placeholder="Como você gostaria de ser chamado?">
+                </div>
+                
+                <button class="btn btn-primary" id="btn-register">
+                    Criar Conta
+                </button>
+                
+                <button class="btn btn-secondary" id="btn-voltar-register">
+                    Voltar sem Sincronizar
+                </button>
+                
+                <div class="auth-switch">
+                    Já tem uma conta? 
+                    <button id="switch-to-login">Fazer login</button>
+                </div>
             </div>
-            
-            <div style="text-align: center; margin: 30px 0;">
-                <div style="font-size: 2rem; margin-bottom: 15px;">✅</div>
-                <h2 style="color: var(--text-title); margin-bottom: 10px;">Bem-vindo!</h2>
-                <p style="color: var(--text-subtitle);" id="welcome-text">Suas anotações estão sincronizadas</p>
-            </div>
-            
-            <button class="btn btn-load" id="btn-carregar-sucesso">
-                📥 Carregar Conteúdo Salvo
-            </button>
-            
-            <button class="btn btn-primary" id="btn-continuar">
-                Continuar
-            </button>
-        </div>
 
-        <!-- Mensagem de erro -->
-        <div class="message error" id="error-message" style="display: none;">
-            <span id="error-text"></span>
+            <!-- Tela de Usuário Logado -->
+            <div class="screen" id="logged-screen">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="font-size: 2.5rem; margin-bottom: 15px;">👤</div>
+                    <h2 style="color: var(--text-title); margin-bottom: 10px;" id="logged-user-name">Usuário Logado</h2>
+                    <p style="color: var(--text-subtitle); font-size: 0.9rem;" id="logged-user-info">Suas anotações estão sincronizadas</p>
+                </div>
+
+                <div class="message success">
+                    ✅ Você já está logado e sincronizando suas anotações automaticamente
+                </div>
+                
+                <button class="btn btn-load" id="btn-carregar-conteudo">
+                    📥 Carregar Conteúdo Salvo
+                </button>
+                
+                <button class="btn btn-primary" id="btn-continuar-logged">
+                    Continuar
+                </button>
+                
+                <button class="btn btn-secondary" id="btn-logout">
+                    Fazer Logout
+                </button>
+            </div>
+
+            <!-- Tela de Sucesso -->
+            <div class="screen" id="success-screen">
+                <div class="message success" id="success-message">
+                    Login realizado com sucesso!
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <div style="font-size: 2rem; margin-bottom: 15px;">✅</div>
+                    <h2 style="color: var(--text-title); margin-bottom: 10px;">Bem-vindo!</h2>
+                    <p style="color: var(--text-subtitle);" id="welcome-text">Suas anotações estão sincronizadas</p>
+                </div>
+                
+                <button class="btn btn-load" id="btn-carregar-sucesso">
+                    📥 Carregar Conteúdo Salvo
+                </button>
+                
+                <button class="btn btn-primary" id="btn-continuar">
+                    Continuar
+                </button>
+            </div>
+
+            <!-- Mensagem de erro -->
+            <div class="message error" id="error-message" style="display: none;">
+                <span id="error-text"></span>
+            </div>
         </div>
     </div>
 
-    <!-- Badge de status de login -->
+    <!-- Badge de status de login movido para fora do page-wrapper -->
     <div class="sync-status-badge" id="sync-status-badge">
         <span id="sync-status-text">Não logado</span>
     </div>
@@ -650,6 +658,13 @@
                         else if (this.currentScreen === 'register') this.handleRegister();
                     }
                 });
+
+                // Correção vital para PWA no iPhone: força a tela a redesenhar a navbar ao fechar o teclado
+                document.querySelectorAll('.form-input').forEach(input => {
+                    input.addEventListener('blur', () => {
+                        window.scrollTo(0, 0);
+                    });
+                });
             }
 
             async handleLogin() {
@@ -673,10 +688,8 @@
                         }
 
                         setTimeout(() => {
-                            console.log('🚀 Executando load automático após login...');
                             if (window.SyncBridge) {
                                 window.SyncBridge.forceLoadAllPages();
-                                console.log('✅ Load automático enviado para todas as páginas!');
                             }
                         }, 1000);
                         
