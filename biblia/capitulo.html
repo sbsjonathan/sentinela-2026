@@ -3,10 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <meta name="theme-color" content="#ffffff">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Bíblia</title>
   
   <script>
@@ -30,15 +26,12 @@
     })();
   </script>
 
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Sumana:wght@400;700&display=swap" rel="stylesheet">
 
-  <!-- Swiper -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"/>
 
-  <!-- Navbar -->
   <link rel="stylesheet" href="../navbar/navbar-unified.css"/>
 
   <style>
@@ -93,7 +86,7 @@
     .swiper{ width:100%; height:100vh; }
     .swiper-slide{
       box-sizing:border-box;
-      padding:calc(60px * var(--font-scale-global)) calc(30px * var(--font-scale-global)) calc((88px * var(--font-scale-global)) + env(safe-area-inset-bottom)) calc(30px * var(--font-scale-global));
+      padding:calc(60px * var(--font-scale-global)) calc(30px * var(--font-scale-global)) calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom)) calc(30px * var(--font-scale-global));
       overflow-y:auto;
       -webkit-user-select:text; user-select:text;
       -webkit-touch-callout:default;
@@ -151,8 +144,6 @@
     body.bars-hidden .bottom-navbar{ transform:translateY(110%); }
     body.bars-hidden .swiper-slide{ padding-top: calc(8px * var(--font-scale-global)); }
   
-
-    /* ── iPhone-only scroll fix inspirado no fullsc ── */
     :root {
       --bbl-header-height: calc((52px * var(--font-scale-global)) + env(safe-area-inset-top));
     }
@@ -194,7 +185,7 @@
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
       padding-top: calc(var(--bbl-header-height) + (8px * var(--font-scale-global)));
-      padding-bottom: calc((92px * var(--font-scale-global)) + env(safe-area-inset-bottom));
+      padding-bottom: calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom));
     }
 
     body.bars-hidden .swiper-slide {
@@ -216,7 +207,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
   <script>
-    /* ==================== UTIL / ESTADO ==================== */
     const headerEl      = document.querySelector('.header');
     const headerTitle   = document.getElementById('header-title');
     const contentWrapper= document.getElementById('bible-content-wrapper');
@@ -419,7 +409,7 @@
           location.href = `livro/${folderName}/${bookKey}.html`;
         });
 
-        const chapters = bibleBook.capitulos || [];
+        const chapters = bibleBook.capitulos ||[];
         const RENDER_RADIUS = 3;
 
         chapters.forEach(chapter=>{
