@@ -95,12 +95,6 @@ body {
     background-color: var(--btn-chapter-hover); 
 }
 
-/* ────────────────────────────────────────────────
-   iPhone-only scroll fix
-   - trava o documento inteiro
-   - deixa apenas a grade de capítulos rolar
-   - mantém o cabeçalho fora do scroll
-   ──────────────────────────────────────────────── */
 html,
 body {
     position: fixed !important;
@@ -153,7 +147,6 @@ body.with-bottom-navbar {
     align-content: start;
     padding: calc(15px * var(--font-scale-global))
              calc(15px * var(--font-scale-global))
-             calc((92px * var(--font-scale-global)) + env(safe-area-inset-bottom));
+             calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom));
     box-sizing: border-box;
 }
-
