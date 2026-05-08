@@ -45,9 +45,7 @@
       --font-base-default: 16;
       --font-base-global: 16px;
       --font-scale-global: 1;
-    }
-    
-    [data-theme="dark"] {
+    }[data-theme="dark"] {
       --primary-color: #b592e5;
       --accent-blue: #5ac8fa;
       --header-bg: #1c1c1e;
@@ -148,12 +146,12 @@
       --bbl-header-height: calc((52px * var(--font-scale-global)) + env(safe-area-inset-top));
     }
 
+    /* ── iPhone-only scroll fix corrigido (100dvh em vez de position: fixed) ── */
     html,
     body {
-      position: fixed !important;
-      inset: 0 !important;
-      width: 100% !important;
+      min-height: 100dvh !important;
       height: 100% !important;
+      width: 100% !important;
       margin: 0 !important;
       overflow: hidden !important;
       overscroll-behavior: none;
