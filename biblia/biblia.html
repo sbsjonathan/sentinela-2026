@@ -64,7 +64,14 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: var(--font-base-global);
     background-color: var(--bg-color);
-    padding: calc(20px * var(--font-scale-global));
+    margin: 0;
+    padding: 0 !important;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
     transition: background-color 0.3s ease, color 0.3s ease;
     }
 
@@ -166,59 +173,18 @@
         display: block;
     }
 
-    .hebrew .book-button:nth-child(-n+5) {
-    background-color: #3B3547;
-    }
-
-    .hebrew .book-button:nth-child(n+6):nth-child(-n+17) {
-    background-color: #746B84;
-    }
-
-    .hebrew .book-button:nth-child(n+18):nth-child(-n+22) {
-    background-color: #544C63;
-    }
-
-    .hebrew .book-button:nth-child(n+23):nth-child(-n+39) {
-    background-color: #3B3547;
-    }
-
-    .greek .book-button:nth-child(-n+4) {
-    background-color: #3B3547;
-    }
-
-    .greek .book-button:nth-child(5) {
-    background-color: #746B84;
-    }
-
-    .greek .book-button:nth-child(n+6):nth-child(-n+26) {
-    background-color: #544C63;
-    }
-
-    .greek .book-button:nth-child(27) {
-    background-color: #3B3547;
-    }
-
-    /* ── iPhone-only scroll fix corrigido (100dvh em vez de position: fixed) ── */
-    html,
-    body {
-        min-height: 100dvh !important;
-        height: 100% !important;
-        width: 100% !important;
-        margin: 0 !important;
-        overflow: hidden !important;
-        overscroll-behavior: none;
-        -webkit-text-size-adjust: 100%;
-        text-size-adjust: 100%;
-    }
-
-    body,
-    body.with-bottom-navbar {
-        padding: 0 !important;
-    }
+    .hebrew .book-button:nth-child(-n+5) { background-color: #3B3547; }
+    .hebrew .book-button:nth-child(n+6):nth-child(-n+17) { background-color: #746B84; }
+    .hebrew .book-button:nth-child(n+18):nth-child(-n+22) { background-color: #544C63; }
+    .hebrew .book-button:nth-child(n+23):nth-child(-n+39) { background-color: #3B3547; }
+    .greek .book-button:nth-child(-n+4) { background-color: #3B3547; }
+    .greek .book-button:nth-child(5) { background-color: #746B84; }
+    .greek .book-button:nth-child(n+6):nth-child(-n+26) { background-color: #544C63; }
+    .greek .book-button:nth-child(27) { background-color: #3B3547; }
 
     .biblia-scroll {
         position: absolute;
-        inset: 0;
+        top: 0; left: 0; right: 0; bottom: 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
