@@ -25,26 +25,40 @@ body {
     background-color: var(--bg-body);
     color: var(--text-main);
     margin: 0;
+    padding: 0 !important;
     font-size: var(--font-base-global);
-    padding: calc(15px * var(--font-scale-global));
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .container { 
-    max-width: 450px; 
-    margin: 0 auto; 
+    width: min(450px, 100vw);
+    max-width: 450px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-body);
 }
 
 .header {
     display: flex;
+    flex: 0 0 auto;
     justify-content: center;
     align-items: center;
     padding: calc(10px * var(--font-scale-global)) calc(5px * var(--font-scale-global));
     background-color: var(--bg-header);
-    margin: calc(-15px * var(--font-scale-global)) calc(-15px * var(--font-scale-global)) calc(15px * var(--font-scale-global)) calc(-15px * var(--font-scale-global));
+    padding-top: max(calc(10px * var(--font-scale-global)), env(safe-area-inset-top));
+    padding-bottom: calc(10px * var(--font-scale-global));
     padding-left: calc(15px * var(--font-scale-global));
     padding-right: calc(15px * var(--font-scale-global));
     position: relative;
+    z-index: 5;
     transition: background-color 0.3s ease;
 }
 
@@ -66,9 +80,18 @@ body {
 }
 
 .chapters-grid {
+    flex: 1 1 auto;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(calc(55px * var(--font-scale-global)), 1fr));
     gap: calc(2px * var(--font-scale-global));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    align-content: start;
+    padding: calc(15px * var(--font-scale-global))
+             calc(15px * var(--font-scale-global))
+             calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom));
+    box-sizing: border-box;
 }
 
 .chapter-button {
@@ -93,63 +116,4 @@ body {
 
 .chapter-button:hover { 
     background-color: var(--btn-chapter-hover); 
-}
-
-/* ────────────────────────────────────────────────
-   iPhone-only scroll fix corrigido
-   100dvh garante a âncora correta da Navbar no fundo
-   ──────────────────────────────────────────────── */
-html,
-body {
-    min-height: 100dvh !important;
-    height: 100% !important;
-    width: 100% !important;
-    margin: 0 !important;
-    overflow: hidden !important;
-    overscroll-behavior: none;
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-}
-
-body,
-body.with-bottom-navbar {
-    padding: 0 !important;
-}
-
-.container {
-    width: min(450px, 100vw);
-    max-width: 450px;
-    height: 100%;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    background-color: var(--bg-body);
-}
-
-.header {
-    flex: 0 0 auto;
-    margin: 0;
-    padding-top: max(calc(10px * var(--font-scale-global)), env(safe-area-inset-top));
-    padding-bottom: calc(10px * var(--font-scale-global));
-    padding-left: calc(15px * var(--font-scale-global));
-    padding-right: calc(15px * var(--font-scale-global));
-    z-index: 5;
-}
-
-.header .back-button {
-    left: calc(15px * var(--font-scale-global));
-}
-
-.chapters-grid {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    align-content: start;
-    padding: calc(15px * var(--font-scale-global))
-             calc(15px * var(--font-scale-global))
-             calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom));
-    box-sizing: border-box;
 }
