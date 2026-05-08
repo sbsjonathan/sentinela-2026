@@ -95,12 +95,15 @@ body {
     background-color: var(--btn-chapter-hover); 
 }
 
+/* ────────────────────────────────────────────────
+   iPhone-only scroll fix corrigido
+   100dvh garante a âncora correta da Navbar no fundo
+   ──────────────────────────────────────────────── */
 html,
 body {
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100% !important;
+    min-height: 100dvh !important;
     height: 100% !important;
+    width: 100% !important;
     margin: 0 !important;
     overflow: hidden !important;
     overscroll-behavior: none;
