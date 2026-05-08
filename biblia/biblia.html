@@ -198,12 +198,12 @@
     background-color: #3B3547;
     }
 
+    /* ── iPhone-only scroll fix corrigido (100dvh em vez de position: fixed) ── */
     html,
     body {
-        position: fixed !important;
-        inset: 0 !important;
-        width: 100% !important;
+        min-height: 100dvh !important;
         height: 100% !important;
+        width: 100% !important;
         margin: 0 !important;
         overflow: hidden !important;
         overscroll-behavior: none;
@@ -223,9 +223,10 @@
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
         box-sizing: border-box;
-        padding: max(calc(20px * var(--font-scale-global)), env(safe-area-inset-top))
-                 calc(20px * var(--font-scale-global))
-                 calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom));
+        padding-top: max(calc(20px * var(--font-scale-global)), env(safe-area-inset-top));
+        padding-left: calc(20px * var(--font-scale-global));
+        padding-right: calc(20px * var(--font-scale-global));
+        padding-bottom: calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom));
         background-color: var(--bg-color);
     }
 
