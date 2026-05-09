@@ -29,9 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Sumana:wght@400;700&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"/>
-
   <link rel="stylesheet" href="../navbar/navbar-unified.css"/>
 
   <style>
@@ -45,6 +43,7 @@
       --font-base-default: 16;
       --font-base-global: 16px;
       --font-scale-global: 1;
+      --bbl-header-height: calc((52px * var(--font-scale-global)) + env(safe-area-inset-top));
     }[data-theme="dark"] {
       --primary-color: #b592e5;
       --accent-blue: #5ac8fa;
@@ -54,130 +53,179 @@
       --border-color: #3a3a3c;
     }
     
-    body{
+    html, body {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      overscroll-behavior: none;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+      background-color: var(--body-bg);
+      color: var(--text-main);
       font-family: 'Noto Sans', sans-serif;
       font-size: var(--font-base-global);
-      background-color:var(--body-bg);
-      color: var(--text-main);
-      margin: 0;
-      padding: 0 !important;
-      min-height: 100vh;
-      min-height: 100dvh;
-      overflow: hidden;
-      overscroll-behavior: none;
-      -webkit-text-size-adjust:100%;
       transition: background-color 0.3s ease, color 0.3s ease;
     }
-    .header{
-      position:fixed; top:0; left:0; right:0; z-index:20;
-      display:flex; justify-content:center; align-items:center;
-      padding:calc(10px * var(--font-scale-global)) calc(15px * var(--font-scale-global)); 
-      background-color:var(--header-bg);
-      border-bottom:1px solid var(--border-color); 
-      box-sizing:border-box;
-      height:calc(52px * var(--font-scale-global));
-      transition:transform .22s ease-in-out, background-color 0.3s ease, border-color 0.3s ease;
-      will-change:transform;
+
+    body.with-bottom-navbar {
+      padding: 0 !important;
     }
-    .header .back-button{
-      position:absolute; left:calc(15px * var(--font-scale-global)); color:var(--primary-color);
-      text-decoration:none; font-size:1.1em; font-weight:500;
+
+    /* A máscara mágica para proteger o relógio e a bateria do iPhone */
+    .statusbar-mask {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background-color: var(--body-bg);
+      z-index: 15;
+      transition: background-color 0.3s ease;
     }
-    .header .title{ font-size:.95em; font-weight:700; color: var(--text-main); }
-    
-    .swiper {
+
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: var(--bbl-header-height);
+      padding-top: calc(env(safe-area-inset-top) + (10px * var(--font-scale-global)));
+      padding-bottom: calc(10px * var(--font-scale-global));
+      padding-left: calc(15px * var(--font-scale-global));
+      padding-right: calc(15px * var(--font-scale-global));
+      background-color: var(--header-bg);
+      border-bottom: 1px solid var(--border-color); 
+      box-sizing: border-box;
+      transition: transform .22s ease-in-out, background-color 0.3s ease, border-color 0.3s ease;
+      will-change: transform;
+    }
+
+    .header .back-button {
       position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
+      left: calc(15px * var(--font-scale-global));
+      color: var(--primary-color);
+      text-decoration: none;
+      font-size: 1.1em;
+      font-weight: 500;
+    }
+
+    .header .title {
+      font-size: .95em;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .swiper {
+      position: fixed;
+      inset: 0;
       width: 100%;
+      height: 100%;
       overflow: hidden;
       background-color: var(--body-bg);
     }
-    .swiper-slide{
-      box-sizing:border-box;
-      padding:calc(60px * var(--font-scale-global)) calc(30px * var(--font-scale-global)) calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom)) calc(30px * var(--font-scale-global));
-      overflow-y:auto;
-      -webkit-user-select:text; user-select:text;
-      -webkit-touch-callout:default;
-      transition:padding-top .22s ease-in-out;
-      will-change:padding-top;
+
+    .swiper-slide {
+      box-sizing: border-box;
+      height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      -webkit-user-select: text;
+      user-select: text;
+      -webkit-touch-callout: default;
+      padding-left: calc(30px * var(--font-scale-global));
+      padding-right: calc(30px * var(--font-scale-global));
+      /* Altura padrão quando a Navbar está visível */
+      padding-top: calc(var(--bbl-header-height) + (8px * var(--font-scale-global)));
+      padding-bottom: calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom));
+      transition: padding-top .22s ease-in-out, padding-bottom .22s ease-in-out;
+      will-change: padding-top, padding-bottom;
     }
-    .swiper-slide.is-lazy-empty{
-      background:var(--body-bg);
+
+    .swiper-slide.is-lazy-empty {
+      background: var(--body-bg);
     }
-    .book-title{
+
+    .book-title {
       font-family: 'Noto Sans', sans-serif;
-      font-size:1.5em; font-weight:800;
-      margin-top:0; margin-bottom:10px; color: var(--text-main);
+      font-size: 1.5em;
+      font-weight: 800;
+      margin-top: 0;
+      margin-bottom: 10px;
+      color: var(--text-main);
     }
-    .chapter-start{ position: relative; }
-    .chapter-number-large{
-      position: absolute; left: 0; top: 0;
+
+    .chapter-start { position: relative; }
+    .chapter-number-large {
+      position: absolute;
+      left: 0;
+      top: 0;
       font-family: 'Noto Sans', sans-serif;
       font-size: calc(32px * var(--font-scale-global));
       font-weight: 800;
       color: var(--accent-blue);
       line-height: 1;
       transform: translateY(-0.2em);
-      user-select:none;
-      pointer-events:none;
+      user-select: none;
+      pointer-events: none;
       transition: color 0.3s ease;
     }
-    .verse-block{
+
+    .verse-block {
       font-family: 'Sumana', serif;
       line-height: 1.6;
-      font-size:1.1em;
-      text-align:justify;
-      text-indent:0;
+      font-size: 1.1em;
+      text-align: justify;
+      text-indent: 0;
     }
-    .verse-block.paragraph-indented{ margin-top: 0.25em; }
+
+    .verse-block.paragraph-indented { margin-top: 0.25em; }
     .verse-block .verse-number:first-child { margin-left: 1.6em; }
     .verse-block.paragraph-indented .verse-number:first-child { margin-left: 1.5em; }
     .chapter-start .verse-block { text-indent: 1.6em; }
     .chapter-start.two-digits .verse-block { text-indent: 2.5em; }
     .chapter-start.three-digits .verse-block { text-indent: 3.4em; }
-    .verse-number{
+    
+    .verse-number {
       font-family: 'Noto Sans', sans-serif;
-      display:inline-block;
-      font-size:1em; font-weight:700;
-      color:var(--accent-blue);
-      line-height:1; vertical-align:middle;
-      margin-right:.5em; transform:translateY(-0.15em);
+      display: inline-block;
+      font-size: 1em;
+      font-weight: 700;
+      color: var(--accent-blue);
+      line-height: 1;
+      vertical-align: middle;
+      margin-right: .5em;
+      transform: translateY(-0.15em);
       transition: color 0.3s ease;
     }
-    .bottom-navbar{
-      transition:transform .22s ease-in-out;
-      will-change:transform;
-    }
-    body.bars-hidden .header{ transform:translateY(-110%); }
-    body.bars-hidden .bottom-navbar{ transform:translateY(110%); }
-    body.bars-hidden .swiper-slide{ padding-top: calc(8px * var(--font-scale-global)); }
-  
-    :root {
-      --bbl-header-height: calc((52px * var(--font-scale-global)) + env(safe-area-inset-top));
+
+    .bottom-navbar {
+      transition: transform .22s ease-in-out;
+      will-change: transform;
     }
 
-    .header {
-      height: var(--bbl-header-height);
-      padding-top: calc(env(safe-area-inset-top) + (10px * var(--font-scale-global)));
-      padding-bottom: calc(10px * var(--font-scale-global));
-    }
-
-    .swiper-slide {
-      height: 100%;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-      padding-top: calc(var(--bbl-header-height) + (8px * var(--font-scale-global)));
-      padding-bottom: calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom));
-    }
-
+    /* Regras do Modo Leitura: Encolhe barra de cima e desce o preenchimento de baixo */
+    body.bars-hidden .header { transform: translateY(-110%); }
+    body.bars-hidden .bottom-navbar { transform: translateY(110%); }
+    
     body.bars-hidden .swiper-slide {
       padding-top: calc(env(safe-area-inset-top) + (8px * var(--font-scale-global)));
+      padding-bottom: calc((20px * var(--font-scale-global)) + env(safe-area-inset-bottom));
     }
-
   </style>
 </head>
 <body>
+
+  <!-- A máscara que protege a barra de status do iOS -->
+  <div class="statusbar-mask"></div>
 
   <div class="header">
     <a id="back-to-chapters-link" href="#" class="back-button">< Voltar</a>
