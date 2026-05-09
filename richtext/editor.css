@@ -18,6 +18,9 @@
   --editor-arrow-width: calc(35px * var(--font-scale-global));
   --editor-arrow-height: calc(28px * var(--font-scale-global));
   --editor-plus-box: calc(24px * var(--font-scale-global));
+  --editor-safe-top: env(safe-area-inset-top, 0px);
+  --editor-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --editor-navbar-space: calc(70px + var(--editor-safe-bottom));
 }[data-theme="dark"] {
   --text-color: #f2f2f7;
   --bg-color: #000000;
@@ -52,9 +55,24 @@ html, body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+.statusbar-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--editor-safe-top);
+  background: var(--bg-color);
+  z-index: 950;
+  pointer-events: none;
+  transition: background-color 0.3s ease;
+}
+
 .app {
   position: absolute;
-  inset: 0;
+  top: var(--editor-safe-top);
+  right: 0;
+  bottom: var(--editor-navbar-space);
+  left: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -66,7 +84,17 @@ html, body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch; 
   overscroll-behavior-y: contain; 
-  padding: calc(18px * var(--font-scale-global)) calc(24px * var(--font-scale-global)) 0;
+  padding: calc(18px * var(--font-scale-global)) calc(24px * var(--font-scale-global)) calc(18px * var(--font-scale-global));
+}
+
+@media (display-mode: standalone) {
+  :root {
+    --editor-navbar-space: calc(52px + var(--editor-safe-bottom));
+  }
+}
+
+body.is-pwa {
+  --editor-navbar-space: calc(52px + var(--editor-safe-bottom));
 }
 
 .page {
