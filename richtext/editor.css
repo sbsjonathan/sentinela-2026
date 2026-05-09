@@ -18,8 +18,8 @@
   --editor-arrow-width: calc(35px * var(--font-scale-global));
   --editor-arrow-height: calc(28px * var(--font-scale-global));
   --editor-plus-box: calc(24px * var(--font-scale-global));
-  --editor-safe-top: env(safe-area-inset-top, 0px);
-}[data-theme="dark"] {
+}
+[data-theme="dark"] {
   --text-color: #f2f2f7;
   --bg-color: #000000;
   --surface: #1c1c1e;
@@ -38,13 +38,12 @@
 }
 
 html, body {
-  position: fixed;
-  inset: 0;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%; 
-  overflow: hidden;
+  min-height: 100dvh !important;
+  height: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
   overscroll-behavior: none; 
   background: var(--bg-color);
   color: var(--text-color);
@@ -53,29 +52,22 @@ html, body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Status Bar Mask (A Proteção Inteligente) */
 .statusbar-mask {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: var(--editor-safe-top);
-  background: var(--bg-color);
-  z-index: 950;
+  height: env(safe-area-inset-top);
+  background-color: var(--bg-color);
+  z-index: 9999;
   pointer-events: none;
   transition: background-color 0.3s ease;
 }
 
-html body.with-bottom-navbar,
-html body.is-pwa.with-bottom-navbar {
-  padding-bottom: 0 !important;
-}
-
 .app {
   position: absolute;
-  top: var(--editor-safe-top);
-  right: 0;
-  bottom: 0;
-  left: 0;
+  inset: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -87,7 +79,11 @@ html body.is-pwa.with-bottom-navbar {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch; 
   overscroll-behavior-y: contain; 
-  padding: calc(18px * var(--font-scale-global)) calc(24px * var(--font-scale-global)) 0;
+  padding-top: max(calc(18px * var(--font-scale-global)), env(safe-area-inset-top));
+  padding-left: calc(24px * var(--font-scale-global));
+  padding-right: calc(24px * var(--font-scale-global));
+  /* Esse padding no fundo garante respiro acima da Unified Navbar + Segurança do teclado */
+  padding-bottom: calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom));
 }
 
 .page {
@@ -132,8 +128,7 @@ html body.is-pwa.with-bottom-navbar {
 .text-plus[disabled], .text-plus[hidden] { display: none !important; }
 .children { display: block; padding-left: calc(20px * var(--font-scale-global)); margin-left: 0; }
 .children[hidden] { display: none !important; }
-::selection { background: rgba(0, 122, 255, 0.23); }
-[data-theme="dark"] ::selection { background: rgba(10, 132, 255, 0.35); }
+::selection { background: rgba(0, 122, 255, 0.23); }[data-theme="dark"] ::selection { background: rgba(10, 132, 255, 0.35); }
 .shake { animation: shake .4s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes shake { 10%,90% { transform: translate3d(-1px,0,0); } 20%,80% { transform: translate3d(2px,0,0); } 30%,50%,70% { transform: translate3d(-4px,0,0); } 40%,60% { transform: translate3d(4px,0,0); } }
 @keyframes placeholderAurora {
@@ -142,7 +137,6 @@ html body.is-pwa.with-bottom-navbar {
   65% { background-position: 100% 50%; filter: saturate(1.10) brightness(1.05); }
   100% { background-position: 0% 50%; filter: saturate(0.96) brightness(0.98); }
 }
-
 
 :root.perf-low .row,
 :root.perf-low .toggle-arrow,
