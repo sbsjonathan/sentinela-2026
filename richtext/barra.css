@@ -202,15 +202,15 @@ body.editor-has-focus .tool-slot:nth-child(6) > div {
   width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
   padding: 0; margin: 0; flex: 0 0 auto; cursor: pointer; user-select: none; -webkit-user-select: none;
   position: relative; transition: transform .15s ease, background .15s ease, opacity .15s ease, color .15s ease, box-shadow .15s ease;
-}
-[data-theme="dark"] .tool-btn {
+}[data-theme="dark"] .tool-btn {
   color: rgba(255, 255, 255, 0.85);
 }
 
 .tool-btn:active, .tool-btn.is-pressed { background-color: rgba(255, 255, 255, 0.16); transform: scale(0.92); }
 [data-theme="dark"] .tool-btn:active,[data-theme="dark"] .tool-btn.is-pressed { background-color: rgba(255, 255, 255, 0.1); }
 
-.tool-btn.is-active { background-color: rgba(255, 255, 255, 0.25) !important; color: #000; box-shadow: 0 2px 5px rgba(0,0,0,0.08), inset 0 0 0 0.5px rgba(255,255,255,0.2); }[data-theme="dark"] .tool-btn.is-active {
+.tool-btn.is-active { background-color: rgba(255, 255, 255, 0.25) !important; color: #000; box-shadow: 0 2px 5px rgba(0,0,0,0.08), inset 0 0 0 0.5px rgba(255,255,255,0.2); }
+[data-theme="dark"] .tool-btn.is-active {
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.15) !important;
   box-shadow: 0 2px 5px rgba(0,0,0,0.3), inset 0 0 0 0.5px rgba(255,255,255,0.1);
@@ -230,12 +230,18 @@ body.editor-has-focus .tool-slot:nth-child(6) > div {
 .reset-indicator { position: relative; font-weight: 600; font-size: 18px; line-height: 1; display: inline-block; padding: 2px 4px; }
 .reset-prohibition-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 24px !important; height: 24px !important; }
 
-/* ── Comportamento Inteligente da Barra (Acima da Navbar quando o teclado fecha) ── */
+/* ── CONFIGURAÇÕES PARA O ESTADO ZUMBI / LEITOR (BARRA ACIMA DA NAVBAR) ── */
+/* MODO NAVEGADOR (Navbar de ~70px) */
 body.leitor-keep-toolbar.with-bottom-navbar .kbd-toolbar,
 body.zombie-toolbar-active.with-bottom-navbar .kbd-toolbar {
   bottom: calc(70px + env(safe-area-inset-bottom));
-  padding-bottom: 12px; /* Removemos o safe-area daqui, já que ele flutua em cima da Navbar */
   z-index: 1001;
+}
+
+/* MODO PWA/STANDALONE (Navbar de ~52px) */
+body.is-pwa.leitor-keep-toolbar.with-bottom-navbar .kbd-toolbar,
+body.is-pwa.zombie-toolbar-active.with-bottom-navbar .kbd-toolbar {
+  bottom: calc(52px + env(safe-area-inset-bottom));
 }
 
 body.leitor-keep-toolbar.with-bottom-navbar .glass-fx,
