@@ -52,14 +52,15 @@ html, body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+html body.with-bottom-navbar,
+html body.is-pwa.with-bottom-navbar {
+  padding: 0 !important;
+}
+
 body:not(.editor-has-focus),
 body.leitor-keep-toolbar,
 body.zombie-toolbar-active {
   height: 100dvh !important;
-}
-
-body.with-bottom-navbar {
-  padding-bottom: 0 !important;
 }
 
 .statusbar-mask {
@@ -91,11 +92,7 @@ body.with-bottom-navbar {
   padding-top: max(calc(18px * var(--font-scale-global)), env(safe-area-inset-top));
   padding-left: calc(24px * var(--font-scale-global));
   padding-right: calc(24px * var(--font-scale-global));
-  padding-bottom: calc(70px + env(safe-area-inset-bottom));
-}
-
-body.is-pwa .editor-scroll {
-  padding-bottom: calc(52px + env(safe-area-inset-bottom));
+  padding-bottom: calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom));
 }
 
 .page {
