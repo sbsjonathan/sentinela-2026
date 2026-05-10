@@ -127,7 +127,6 @@ const M4_Caret = {
   updateFocus(forceRecalc = false) {
     M1_Config.editor.querySelectorAll('.is-focused').forEach(n => n.classList.remove('is-focused'));
 
-    // Sincroniza a classe zombie no body para o CSS da barra entender
     if (this.zombieToolbar) {
       document.body.classList.add('zombie-toolbar-active');
     } else {
@@ -163,7 +162,6 @@ const M4_Caret = {
   }
 };
 
-
 const M4A_Placeholder = {
   getSemanaDDMM() {
     if (window.semanaAtual) return window.semanaAtual;
@@ -194,7 +192,7 @@ const M4A_Placeholder = {
   formatSemanaAmigavel() {
     const semana = this.getSemanaDDMM();
     const [diaRaw, mesRaw] = String(semana).split('-');
-    const meses = [
+    const meses =[
       'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
       'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
     ];
@@ -460,7 +458,19 @@ const M11_Layout = {
   adjustViewport() {
     const vv = window.visualViewport;
     if (!vv) return;
-    document.body.style.height = vv.height + 'px';
+    
+    // A MÁGICA: No iOS PWA, ao fechar o teclado, o visualViewport.height 
+    // pode vir encurtado, causando o Navbar a flutuar num falso chão.
+    // Comparamos com a tela inteira (innerHeight). Se for perto, o teclado
+    // fechou, então damos "100%" pro Navbar colar no chão de verdade.
+    const isKeyboardOpen = (window.innerHeight - vv.height) > 100;
+    
+    if (isKeyboardOpen) {
+        document.body.style.height = vv.height + 'px';
+    } else {
+        document.body.style.height = '100%';
+    }
+    
     window.scrollTo(0, 0);
   },
   adjustPadding() {
