@@ -33,7 +33,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 10px calc(12px + env(safe-area-inset-bottom, 0px));
+  /* CORREÇÃO PARA O TECLADO: Removido env(safe-area) daqui para a barra não flutuar */
+  padding: 8px 10px 12px;
   background-color: transparent;
   z-index: 100;
   pointer-events: none; 
@@ -229,8 +230,7 @@ body.editor-has-focus .tool-slot:nth-child(6) > div {
 .reset-indicator { position: relative; font-weight: 600; font-size: 18px; line-height: 1; display: inline-block; padding: 2px 4px; }
 .reset-prohibition-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 24px !important; height: 24px !important; }
 
-
-/* MODO NAVEGADOR PADRÃO */
+/* ── MODO ZUMBI/LEITURA: BARRA ACIMA DA NAVBAR UNIFICADA ── */
 body.leitor-keep-toolbar.with-bottom-navbar .kbd-toolbar,
 body.zombie-toolbar-active.with-bottom-navbar .kbd-toolbar {
   bottom: calc(70px + env(safe-area-inset-bottom));
@@ -238,11 +238,9 @@ body.zombie-toolbar-active.with-bottom-navbar .kbd-toolbar {
   z-index: 1001;
 }
 
-/* MODO PWA (A Barra de formatação beija o topo da Navbar de 52px) */
 body.is-pwa.leitor-keep-toolbar.with-bottom-navbar .kbd-toolbar,
 body.is-pwa.zombie-toolbar-active.with-bottom-navbar .kbd-toolbar {
-  bottom: 52px; 
-  padding-bottom: 12px;
+  bottom: calc(52px + env(safe-area-inset-bottom));
 }
 
 body.leitor-keep-toolbar.with-bottom-navbar .glass-fx,
