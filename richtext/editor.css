@@ -18,8 +18,7 @@
   --editor-arrow-width: calc(35px * var(--font-scale-global));
   --editor-arrow-height: calc(28px * var(--font-scale-global));
   --editor-plus-box: calc(24px * var(--font-scale-global));
-}
-[data-theme="dark"] {
+}[data-theme="dark"] {
   --text-color: #f2f2f7;
   --bg-color: #000000;
   --surface: #1c1c1e;
@@ -54,13 +53,18 @@ html, body {
 }
 
 /* ========================================================
-   DESAFIO DO NAVBAR EXAGERADO (O TESTE DE CONTROLE)
-   Isso vai forçar a Navbar a subir 40% da tela, ignorando 
-   qualquer bug do Safari ou interferência do editor.js
+   CORREÇÃO DO NAVBAR NO PWA (O GOLPE FINAL)
+   Como o body usa position: fixed, o iOS cria um "falso chão"
+   acima do home indicator. Puxamos o navbar para baixo (- safe area)
+   para matar o vão em branco perfeitamente.
    ======================================================== */
-body .bottom-navbar {
-    bottom: 40vh !important;
-    box-shadow: 0 20px 40px rgba(255, 0, 0, 0.5) !important; /* Coloquei uma sombra vermelha só pra destacar */
+@media (display-mode: standalone) {
+    body .bottom-navbar {
+        bottom: calc(-1 * env(safe-area-inset-bottom)) !important;
+    }
+}
+body.is-pwa .bottom-navbar {
+    bottom: calc(-1 * env(safe-area-inset-bottom)) !important;
 }
 /* ======================================================== */
 
