@@ -205,7 +205,7 @@ const M4A_Placeholder = {
   },
 
   main() {
-    return `Anote aqui o discurso da semana de ${this.formatSemanaAmigavel()}`;
+    return `Anotie aqui o discurso da semana de ${this.formatSemanaAmigavel()}`;
   }
 };
 
