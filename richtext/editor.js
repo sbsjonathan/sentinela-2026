@@ -468,9 +468,18 @@ const M11_Layout = {
         document.body.style.height = '100dvh';
         document.body.style.position = '';
         
+        document.documentElement.style.overflow = 'auto';
+        document.body.style.overflow = 'auto';
+        
         window.scrollTo(0, 0);
         document.body.scrollTop = 0;
         document.documentElement.scrollTop = 0;
+        
+        setTimeout(() => {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+            window.scrollTo(0, 0);
+        }, 20);
     }
   },
   adjustPadding() {
@@ -632,9 +641,19 @@ const M10_EditorEvents = {
     M1_Config.editor.addEventListener('blur', () => {
       setTimeout(() => {
         M4_Caret.updateFocus();
+        
+        document.documentElement.style.overflow = 'auto';
+        document.body.style.overflow = 'auto';
+        
         window.scrollTo(0, 0);
         document.body.scrollTop = 0;
         document.documentElement.scrollTop = 0;
+        
+        setTimeout(() => {
+          document.documentElement.style.overflow = '';
+          document.body.style.overflow = '';
+          window.scrollTo(0, 0);
+        }, 20);
       }, 150);
     });
 
@@ -787,13 +806,13 @@ const M10_EditorEvents = {
           const r = s.getRangeAt(0);
           const sEd = M2_Query.closest(r.startContainer, '.editable') || M2_Query.getEdFor(ns[0]);
           const eEd = M2_Query.closest(r.endContainer, '.editable') || M2_Query.getEdFor(ns[ns.length - 1]);
-          let s = '', et = '';
+          let st = '', et = '';
 
           if (sEd && sEd.contains(r.startContainer)) {
             const rs = document.createRange();
             rs.setStart(sEd, 0);
             rs.setEnd(r.startContainer, r.startOffset);
-            s = rs.toString();
+            st = rs.toString();
           }
 
           if (eEd && eEd.contains(r.endContainer)) {
@@ -804,12 +823,12 @@ const M10_EditorEvents = {
           }
 
           const tEd = M2_Query.getEdFor(ns[0]);
-          if (tEd) tEd.textContent = s + et;
+          if (tEd) tEd.textContent = st + et;
           ns.slice(1).forEach(n => n.remove());
 
           if (tEd) {
             const nr = document.createRange();
-            if (tEd.firstChild?.nodeType === 3) nr.setStart(tEd.firstChild, Math.min(s.length, tEd.firstChild.length));
+            if (tEd.firstChild?.nodeType === 3) nr.setStart(tEd.firstChild, Math.min(st.length, tEd.firstChild.length));
             else nr.setStart(tEd, 0);
             nr.collapse(true);
             s.removeAllRanges();
