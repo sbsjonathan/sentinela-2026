@@ -467,9 +467,11 @@ const M11_Layout = {
     } else {
         document.body.style.height = '100dvh';
         document.body.style.position = '';
+        
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
     }
-    
-    window.scrollTo(0, 0);
   },
   adjustPadding() {
     const respiro = this.lineHeight() * this.lines;
@@ -628,7 +630,12 @@ const M10_EditorEvents = {
     }, true);
 
     M1_Config.editor.addEventListener('blur', () => {
-      setTimeout(() => M4_Caret.updateFocus(), 100);
+      setTimeout(() => {
+        M4_Caret.updateFocus();
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+      }, 150);
     });
 
     let hadBibleToolbarLock = document.body.classList.contains('leitor-keep-toolbar');
@@ -780,13 +787,13 @@ const M10_EditorEvents = {
           const r = s.getRangeAt(0);
           const sEd = M2_Query.closest(r.startContainer, '.editable') || M2_Query.getEdFor(ns[0]);
           const eEd = M2_Query.closest(r.endContainer, '.editable') || M2_Query.getEdFor(ns[ns.length - 1]);
-          let st = '', et = '';
+          let s = '', et = '';
 
           if (sEd && sEd.contains(r.startContainer)) {
             const rs = document.createRange();
             rs.setStart(sEd, 0);
             rs.setEnd(r.startContainer, r.startOffset);
-            st = rs.toString();
+            s = rs.toString();
           }
 
           if (eEd && eEd.contains(r.endContainer)) {
@@ -797,12 +804,12 @@ const M10_EditorEvents = {
           }
 
           const tEd = M2_Query.getEdFor(ns[0]);
-          if (tEd) tEd.textContent = st + et;
+          if (tEd) tEd.textContent = s + et;
           ns.slice(1).forEach(n => n.remove());
 
           if (tEd) {
             const nr = document.createRange();
-            if (tEd.firstChild?.nodeType === 3) nr.setStart(tEd.firstChild, Math.min(st.length, tEd.firstChild.length));
+            if (tEd.firstChild?.nodeType === 3) nr.setStart(tEd.firstChild, Math.min(s.length, tEd.firstChild.length));
             else nr.setStart(tEd, 0);
             nr.collapse(true);
             s.removeAllRanges();
