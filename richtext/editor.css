@@ -38,13 +38,17 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
-  position: fixed;
-  inset: 0;
+html {
+  background: var(--bg-color);
+  transition: background-color 0.3s ease;
+}
+
+body {
   margin: 0;
   padding: 0;
   width: 200%;
-  height: 200%;
+  min-height: 200vh;
+  min-height: 200dvh;
   overflow: hidden;
   overscroll-behavior: none;
   background: var(--bg-color);
