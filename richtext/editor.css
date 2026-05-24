@@ -70,7 +70,7 @@ html body.is-pwa.with-bottom-navbar {
 body:not(.editor-has-focus),
 body.leitor-keep-toolbar,
 body.zombie-toolbar-active {
-  height: 150dvh !important;
+  height: 100dvh !important;
 }
 
 .statusbar-mask {
