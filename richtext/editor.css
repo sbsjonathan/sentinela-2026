@@ -47,7 +47,7 @@ body {
   margin: 0;
   padding: 0;
   width: 100%;
-  min-height: 200vh;
+  min-height: 150vh;
   min-height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
@@ -70,7 +70,7 @@ html body.is-pwa.with-bottom-navbar {
 body:not(.editor-has-focus),
 body.leitor-keep-toolbar,
 body.zombie-toolbar-active {
-  height: 200dvh !important;
+  height: 150dvh !important;
 }
 
 .statusbar-mask {
