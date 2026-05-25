@@ -7,7 +7,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
     <title>Login - Sincronização</title>
     
     <script>
@@ -257,7 +256,9 @@
         .btn-load {
             background: #17a2b8;
             color: white;
-        }[data-theme="dark"] .btn-load {
+        }
+        
+        [data-theme="dark"] .btn-load {
             background: #0c7489;
         }
 
@@ -340,6 +341,47 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .offline-section {
+            margin-top: 30px;
+            padding-top: 25px;
+            border-top: 1px solid var(--border-input);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 6px;
+            background: var(--border-input);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 12px 0;
+            display: none;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--cor-sucesso);
+            transition: width 0.2s ease;
+        }
+
+        .progress-text {
+            font-size: 0.8rem;
+            color: var(--text-subtitle);
+            text-align: center;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        .btn-danger {
+            background: var(--cor-erro);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:active {
+            background: #dc2626;
+        }
     </style>
 </head>
 <body>
@@ -351,7 +393,6 @@
                 <p class="logo-subtitle">Suas anotações em todos os dispositivos</p>
             </div>
 
-            <!-- Tela de Login -->
             <div class="screen active" id="login-screen">
                 <div class="form-group">
                     <label class="form-label" for="login-usuario">Nome de usuário</label>
@@ -377,7 +418,6 @@
                 </div>
             </div>
 
-            <!-- Tela de Cadastro -->
             <div class="screen" id="register-screen">
                 <div class="form-group">
                     <label class="form-label" for="register-usuario">Nome de usuário</label>
@@ -408,7 +448,6 @@
                 </div>
             </div>
 
-            <!-- Tela de Usuário Logado -->
             <div class="screen" id="logged-screen">
                 <div style="text-align: center; margin-bottom: 30px;">
                     <div style="font-size: 2.5rem; margin-bottom: 15px;">👤</div>
@@ -433,7 +472,6 @@
                 </button>
             </div>
 
-            <!-- Tela de Sucesso -->
             <div class="screen" id="success-screen">
                 <div class="message success" id="success-message">
                     Login realizado com sucesso!
@@ -454,14 +492,30 @@
                 </button>
             </div>
 
-            <!-- Mensagem de erro -->
             <div class="message error" id="error-message" style="display: none;">
                 <span id="error-text"></span>
             </div>
+
+            <div class="offline-section">
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <div style="font-size: 1.8rem; margin-bottom: 5px;">✈️</div>
+                    <h3 style="color: var(--text-title); margin: 0; font-size: 1.1rem;">Modo Offline</h3>
+                    <p style="color: var(--text-subtitle); font-size: 0.85rem; margin-top: 5px;">Baixe a Bíblia, App e a Sentinela da semana para ler sem internet.</p>
+                </div>
+                
+                <div class="progress-bar-container" id="offline-progress-container">
+                    <div class="progress-bar-fill" id="offline-progress-fill"></div>
+                </div>
+                <div class="progress-text" id="offline-progress-text">0%</div>
+
+                <button class="btn btn-secondary" id="btn-offline-toggle">
+                    ⬇️ Baixar App para Modo Offline
+                </button>
+            </div>
+
         </div>
     </div>
 
-    <!-- Badge de status de login movido para fora do page-wrapper -->
     <div class="sync-status-badge" id="sync-status-badge">
         <span id="sync-status-text">Não logado</span>
     </div>
@@ -470,6 +524,9 @@
     <script src="supabase.js"></script>
     <script src="sync-bridge.js"></script>
     <script src="../navbar/navbar-unified.js"></script>
+    <script src="../navbar/network-sensor.js"></script>
+    <script src="offline-manager.js"></script>
+    
     <script>
         class AuthUI {
             constructor() {
@@ -485,16 +542,12 @@
 
             checkExistingLogin() {
                 const savedUser = localStorage.getItem('supabase_user');
-                
                 if (savedUser) {
                     try {
                         const userData = JSON.parse(savedUser);
                         this.showStatusBadge(`Logado: ${userData.nome || userData.usuario}`, 'success');
-                        
                         this.showLoggedUserScreen(userData);
-                        
                         this.validateUserInBackground(userData);
-                        
                     } catch (e) {
                         localStorage.removeItem('supabase_user');
                         this.showStatusBadge('Login corrompido removido', 'logged-out');
@@ -505,6 +558,7 @@
             }
 
             async validateUserInBackground(userData) {
+                if (!navigator.onLine) return;
                 try {
                     const { data: validUser, error } = await window.SupabaseSync.supabase
                         .from('usuarios')
@@ -514,29 +568,19 @@
                     
                     if (error) {
                         if (error.code === 'PGRST301' || error.message.includes('network') || error.message.includes('fetch')) {
-                            console.log('⚠️ Erro de rede na validação - mantendo login');
                             return;
                         }
-                        
                         if (error.code === 'PGRST116') {
-                            console.log('❌ Usuário não existe no banco - removendo login');
                             localStorage.removeItem('supabase_user');
                             this.checkExistingLogin();
                         }
-                    } else if (validUser) {
-                        console.log('✅ Login validado com sucesso');
                     }
-                    
-                } catch (networkError) {
-                    console.log('⚠️ Erro de rede na validação - mantendo login:', networkError.message);
-                }
+                } catch (networkError) {}
             }
 
             showLoggedUserScreen(userData) {
-                document.getElementById('logged-user-name').textContent = 
-                    userData.nome || userData.usuario;
-                document.getElementById('logged-user-info').textContent = 
-                    `Logado como: ${userData.usuario}`;
+                document.getElementById('logged-user-name').textContent = userData.nome || userData.usuario;
+                document.getElementById('logged-user-info').textContent = `Logado como: ${userData.usuario}`;
                 this.showScreen('logged');
             }
 
@@ -546,32 +590,20 @@
                 btn.disabled = true;
 
                 try {
-                    if (window.SupabaseSync) {
-                        window.SupabaseSync.logout();
-                    }
-
+                    if (window.SupabaseSync) window.SupabaseSync.logout();
                     localStorage.removeItem('supabase_user');
                     localStorage.removeItem('last_login');
-
                     this.showStatusBadge('👋 Logout realizado', 'logged-out');
                     
                     setTimeout(() => {
                         this.showScreen('login');
-                        
                         document.getElementById('login-usuario').value = '';
                         document.getElementById('login-senha').value = '';
-                        
-                        setTimeout(() => {
-                            this.showStatusBadge('Não logado', 'logged-out');
-                        }, 500);
-                        
+                        setTimeout(() => { this.showStatusBadge('Não logado', 'logged-out'); }, 500);
                     }, 1500);
-
                 } catch (error) {
-                    console.error('Erro no logout:', error);
                     this.showStatusBadge('❌ Erro no logout', 'error');
                 }
-
                 btn.classList.remove('loading');
                 btn.disabled = false;
             }
@@ -584,23 +616,16 @@
 
                 try {
                     this.showStatusBadge('📥 Carregando conteúdo...', 'loading');
-                    
                     if (window.SyncBridge) {
                         window.SyncBridge.forceLoadAllPages();
                         this.showStatusBadge('✅ Conteúdo carregado em todas as páginas!', 'success');
-                        
-                        setTimeout(() => {
-                            this.redirectToNotes();
-                        }, 2000);
+                        setTimeout(() => { this.redirectToNotes(); }, 2000);
                     } else {
-                        this.showStatusBadge('❌ Sistema de sincronização indisponível', 'error');
+                        this.showStatusBadge('❌ Sistema indisponível', 'error');
                     }
-
                 } catch (error) {
-                    console.error('Erro ao carregar conteúdo:', error);
                     this.showStatusBadge('❌ Erro ao carregar', 'error');
                 }
-
                 btn.classList.remove('loading');
                 btn.disabled = false;
                 btn.textContent = '📥 Carregar Conteúdo Salvo';
@@ -608,8 +633,7 @@
 
             redirectToNotes() {
                 const semanaAtual = this.detectCurrentWeek();
-                const notesUrl = `../richtext/container.html${semanaAtual ? '?semana=' + semanaAtual : ''}`;
-                window.location.href = notesUrl;
+                window.location.href = `../richtext/container.html${semanaAtual ? '?semana=' + semanaAtual : ''}`;
             }
 
             detectCurrentWeek() {
@@ -617,18 +641,20 @@
                 const semana = urlParams.get('semana');
                 if (semana) return semana;
                 
-                const agora = new Date();
-                const dia = String(agora.getDate()).padStart(2, '0');
-                const mes = String(agora.getMonth() + 1).padStart(2, '0');
-                return `${dia}-${mes}`;
+                const hoje = new Date();
+                const dia = hoje.getDay();
+                const diff = dia === 0 ? -6 : 1 - dia;
+                const segunda = new Date(hoje);
+                segunda.setDate(hoje.getDate() + diff);
+                const dd = String(segunda.getDate()).padStart(2, '0');
+                const mm = String(segunda.getMonth() + 1).padStart(2, '0');
+                return `${dd}-${mm}`;
             }
 
             showStatusBadge(message, type) {
                 if (!this.statusBadge) return;
-                
                 document.getElementById('sync-status-text').textContent = message;
                 this.statusBadge.classList.remove('logged-out', 'show');
-                
                 if (type === 'success' || type === 'loading') {
                     this.statusBadge.classList.add('show');
                 } else if (type === 'logged-out') {
@@ -639,16 +665,13 @@
             setupEventListeners() {
                 document.getElementById('switch-to-register').onclick = () => this.showScreen('register');
                 document.getElementById('switch-to-login').onclick = () => this.showScreen('login');
-
                 document.getElementById('btn-login').onclick = () => this.handleLogin();
                 document.getElementById('btn-register').onclick = () => this.handleRegister();
                 document.getElementById('btn-continuar').onclick = () => this.redirectToApp();
                 document.getElementById('btn-continuar-logged').onclick = () => this.redirectToApp();
                 document.getElementById('btn-logout').onclick = () => this.handleLogout();
-
                 document.getElementById('btn-carregar-conteudo').onclick = () => this.handleLoadContent();
                 document.getElementById('btn-carregar-sucesso').onclick = () => this.handleLoadContent();
-
                 document.getElementById('btn-voltar').onclick = () => this.redirectToApp();
                 document.getElementById('btn-voltar-register').onclick = () => this.redirectToApp();
 
@@ -659,15 +682,16 @@
                     }
                 });
 
-                // Correção vital para PWA no iPhone: força a tela a redesenhar a navbar ao fechar o teclado
                 document.querySelectorAll('.form-input').forEach(input => {
-                    input.addEventListener('blur', () => {
-                        window.scrollTo(0, 0);
-                    });
+                    input.addEventListener('blur', () => { window.scrollTo(0, 0); });
                 });
             }
 
             async handleLogin() {
+                if (!navigator.onLine) {
+                    this.showError('Sem conexão com a internet.');
+                    return;
+                }
                 const usuario = document.getElementById('login-usuario').value.trim();
                 const senha = document.getElementById('login-senha').value;
 
@@ -679,20 +703,14 @@
 
                 try {
                     const result = await window.SupabaseSync.logarUsuario(usuario, senha);
-                    
                     if (result.success) {
                         this.showSuccess(`Bem-vindo, ${result.userData.nome_completo || usuario}!`);
-                        
                         if (window.UnifiedNavbar && window.UnifiedNavbar.get()) {
                             window.UnifiedNavbar.get().onLoginSuccess(result.userData);
                         }
-
                         setTimeout(() => {
-                            if (window.SyncBridge) {
-                                window.SyncBridge.forceLoadAllPages();
-                            }
+                            if (window.SyncBridge) window.SyncBridge.forceLoadAllPages();
                         }, 1000);
-                        
                     } else {
                         this.showError(result.error);
                     }
@@ -705,6 +723,10 @@
             }
 
             async handleRegister() {
+                if (!navigator.onLine) {
+                    this.showError('Sem conexão com a internet.');
+                    return;
+                }
                 const usuario = document.getElementById('register-usuario').value.trim();
                 const senha = document.getElementById('register-senha').value;
                 const nome = document.getElementById('register-nome').value.trim();
@@ -717,12 +739,10 @@
 
                 try {
                     const result = await window.SupabaseSync.cadastrarUsuario(usuario, senha, nome);
-                    
                     if (result.success) {
                         const loginResult = await window.SupabaseSync.logarUsuario(usuario, senha);
                         if (loginResult.success) {
                             this.showSuccess(`Conta criada! Bem-vindo, ${nome || usuario}!`);
-                            
                             if (window.UnifiedNavbar && window.UnifiedNavbar.get()) {
                                 window.UnifiedNavbar.get().onLoginSuccess(loginResult.userData);
                             }
@@ -740,27 +760,22 @@
 
             validateInput(usuario, senha) {
                 document.querySelectorAll('.form-input').forEach(i => i.classList.remove('error', 'success'));
-
                 let valid = true;
-
                 if (!usuario || usuario.length < 3) {
                     this.showError('Nome de usuário deve ter pelo menos 3 caracteres');
                     document.getElementById(this.currentScreen + '-usuario').classList.add('error');
                     valid = false;
                 }
-
                 if (!senha || senha.length < 4) {
                     this.showError('Senha deve ter pelo menos 4 caracteres');
                     document.getElementById(this.currentScreen + '-senha').classList.add('error');
                     valid = false;
                 }
-
                 if (usuario && !/^[a-zA-Z0-9_-]+$/.test(usuario)) {
                     this.showError('Nome deve ter apenas letras, números, _ ou -');
                     document.getElementById(this.currentScreen + '-usuario').classList.add('error');
                     valid = false;
                 }
-
                 return valid;
             }
 
@@ -785,22 +800,18 @@
             showSuccess(message) {
                 document.getElementById('success-message').textContent = message;
                 const user = window.SupabaseSync.getCurrentUser();
-                document.getElementById('welcome-text').textContent = 
-                    `Logado como: ${user.usuario}`;
-                
+                document.getElementById('welcome-text').textContent = `Logado como: ${user.usuario}`;
                 this.showScreen('success');
             }
 
             redirectToApp() {
-                const returnUrl = new URLSearchParams(window.location.search).get('return') || 
-                                  '../richtext/container.html';
+                const returnUrl = new URLSearchParams(window.location.search).get('return') || '../richtext/container.html';
                 window.location.href = returnUrl;
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             new AuthUI();
-            
             setTimeout(() => {
                 if (window.UnifiedNavbar && window.UnifiedNavbar.get()) {
                     window.UnifiedNavbar.setActivePage('save');
