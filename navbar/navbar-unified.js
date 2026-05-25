@@ -476,3 +476,10 @@ document.addEventListener('touchend', function (event) {
     }
     lastTouchEnd = now;
 }, false);
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        const swPath = joinProjectPath('sw.js');
+        navigator.serviceWorker.register(swPath).catch(() => {});
+    });
+}
