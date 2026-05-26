@@ -1,82 +1,93 @@
-const CACHE_NAME = 'reuniao-cache-v2';
+const CACHE_NAME = 'reuniao-cache-v3';
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', event => {
     self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', event => {
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        }).then(() => self.clients.claim())
+        caches.keys()
+            .then(cacheNames => Promise.all(cacheNames.map(cacheName => cacheName !== CACHE_NAME ? caches.delete(cacheName) : null)))
+            .then(() => self.clients.claim())
     );
 });
 
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // Ignora requisições que não sejam GET e esquemas não-HTTP (ex: extensões)
     if (event.request.method !== 'GET' || !url.protocol.startsWith('http')) return;
 
-    // IGNORA ROTAS EXTERNAS DE API (Deixa a IA e o Supabase passarem direto)
-    if (url.origin.includes('supabase.co') || url.origin.includes('workers.dev')) {
-        return;
-    }
-    
-    event.respondWith(
-        fetch(event.request).then((response) => {
-            const resClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, resClone);
-            });
+    if (url.origin.includes('supabase.co') || url.origin.includes('workers.dev')) return;
+
+    event.respondWith((async () => {
+        try {
+            const response = await fetch(event.request);
+            if (response && (response.ok || response.type === 'opaque')) {
+                const cache = await caches.open(CACHE_NAME);
+                await cache.put(event.request, response.clone());
+            }
             return response;
-        }).catch(() => {
-            // A MÁGICA: ignoreSearch ignora as variáveis "?livro=genesis" e acha o arquivo puro no cache
-            return caches.match(event.request, { ignoreSearch: true });
-        })
-    );
+        } catch (err) {
+            const cached = await caches.match(event.request, { ignoreSearch: true });
+            if (cached) return cached;
+            if (event.request.mode === 'navigate') {
+                const index = await caches.match(new URL('index.html', self.registration.scope).href, { ignoreSearch: true });
+                if (index) return index;
+            }
+            throw err;
+        }
+    })());
 });
 
-self.addEventListener('message', async (event) => {
+self.addEventListener('message', async event => {
     if (!event.data) return;
 
     if (event.data.action === 'START_DOWNLOAD') {
         try {
-            const urlsToCache = await buildDownloadList();
+            const assets = await buildDownloadList();
             const cache = await caches.open(CACHE_NAME);
-            
+            const failures = [];
             let loaded = 0;
-            const total = urlsToCache.length;
+            const total = assets.length;
 
-            for (const url of urlsToCache) {
+            for (const asset of assets) {
                 try {
-                    const isExternal = url.startsWith('http');
-                    const req = new Request(url, { mode: isExternal ? 'no-cors' : 'cors' });
-                    const res = await fetch(req);
-                    if (res || isExternal) {
-                        await cache.put(req, res);
+                    const request = asset.external
+                        ? new Request(asset.url, { mode: 'no-cors' })
+                        : new Request(asset.url, { credentials: 'same-origin', cache: 'reload' });
+                    const response = await fetch(request);
+                    if (!response || (!response.ok && response.type !== 'opaque')) {
+                        throw new Error(response ? String(response.status) : 'sem resposta');
                     }
-                } catch(e) {
-                    console.warn("Erro ao baixar asset pro cache:", url, e);
+                    await cache.put(request, response.clone());
+                } catch (err) {
+                    failures.push({ url: asset.url, critical: asset.critical, message: err && err.message ? err.message : 'erro' });
                 }
                 loaded++;
-                event.source.postMessage({ type: 'DOWNLOAD_PROGRESS', loaded, total });
+                postToSource(event, { type: 'DOWNLOAD_PROGRESS', loaded, total });
             }
-            event.source.postMessage({ type: 'DOWNLOAD_COMPLETE' });
+
+            const criticalFailures = failures.filter(item => item.critical);
+            if (criticalFailures.length) {
+                postToSource(event, { type: 'DOWNLOAD_ERROR', failures: criticalFailures.slice(0, 12), totalFailures: criticalFailures.length });
+                return;
+            }
+
+            postToSource(event, { type: 'DOWNLOAD_COMPLETE', warnings: failures.slice(0, 12), totalWarnings: failures.length });
         } catch (err) {
-            event.source.postMessage({ type: 'DOWNLOAD_ERROR' });
+            postToSource(event, { type: 'DOWNLOAD_ERROR', failures: [{ url: '', critical: true, message: err && err.message ? err.message : 'erro' }], totalFailures: 1 });
         }
-    } else if (event.data.action === 'CLEAR_CACHE') {
+    }
+
+    if (event.data.action === 'CLEAR_CACHE') {
         await caches.delete(CACHE_NAME);
-        event.source.postMessage({ type: 'CACHE_CLEARED' });
+        postToSource(event, { type: 'CACHE_CLEARED' });
     }
 });
+
+function postToSource(event, data) {
+    if (event.source && event.source.postMessage) event.source.postMessage(data);
+}
 
 function getSemanaAtual() {
     const hoje = new Date();
@@ -89,95 +100,85 @@ function getSemanaAtual() {
     return `${dd}-${mm}`;
 }
 
+function asset(path, critical = true) {
+    const external = /^https?:\/\//i.test(path);
+    const url = external ? path : new URL(path, self.registration.scope).href;
+    return { url, critical, external };
+}
+
 async function buildDownloadList() {
-    const basePath = self.registration.scope;
-    
-    let list = [
-        // Raiz do projeto
-        '/',
-        'index.html',
-        'styles.css',
-        'main.js',
-        'manifest.json',
-        'worker/worker.html',
-        
-        // Navbar
-        'navbar/navbar-unified.css',
-        'navbar/navbar-unified.js',
-        'navbar/network-sensor.js',
-        
-        // Save & Auth
-        'save/auth-supabase.html',
-        'save/config.js',
-        'save/supabase.js',
-        'save/sync-bridge.js',
-        'save/unified-load.js',
-        'save/auto-save.js',
-        'save/feedback.js',
-        'save/sentinela-sync.js',
-        'save/asmb-sync.js',
-        'save/offline-manager.js',
-
-        // Richtext & Plugins
-        'richtext/container.html',
-        'richtext/editor.css',
-        'richtext/barra.css',
-        'richtext/perf-low.css',
-        'richtext/editor.js',
-        'richtext/barra.js',
-        'richtext/perf-profile.js',
-        'richtext/cache-r.js',
-        'richtext/liquid-glass.js',
-        'richtext/leitor.js',
-        'richtext/plugin/negrita.css',
-        'richtext/plugin/bullet.css',
-        'richtext/plugin/cores.css',
-        'richtext/plugin/font.css',
-        'richtext/plugin/leitor.css',
-        'richtext/plugin/undo.js',
-        'richtext/plugin/negrita.js',
-        'richtext/plugin/bullet.js',
-        'richtext/plugin/cores.js',
-        'richtext/plugin/font.js',
-        'richtext/plugin/leitor.js',
-        'richtext/biblia/stylebbl.css',
-        'richtext/biblia/abrev.js',
-        'richtext/biblia/scriptbbl-container.js',
-
-        // Sentinela dependências base
-        'sentinela/style.css',
-        'sentinela/imagem.js',
-        'sentinela/mark.js',
-        'sentinela/clickable/clickable.css',
-        'sentinela/clickable/clickable.js',
-        'sentinela/clickable/cache.js',
-        'sentinela/clickable/agente_perguntas.js',
-        'sentinela/clickable/agente_recap.js',
-        'sentinela/clickable/agente-obj.js',
-        'sentinela/clickable/agente-sub.js',
-        'sentinela/clickable/agente-modal/agente-modal.css',
-        'sentinela/clickable/agente-modal/agente-modal.js',
-        'sentinela/menu/menu.css',
-        'sentinela/menu/menu.js',
-        'sentinela/imagem/swiper-zoom.css',
-        'sentinela/imagem/swiper-zoom.js',
-        'sentinela/biblia/abrev.js',
-        'sentinela/biblia/scriptbbl.js',
-        'sentinela/imagem/semanas/22-09/ilust/ilust-universal.js',
-
-        // Bíblia Core
-        'biblia/biblia.html',
-        'biblia/capitulo.html',
-        'biblia/livro/style-bbl.css',
-
-        // CDNs Externos
-        'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-        'https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css',
-        'https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans:wght@400;700;800&family=Noto+Serif:ital@1&display=swap'
+    const list = [
+        asset('', true),
+        asset('index.html', true),
+        asset('styles.css', true),
+        asset('main.js', true),
+        asset('manifest.json', true),
+        asset('navbar/navbar-unified.css', true),
+        asset('navbar/navbar-unified.js', true),
+        asset('navbar/network-sensor.js', true),
+        asset('save/auth-supabase.html', true),
+        asset('save/config.js', true),
+        asset('save/supabase.js', true),
+        asset('save/unified-load.js', true),
+        asset('save/auto-save.js', true),
+        asset('save/outros/feedback.js', false),
+        asset('save/sentinela-sync.js', true),
+        asset('save/asmb-sync.js', true),
+        asset('save/offline-manager.js', true),
+        asset('richtext/container.html', true),
+        asset('richtext/editor.css', true),
+        asset('richtext/barra.css', true),
+        asset('richtext/perf-low.css', true),
+        asset('richtext/editor.js', true),
+        asset('richtext/barra.js', true),
+        asset('richtext/perf-profile.js', true),
+        asset('richtext/cache-r.js', true),
+        asset('richtext/liquid-glass.js', true),
+        asset('richtext/leitor.js', true),
+        asset('richtext/plugin/negrita.css', true),
+        asset('richtext/plugin/bullet.css', true),
+        asset('richtext/plugin/cores.css', true),
+        asset('richtext/plugin/font.css', true),
+        asset('richtext/plugin/leitor.css', true),
+        asset('richtext/plugin/undo.js', true),
+        asset('richtext/plugin/negrita.js', true),
+        asset('richtext/plugin/bullet.js', true),
+        asset('richtext/plugin/cores.js', true),
+        asset('richtext/plugin/font.js', true),
+        asset('richtext/plugin/leitor.js', true),
+        asset('richtext/biblia/stylebbl.css', true),
+        asset('richtext/biblia/abrev.js', true),
+        asset('richtext/biblia/scriptbbl-container.js', true),
+        asset('sentinela/style.css', true),
+        asset('sentinela/imagem.js', true),
+        asset('sentinela/mark.js', true),
+        asset('sentinela/clickable/clickable.css', true),
+        asset('sentinela/clickable/clickable.js', true),
+        asset('sentinela/clickable/cache.js', true),
+        asset('sentinela/clickable/agente_perguntas.js', true),
+        asset('sentinela/clickable/agente_recap.js', true),
+        asset('sentinela/clickable/agente-obj.js', true),
+        asset('sentinela/clickable/agente-sub.js', true),
+        asset('sentinela/clickable/agente-modal/agente-modal.css', true),
+        asset('sentinela/clickable/agente-modal/agente-modal.js', true),
+        asset('sentinela/menu/menu.css', true),
+        asset('sentinela/menu/menu.js', true),
+        asset('sentinela/imagem/swiper-zoom.css', true),
+        asset('sentinela/imagem/swiper-zoom.js', true),
+        asset('sentinela/biblia/abrev.js', true),
+        asset('sentinela/biblia/scriptbbl.js', true),
+        asset('biblia/biblia.html', true),
+        asset('biblia/capitulo.html', true),
+        asset('biblia/livro/style-bbl.css', true),
+        asset('vendor/swiper/swiper-bundle.min.css', true),
+        asset('vendor/swiper/swiper-bundle.min.js', true),
+        asset('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2', false),
+        asset('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans:wght@400;700;800&family=Noto+Serif:ital@1&display=swap', false),
+        asset('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Sumana:wght@400;700&display=swap', false),
+        asset('https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js', false),
+        asset('https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css', false)
     ];
 
-    // Adicionando os 66 livros da bíblia
     const bibleBooks = [
         { folder: '01-genesis', file: 'genesis' }, { folder: '02-exodo', file: 'exodo' },
         { folder: '03-levitico', file: 'levitico' }, { folder: '04-numeros', file: 'numeros' },
@@ -215,29 +216,31 @@ async function buildDownloadList() {
     ];
 
     for (const b of bibleBooks) {
-        list.push(`biblia/livro/${b.folder}/${b.file}.html`);
-        list.push(`sentinela/biblia/data/${b.file}.json`);
+        list.push(asset(`biblia/livro/${b.folder}/${b.file}.html`, true));
+        list.push(asset(`sentinela/biblia/data/${b.file}.json`, true));
     }
 
-    // Identifica e puxa a sentinela e as imagens desta semana
     const semana = getSemanaAtual();
     const sentinelaUrl = `sentinela/artigos/${semana}.html`;
-    list.push(sentinelaUrl);
+    list.push(asset(sentinelaUrl, false));
 
     try {
-        const res = await fetch(basePath + sentinelaUrl);
+        const res = await fetch(new URL(sentinelaUrl, self.registration.scope).href);
         if (res.ok) {
             const html = await res.text();
-            // Procura todos os placeholders tipo <div class="imagem1"></div> para saber o ID das imagens
             const matches = [...html.matchAll(/class=["']imagem(\d+)["']/g)];
-            for (let m of matches) {
-                let id = m[1];
-                list.push(`sentinela/imagem/semanas/${semana}/img${id}.png`);
-                list.push(`sentinela/imagem/semanas/${semana}/leg${id}.txt`);
+            for (const m of matches) {
+                const id = m[1];
+                list.push(asset(`sentinela/imagem/semanas/${semana}/img${id}.png`, false));
+                list.push(asset(`sentinela/imagem/semanas/${semana}/leg${id}.txt`, false));
             }
         }
-    } catch(e) {}
+    } catch (err) {}
 
-    // Formata o array para usar o caminho absoluto e evitar problemas de rotas quebradas
-    return list.map(path => path.startsWith('http') ? path : basePath + path);
+    const seen = new Set();
+    return list.filter(item => {
+        if (seen.has(item.url)) return false;
+        seen.add(item.url);
+        return true;
+    });
 }
