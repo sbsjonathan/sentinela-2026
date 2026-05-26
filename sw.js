@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reuniao-cache-v1';
+const CACHE_NAME = 'reuniao-cache-v2';
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();
@@ -19,19 +19,26 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    if (event.request.method !== 'GET') return;
+    const url = new URL(event.request.url);
+
+    // Ignora requisições que não sejam GET e esquemas não-HTTP (ex: extensões)
+    if (event.request.method !== 'GET' || !url.protocol.startsWith('http')) return;
+
+    // IGNORA ROTAS EXTERNAS DE API (Deixa a IA e o Supabase passarem direto)
+    if (url.origin.includes('supabase.co') || url.origin.includes('workers.dev')) {
+        return;
+    }
     
     event.respondWith(
         fetch(event.request).then((response) => {
             const resClone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
-                if (event.request.url.startsWith('http')) {
-                    cache.put(event.request, resClone);
-                }
+                cache.put(event.request, resClone);
             });
             return response;
         }).catch(() => {
-            return caches.match(event.request);
+            // A MÁGICA: ignoreSearch ignora as variáveis "?livro=genesis" e acha o arquivo puro no cache
+            return caches.match(event.request, { ignoreSearch: true });
         })
     );
 });
@@ -55,7 +62,9 @@ self.addEventListener('message', async (event) => {
                     if (res || isExternal) {
                         await cache.put(req, res);
                     }
-                } catch(e) {}
+                } catch(e) {
+                    console.warn("Erro ao baixar asset pro cache:", url, e);
+                }
                 loaded++;
                 event.source.postMessage({ type: 'DOWNLOAD_PROGRESS', loaded, total });
             }
@@ -84,14 +93,20 @@ async function buildDownloadList() {
     const basePath = self.registration.scope;
     
     let list = [
+        // Raiz do projeto
         '/',
         'index.html',
         'styles.css',
         'main.js',
         'manifest.json',
         'worker/worker.html',
+        
+        // Navbar
         'navbar/navbar-unified.css',
         'navbar/navbar-unified.js',
+        'navbar/network-sensor.js',
+        
+        // Save & Auth
         'save/auth-supabase.html',
         'save/config.js',
         'save/supabase.js',
@@ -101,6 +116,9 @@ async function buildDownloadList() {
         'save/feedback.js',
         'save/sentinela-sync.js',
         'save/asmb-sync.js',
+        'save/offline-manager.js',
+
+        // Richtext & Plugins
         'richtext/container.html',
         'richtext/editor.css',
         'richtext/barra.css',
@@ -111,6 +129,22 @@ async function buildDownloadList() {
         'richtext/cache-r.js',
         'richtext/liquid-glass.js',
         'richtext/leitor.js',
+        'richtext/plugin/negrita.css',
+        'richtext/plugin/bullet.css',
+        'richtext/plugin/cores.css',
+        'richtext/plugin/font.css',
+        'richtext/plugin/leitor.css',
+        'richtext/plugin/undo.js',
+        'richtext/plugin/negrita.js',
+        'richtext/plugin/bullet.js',
+        'richtext/plugin/cores.js',
+        'richtext/plugin/font.js',
+        'richtext/plugin/leitor.js',
+        'richtext/biblia/stylebbl.css',
+        'richtext/biblia/abrev.js',
+        'richtext/biblia/scriptbbl-container.js',
+
+        // Sentinela dependências base
         'sentinela/style.css',
         'sentinela/imagem.js',
         'sentinela/mark.js',
@@ -127,17 +161,23 @@ async function buildDownloadList() {
         'sentinela/menu/menu.js',
         'sentinela/imagem/swiper-zoom.css',
         'sentinela/imagem/swiper-zoom.js',
+        'sentinela/biblia/abrev.js',
+        'sentinela/biblia/scriptbbl.js',
+        'sentinela/imagem/semanas/22-09/ilust/ilust-universal.js',
+
+        // Bíblia Core
         'biblia/biblia.html',
         'biblia/capitulo.html',
-        'biblia/abrev.js',
-        'biblia/scriptbbl-container.js',
-        'biblia/stylebbl.css',
+        'biblia/livro/style-bbl.css',
+
+        // CDNs Externos
         'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
         'https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css',
         'https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans:wght@400;700;800&family=Noto+Serif:ital@1&display=swap'
     ];
 
+    // Adicionando os 66 livros da bíblia
     const bibleBooks = [
         { folder: '01-genesis', file: 'genesis' }, { folder: '02-exodo', file: 'exodo' },
         { folder: '03-levitico', file: 'levitico' }, { folder: '04-numeros', file: 'numeros' },
@@ -179,6 +219,7 @@ async function buildDownloadList() {
         list.push(`sentinela/biblia/data/${b.file}.json`);
     }
 
+    // Identifica e puxa a sentinela e as imagens desta semana
     const semana = getSemanaAtual();
     const sentinelaUrl = `sentinela/artigos/${semana}.html`;
     list.push(sentinelaUrl);
@@ -187,6 +228,7 @@ async function buildDownloadList() {
         const res = await fetch(basePath + sentinelaUrl);
         if (res.ok) {
             const html = await res.text();
+            // Procura todos os placeholders tipo <div class="imagem1"></div> para saber o ID das imagens
             const matches = [...html.matchAll(/class=["']imagem(\d+)["']/g)];
             for (let m of matches) {
                 let id = m[1];
@@ -196,5 +238,6 @@ async function buildDownloadList() {
         }
     } catch(e) {}
 
+    // Formata o array para usar o caminho absoluto e evitar problemas de rotas quebradas
     return list.map(path => path.startsWith('http') ? path : basePath + path);
 }
