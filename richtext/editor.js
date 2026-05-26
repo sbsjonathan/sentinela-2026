@@ -192,7 +192,7 @@ const M4A_Placeholder = {
   formatSemanaAmigavel() {
     const semana = this.getSemanaDDMM();
     const [diaRaw, mesRaw] = String(semana).split('-');
-    const meses =[
+    const meses = [
       'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
       'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
     ];
@@ -459,19 +459,28 @@ const M11_Layout = {
     const vv = window.visualViewport;
     if (!vv) return;
     
-    // A MÁGICA: No iOS PWA, ao fechar o teclado, o visualViewport.height 
-    // pode vir encurtado, causando o Navbar a flutuar num falso chão.
-    // Comparamos com a tela inteira (innerHeight). Se for perto, o teclado
-    // fechou, então damos "100%" pro Navbar colar no chão de verdade.
     const isKeyboardOpen = (window.innerHeight - vv.height) > 100;
     
     if (isKeyboardOpen) {
         document.body.style.height = vv.height + 'px';
+        document.body.style.position = 'fixed';
     } else {
-        document.body.style.height = '100%';
+        document.body.style.height = '100dvh';
+        document.body.style.position = '';
+        
+        document.documentElement.style.overflow = 'auto';
+        document.body.style.overflow = 'auto';
+        
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        
+        setTimeout(() => {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+            window.scrollTo(0, 0);
+        }, 20);
     }
-    
-    window.scrollTo(0, 0);
   },
   adjustPadding() {
     const respiro = this.lineHeight() * this.lines;
@@ -630,7 +639,22 @@ const M10_EditorEvents = {
     }, true);
 
     M1_Config.editor.addEventListener('blur', () => {
-      setTimeout(() => M4_Caret.updateFocus(), 100);
+      setTimeout(() => {
+        M4_Caret.updateFocus();
+        
+        document.documentElement.style.overflow = 'auto';
+        document.body.style.overflow = 'auto';
+        
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        
+        setTimeout(() => {
+          document.documentElement.style.overflow = '';
+          document.body.style.overflow = '';
+          window.scrollTo(0, 0);
+        }, 20);
+      }, 150);
     });
 
     let hadBibleToolbarLock = document.body.classList.contains('leitor-keep-toolbar');
