@@ -30,7 +30,7 @@
   <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Sumana:wght@400;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"/>
+  <link rel="stylesheet" href="../vendor/swiper/swiper-bundle.min.css"/>
 
   <link rel="stylesheet" href="../navbar/navbar-unified.css"/>
 
@@ -66,7 +66,7 @@
       transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    /* MÁSCARA DO STATUS BAR DO IPHONE */
+    
     .statusbar-mask {
       position: fixed;
       top: 0;
@@ -74,7 +74,7 @@
       right: 0;
       height: env(safe-area-inset-top);
       background-color: var(--body-bg);
-      z-index: 15; /* Fica abaixo do header (20), mas acima do texto do Swiper (1) */
+      z-index: 15; 
       transition: background-color 0.3s ease;
     }
 
@@ -107,7 +107,7 @@
       overflow-y:auto;
       -webkit-user-select:text; user-select:text;
       -webkit-touch-callout:default;
-      /* Transição de padding-top e padding-bottom para ser fluida ao rolar */
+      
       transition: padding-top .22s ease-in-out, padding-bottom .22s ease-in-out;
       will-change: padding-top, padding-bottom;
       padding-left: calc(30px * var(--font-scale-global));
@@ -202,12 +202,12 @@
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
-      /* Estado Padrão (Com barras) */
+      
       padding-top: calc(var(--bbl-header-height) + (8px * var(--font-scale-global)));
       padding-bottom: calc((70px * var(--font-scale-global)) + env(safe-area-inset-bottom));
     }
 
-    /* Estado Tela Cheia / Leitura Focada (Sem barras) */
+    
     body.bars-hidden .swiper-slide {
       padding-top: calc(env(safe-area-inset-top) + (8px * var(--font-scale-global)));
       padding-bottom: calc((20px * var(--font-scale-global)) + env(safe-area-inset-bottom));
@@ -217,7 +217,7 @@
 </head>
 <body>
 
-  <!-- MÁSCARA DO STATUS BAR AQUI -->
+  
   <div class="statusbar-mask"></div>
 
   <div class="header">
@@ -229,7 +229,7 @@
     <div class="swiper-wrapper" id="bible-content-wrapper"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+  <script src="../vendor/swiper/swiper-bundle.min.js"></script>
   <script>
     const headerEl      = document.querySelector('.header');
     const headerTitle   = document.getElementById('header-title');
@@ -485,6 +485,8 @@
             if (i < from || i > to) unloadSlide(i);
           }
         }
+
+        if (!window.Swiper) { throw new Error('O leitor de capítulos não carregou. Envie também a pasta vendor/swiper.'); }
 
         const swiper = new Swiper('.swiper', {
           initialSlide: Math.max(0, initialChapter - 1),
