@@ -8,9 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function checkCacheStatus() {
         if (!('caches' in window)) return;
-        const hasCache = await caches.has('reuniao-cache-v1');
-        isDownloaded = hasCache;
-        updateBtnUI();
+        try {
+            const cacheKeys = await caches.keys();
+            isDownloaded = cacheKeys.some(key => key.startsWith('reuniao-cache-'));
+            updateBtnUI();
+        } catch (e) {}
     }
 
     function updateBtnUI() {
@@ -43,10 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (isDownloaded) {
-            if(confirm('Tem certeza que deseja apagar os arquivos offline para liberar espaço no aparelho? (Suas anotações locais não serão perdidas)')) {
-                registration.active.postMessage({ action: 'CLEAR_CACHE' });
+            if(confirm('Tem certeza que deseja apagar os arquivos offline para liberar espaço no aparelho? (Suas anotações locais NÃO serão perdidas)')) {
                 btnToggle.disabled = true;
                 btnToggle.innerHTML = 'Apagando...';
+                registration.active.postMessage({ action: 'CLEAR_CACHE' });
             }
         } else {
             progressContainer.style.display = 'block';
@@ -81,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnToggle.disabled = false;
             isDownloaded = false;
             updateBtnUI();
+            alert('🗑️ Arquivos apagados com sucesso! O espaço no seu aparelho foi liberado.');
         }
     });
 
