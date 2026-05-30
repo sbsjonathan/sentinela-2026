@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#524832">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>A Sentinela</title>
+
+    <meta name="color-scheme" content="light dark">
+    <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('tema-interface') || 'system';
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = savedTheme === 'dark' || (savedTheme === 'system' && prefersDark);
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+      } catch (e) {}
+    })();
+    </script>
+    <style>
+      html, body { background: #f3f4f6; }
+      html[data-theme="dark"], html[data-theme="dark"] body { background: #000000; }
+    </style>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans:wght@400;700;800&family=Noto+Serif:ital@1&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../biblia/stylebbl.css">
+    <link rel="stylesheet" href="../clickable/clickable.css">
+    <link rel="stylesheet" href="../menu/menu.css">
+    <link rel="stylesheet" href="../clickable/agente-modal/agente-modal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css">
+    <link rel="stylesheet" href="../imagem/swiper-zoom.css">
+    <link rel="stylesheet" href="../../navbar/navbar-unified.css">
+</head>
+<body  data-estudo="25-05" style="--cor-principal-estudo: #524832;" class="with-bottom-navbar">
+<script>
+  (function() {
+    try {
+      var color = getComputedStyle(document.body).getPropertyValue('--cor-principal-estudo').trim() || 'X';
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', color);
+    } catch (e) {}
+  })();
+</script>
+
+<nav class="bottom-navbar booting" data-context="navbar-context-watchtower">
+    <a href="#" class="navbar-item" data-page="home" onclick="irParaHome(event)">
+        <div class="navbar-icon icon-home"></div>
+        <span class="navbar-label">Início</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="bible" onclick="irParaBiblia(event)">
+        <div class="navbar-icon icon-bible"></div>
+        <span class="navbar-label">Bíblia</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="notes" onclick="irParaAnotacoes(event)">
+        <div class="navbar-icon icon-notes"></div>
+        <span class="navbar-label">Anotações</span>
+    </a>
+    <a href="#" class="navbar-item active" data-page="watchtower" onclick="irParaSentinela(event)">
+        <div class="navbar-icon icon-watchtower"></div>
+        <span class="navbar-label">A Sentinela</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="save" onclick="irParaSalvar(event)">
+        <div class="navbar-icon icon-save"></div>
+        <span class="navbar-label">Salvar</span>
+    </a>
+</nav>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  window.semanaAtual = urlParams.get('semana') || '25-05';
+  window.estudoId = '2026323';
+</script>
+
+<div class="container">
+
+<header class="barra-estudo">
+<div>25 A 31 DE MAIO DE 2026</div>
+</header>
+
+<main>
+
+<div class="secao-cantico"><p><span class="cantico">Cântico 135</span> <span class="cantico-titulo">“Seja sábio, meu filho”</span></p></div>
+
+<h1 class="estudo-titulo">
+Mostre perspicácia e você “será bem-sucedido”
+</h1>
+
+<p class="citacao">
+“Quem mostra entendimento [perspicácia] num assunto será bem-sucedido.” — <a class="bbl">PRO. 16:20</a>.
+</p>
+
+<div class="objetivo"><p class="objetivo-titulo">OBJETIVO</p><p class="objetivo-texto">Ver por que é bom parar e pensar antes de agir ao lidar com situações difíceis.</p></div>
+
+<div><p class="pergunta"><span>1-2.</span> O que é perspicácia, e como essa qualidade nos ajuda?</p></div>
+
+<p class="paragrafo"><span>1</span> VOCÊ já teve a sensação de que não foi tratado com o respeito que merecia? Já se sentiu ofendido por alguém? Ou já enfrentou uma situação que deixou você com medo? Então você sabe como pode ser difícil reagir bem quando algo assim acontece. Para nos ajudar, a Bíblia fala de uma qualidade muito útil nessas e em muitas outras situações: a perspicácia.</p>
+
+<p class="paragrafo"><span>2</span> Perspicácia é a habilidade de analisar bem uma situação — de olhar além do óbvio. Essa qualidade nos permite entender por que alguma coisa pode ter acontecido ou por que uma pessoa talvez tenha agido de certa maneira. A perspicácia nos ajuda a agir com sabedoria e bom senso. Por exemplo, pode nos ajudar a saber quando ‘ficar quietos’ e a ‘controlar a língua’. (<a class="bbl">Sal. 4:4</a>; <a class="bbl">Pro. 10:19</a>) Quando alguém nos ofende, a perspicácia pode nos ajudar a manter nossa raiva sob controle e deixar o assunto pra lá. Além disso, nos ajuda a aceitar conselho e correção. (<a class="bbl">Pro. 19:20</a>) Mostrar perspicácia, além de agradar a Jeová, faz bem a nós mesmos e às pessoas que talvez sejam afetadas por nossas palavras e ações. Essa qualidade é ainda mais importante quando enfrentamos situações que mexem tanto com a gente que acabamos agindo sem pensar. Vamos analisar três exemplos da Bíblia que mostram como a perspicácia pode nos ajudar a continuar humildes, calmos e a confiar totalmente em Jeová.</p>
+
+<h2 class="subtitulo">Aja com humildade, não com orgulho</h2>
+
+<div><p class="pergunta"><span>3.</span> Quem era Naamã?</p></div>
+
+<p class="paragrafo"><span>3</span> Para fazer o que é certo, precisamos ser humildes. (<a class="bbl">1 Ped. 5:5</a>) A perspicácia pode nos ajudar a fazer isso. Como? Veja o exemplo de Naamã. Ele morava na Síria, uma nação que ficava ao norte de Israel. Naamã era um homem importante, o chefe do exército da Síria. Mas ele sofria de lepra, uma terrível doença de pele. — <a class="bbl">2 Reis 5:1</a>.</p>
+
+<div><p class="pergunta"><span>4.</span> Como Naamã mostrou que tinha alguma perspicácia?</p></div>
+
+<p class="paragrafo"><span>4</span> A esposa de Naamã tinha uma serva que era uma menina israelita. Essa menina disse para ela que havia um profeta em Israel que poderia curar a doença do marido dela. (<a class="bbl">2 Reis 5:2, 3</a>) Naamã podia ter pensado: ‘Quem essa menina pensa que é pra me dizer o que fazer? Ela não passa de uma escrava!’ Mas Naamã mostrou que tinha alguma perspicácia. Em vez de ser orgulhoso e ignorar o que aquela menina de uma nação inimiga tinha dito, ele foi humilde e levou a sério suas palavras. Ele contou tudo ao rei da Síria, que permitiu que ele fosse a Israel para ser curado. — <a class="bbl">2 Reis 5:4, 5</a>.</p>
+
+<div><p class="pergunta"><span>5.</span> O que aconteceu quando Naamã chegou em Israel?</p></div>
+
+<p class="paragrafo"><span>5</span> Naamã foi até o rei de Israel, Jeorão, esperando ser curado da sua lepra. Mas Jeorão pensou que Naamã tinha ido até lá porque o rei da Síria estava procurando briga com ele, pedindo algo que parecia impossível. Quando o profeta Eliseu ficou sabendo disso, ele pediu que o rei Jeorão enviasse Naamã até ele. (<a class="bbl">2 Reis 5:6-9</a>) Mas as coisas não saíram como Naamã esperava. Eliseu nem sequer saiu de casa para receber Naamã ou para falar com ele. Em vez disso, Eliseu enviou um mensageiro para dizer a Naamã o que ele precisava fazer para ser curado. — <a class="bbl">2 Reis 5:10</a>.</p>
+
+<div><p class="pergunta"><span>6.</span> (a) O que pode ter levado Naamã a agir com orgulho quando ouviu as instruções de Eliseu? (b) Como os servos de Naamã mostraram perspicácia, e qual foi o resultado? (<a class="bbl">2 Reis 5:13, 14</a>)</p></div>
+
+<p class="paragrafo"><span>6</span> De início, Naamã não gostou nem um pouco de não ter sido recebido pelo profeta nem das instruções dadas pelo mensageiro. Ele “ficou indignado” e “foi embora furioso”. (<a class="bbl">2 Reis 5:11, 12</a>) Por que ele agiu assim? Talvez ele tenha sentido que não foi tratado com o respeito que um oficial de destaque merecia. Ou pode ser que Naamã tenha pensado que as instruções que Eliseu deu mostravam desrespeito pela Síria. Qualquer que tenha sido o motivo, Naamã quis desistir de tudo e voltar para casa sem ser curado. Mas seus servos mostraram perspicácia quando raciocinaram com ele e pediram que ele pensasse melhor no assunto. Então, Naamã deixou o orgulho de lado e, com humildade, fez o que Eliseu havia falado. E o resultado é que ele foi curado! — <strong>Leia <a class="bbl">2 Reis 5:13, 14</a>.</strong></p>
+
+<div><p class="pergunta"><span>7.</span> O que podemos aprender do que aconteceu com Naamã? (<a class="bbl">Provérbios 22:4</a>) (Veja também as imagens.)</p></div>
+
+<p class="paragrafo"><span>7</span> <strong><em>O que podemos aprender desse exemplo da Bíblia?</em></strong> Nós mostramos perspicácia quando olhamos além do óbvio, o que pode incluir olhar além das aparências. Também mostramos perspicácia quando não nos deixamos levar pelas nossas emoções. A perspicácia pode nos ajudar a ser humildes e a reconhecer que não sabemos de tudo. Talvez a gente precise da ajuda de outros, principalmente da ajuda de Jeová. Naamã ainda não era um servo de Jeová, mas ele mostrou que tinha alguma perspicácia porque foi humilde e deu ouvidos a outros. Ele ouviu a menina israelita que era serva da sua esposa, seus próprios servos e, acima de tudo, o representante de Jeová, Eliseu. Naamã não se concentrou no seu orgulho ferido. Por fim, ele tomou uma boa decisão e conseguiu ser curado. Então, antes de fazer ou dizer alguma coisa, precisamos parar e pensar um pouco. Por exemplo, talvez não concordemos com um conselho que alguém nos deu ou não entendamos muito bem uma orientação que recebemos da organização. Quando isso acontece, precisamos pensar em como vamos reagir e nos perguntar: ‘Será que o que eu fizer ou disser vai mostrar orgulho ou humildade?’ — <strong>Leia <a class="bbl">Provérbios 22:4</a>.</strong></p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026323/univ/art/2026323_univ_cnt_1_xl.jpg">
+  <figcaption>
+    Assim como Naamã foi humilde e escutou outras pessoas, nós também devemos escutar quando somos aconselhados, quando alguém nos dá uma sugestão ou quando recebemos uma nova orientação da organização (Veja o parágrafo 7.)
+  </figcaption>
+</figure>
+
+<h2 class="subtitulo">Aja com calma, não com raiva</h2>
+
+<div><p class="pergunta"><span>8.</span> Em que situações pode ser difícil manter a calma?</p></div>
+
+<p class="paragrafo"><span>8</span> A perspicácia pode nos ajudar a continuar calmos e a não reagir com raiva quando enfrentamos situações frustrantes. É verdade que nem sempre é fácil fazer isso, principalmente quando alguém não é bondoso com a gente ou nos trata de maneira injusta. (<a class="bbl">Efé. 4:26</a> e a <a class="bbl">nota de estudo</a> “Fiquem irados”) Vamos ver como Davi e Abigail mostraram perspicácia quando estavam numa situação tensa.</p>
+
+<div><p class="pergunta"><span>9.</span> Como Davi foi tratado por Nabal?</p></div>
+
+<p class="paragrafo"><span>9</span> Imagine a seguinte cena: Davi e seus homens estão vivendo como fugitivos no deserto de Parã. (<a class="bbl">1 Sam. 25:1</a>) Enquanto estão lá, eles bondosamente protegem os pastores e os rebanhos de um homem rico chamado Nabal. (<a class="bbl">1 Sam. 25:15, 16</a>) Quando chega a época da tosquia, Davi envia mensageiros a Nabal para pedir, de forma humilde e respeitosa, que Nabal dê a eles qualquer coisa que puder. (<a class="bbl">1 Sam. 25:6-8</a>) Só que Nabal não mostra nem um pingo de gratidão por tudo o que Davi e seus homens tinham feito por ele. Nabal responde ao pedido de Davi de forma grosseira e até mesmo insulta Davi e seus homens. — <a class="bbl">1 Sam. 25:10, 11</a>.</p>
+
+<div><p class="pergunta"><span>10.</span> Como Davi e Abigail mostraram perspicácia? (<a class="bbl">1 Samuel 25:32, 33</a>) (Veja também a imagem.)</p></div>
+
+<p class="paragrafo"><span>10</span> Se estivesse no lugar de Davi, como você teria se sentido? Não é difícil de entender por que Davi ficou com tanta raiva. Ele era um homem de fortes sentimentos e, naquela situação, ele chegou a ponto de querer matar Nabal! (<a class="bbl">1 Sam. 25:13, 21, 22</a>) Davi já estava indo fazer isso quando a esposa de Nabal, Abigail, que era uma mulher sensata, chegou para falar com ele. De que maneira Abigail mostrou que tinha perspicácia? Ela percebeu que Davi era um homem bom, apesar de estar reagindo de maneira extrema. Então, ela fez o que pôde para ajudá-lo a controlar sua raiva e agir com sabedoria. Abigail levou um presente generoso para Davi e, com humildade, deu um conselho sábio para ele. (<a class="bbl">1 Sam. 25:18, 23-31</a>) Já Davi mostrou perspicácia por prestar atenção ao que Abigail disse e por reconhecer que as palavras dela refletiam o ponto de vista de Jeová sobre o assunto. O resultado foi que Davi se acalmou e evitou um erro grave. — <strong>Leia <a class="bbl">1 Samuel 25:32, 33</a>.</strong></p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026323/univ/art/2026323_univ_cnt_2_xl.jpg">
+  <figcaption>
+    Davi e Abigail mostraram perspicácia durante uma situação tensa e assim conseguiram evitar uma tragédia (Veja o parágrafo 10.)
+  </figcaption>
+</figure>
+
+<div><p class="pergunta"><span>11.</span> Como a perspicácia pode nos ajudar quando alguém faz algo contra nós? (<a class="bbl">Provérbios 19:11</a>)</p></div>
+
+<p class="paragrafo"><span>11</span> <strong><em>O que podemos aprender desse exemplo da Bíblia?</em></strong> A perspicácia pode nos ajudar a reagir de maneira calma, mesmo se tivermos motivos para ficar com raiva. Também pode nos ajudar a pensar nas consequências das nossas palavras e ações. <strong>(Leia <a class="bbl">Provérbios 19:11</a>.)</strong> Quando Abigail lembrou a Davi de como as ações dele fariam Jeová se sentir, Davi conseguiu controlar a raiva. Se alguém ou alguma coisa tirar você do sério, pense bem antes de tomar qualquer decisão. (<a class="bbl">Tia. 1:19</a>) Ore a Jeová e tire tempo para entender o ponto de vista dele sobre o assunto. É bem provável que isso ajude você a manter a calma.</p>
+
+<div><p class="pergunta"><span>12.</span> Como outros podem nos ajudar a mostrar perspicácia e manter a calma?</p></div>
+
+<p class="paragrafo"><span>12</span> Assim como Jeová usou Abigail para ajudar Davi a ver o quadro completo, Jeová pode usar outros para nos ajudar a entender o que ele pensa sobre um assunto. Então, se alguma coisa deixar você com raiva ou frustrado, converse com um cristão maduro que ajude você a ver as coisas de maneira mais clara. (<a class="bbl">Pro. 12:15; 20:18</a>) Por outro lado, se um dos seus amigos está chateado com alguma coisa, como você pode imitar Abigail? Será que você pode ajudar seu amigo a ver o assunto assim como Jeová vê? Com certeza, Jeová vai te abençoar para que você fale a coisa certa e ajude outros a ter mais perspicácia e a manter a calma.</p>
+
+<h2 class="subtitulo">Aja com confiança, não com medo</h2>
+
+<div><p class="pergunta"><span>13.</span> Como a perspicácia pode nos ajudar a ver além dos nossos medos?</p></div>
+
+<p class="paragrafo"><span>13</span> Quando enfrentamos situações que podem nos deixar assustados, a perspicácia nos ajuda a ver além dos nossos medos. Nunca se esqueça de que qualquer coisa no mundo, por mais assustadora que seja, é insignificante perto do poder sem igual de Jeová. (<a class="bbl">Sal. 27:1</a>) Jeová pode nos ajudar a enfrentar qualquer problema, até mesmo aqueles que parecem não ter solução. A vida do profeta Jonas foi um exemplo claro disso. Ele era um homem espiritual, mas precisava de mais perspicácia para cumprir uma designação difícil.</p>
+
+<div><p class="pergunta"><span>14.</span> Por que Jonas ficou com medo de fazer o que Jeová ordenou a ele?</p></div>
+
+<p class="paragrafo"><span>14</span> Jeová deu a Jonas uma designação desafiadora: ir a Nínive e proclamar uma mensagem de julgamento para quem vivia lá. (<a class="bbl">Jonas 1:1, 2</a>) Como você se sentiria se tivesse recebido essa designação? Jonas precisaria fazer uma viagem difícil, de Israel até Nínive, que levaria cerca de um mês a pé. As pessoas naquela região eram conhecidas por ser agressivas e violentas. Nínive foi até chamada de “cidade de derramamento de sangue”. (<a class="bbl">Naum 3:1, 7</a>) Em vez de aceitar aquela designação, Jonas decidiu fugir. — <a class="bbl">Jonas 1:3</a>.</p>
+
+<div><p class="pergunta"><span>15.</span> O que ajudou Jonas a confiar mais em Jeová? (<a class="bbl">Jonas 2:6-9</a>)</p></div>
+
+<p class="paragrafo"><span>15</span> Jonas estava fugindo quando Jeová o lembrou do Seu poder. Ele fez isso por salvar a vida de Jonas de uma maneira espetacular. (<a class="bbl">Jonas 1:15, 17</a>) Jonas aprendeu a lição. Ele começou a enxergar além das dificuldades que talvez enfrentasse naquela designação tão assustadora para ele. Jonas começou a se concentrar no fato de que Jeová poderia protegê-lo de qualquer perigo. <strong>(Leia <a class="bbl">Jonas 2:6-9</a>.)</strong> Daí, quando Jeová deu para Jonas uma segunda chance para cumprir com sua designação, Jonas não ficou com medo. Ele foi para Nínive, e as pessoas de lá o escutaram e foram salvas. — <a class="bbl">Jonas 3:5</a>.</p>
+
+<div><p class="pergunta"><span>16.</span> O que pode nos ajudar quando enfrentamos uma situação que nos deixa com medo? (<a class="bbl">Provérbios 29:25</a>) (Veja também as imagens.)</p></div>
+
+<p class="paragrafo"><span>16</span> <strong><em>O que podemos aprender desse exemplo da Bíblia?</em></strong> Nós não queremos deixar que nada, principalmente o medo do homem, atrapalhe nossa adoração a Jeová. <strong>(Leia <a class="bbl">Provérbios 29:25</a>.)</strong> A perspicácia ajudou Jonas a ver além dos desafios da sua designação e a se concentrar no apoio de Jeová. Da mesma forma, nós queremos olhar além dos nossos medos e meditar em como Jeová já nos ajudou e nos protegeu no passado. Também podemos meditar no exemplo de irmãos e irmãs que confiaram em Jeová e conseguiram enfrentar situações assustadoras ou cumprir designações desafiadoras. *  (<a class="bbl">Heb. 13:6</a>) Queremos mostrar que temos perspicácia e sabedoria por confiar totalmente em Jeová e ajudar outras pessoas a fazer isso também.</p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026323/univ/art/2026323_univ_cnt_3_xl.jpg">
+  <figcaption>
+    Aprendemos com o exemplo de Jonas que a perspicácia nos ajuda a aceitar a direção de Jeová e a ser bem-sucedidos em situações difíceis (Veja o parágrafo 16.)
+  </figcaption>
+</figure>
+
+<h2 class="subtitulo">Pense cada vez mais como jeová</h2>
+
+<div><p class="pergunta"><span>17.</span> O que pode nos ajudar a ter mais perspicácia?</p></div>
+
+<p class="paragrafo"><span>17</span> Como vimos, a perspicácia nos ajuda a lidar da maneira certa com situações desafiadoras. Como podemos ter mais perspicácia? Não há ninguém melhor do que Jeová para nos ajudar; ele é a Fonte da perspicácia. Ele nos dá perspicácia por meio da Bíblia e do espírito santo. (<a class="bbl">Nee. 9:20</a>; <a class="bbl">Sal. 32:8</a>) Jeová nos dá conselhos que nos ajudam a tomar boas decisões e a controlar nossas emoções. (<a class="bbl">Sal. 119:97-101</a>) Quando meditamos no que a Bíblia diz e oramos a Jeová pedindo seu espírito santo, nós aumentamos nossa perspicácia. Assim, vamos conseguir enxergar uma situação da maneira que Jeová enxerga e fazer as coisas da maneira que ele quer. — <a class="bbl">Pro. 21:11</a>, notas.</p>
+
+<div><p class="pergunta"><span>18.</span> O que você está decidido a fazer?</p></div>
+
+<p class="paragrafo"><span>18</span> Queremos continuar buscando e dando muito valor à perspicácia que Jeová nos dá. (<a class="bbl">Sal. 14:2</a>) Fazendo isso, nós nunca vamos nos desviar do “caminho da perspicácia”. (<a class="bbl">Pro. 21:16</a>, nota) Pelo contrário, vamos estar mais determinados a mostrar perspicácia todo tempo e em qualquer situação. Assim, ‘seremos bem-sucedidos’ e deixaremos Jeová feliz.</p>
+
+<div class="secao-recapitulacao">
+  <hr class="linha-recapitulacao">
+  <h3 class="titulo-recapitulacao">COMO PODEMOS MOSTRAR PERSPICÁCIA IGUAL A . . .</h3>
+  <ul class="lista-recapitulacao">
+          <li>Naamã?</li>
+          <li>Davi e Abigail?</li>
+          <li>Jonas?</li>
+  </ul>
+</div>
+
+<div class="secao-cantico"><p><span class="cantico">Cântico 42</span> <span class="cantico-titulo">Minha oração a Jeová</span></p></div>
+
+<hr class="linha-divisoria">
+
+<p class="nota-rodape"><span class="simbolo-rodape">*</span> Por exemplo, veja a experiência de <link><a href="https://jw.org/pt/biblioteca/series/historias-vida-testemunhas-de-jeova/georgiy-porchulyan/">Georgiy Porchulyan</a></link> na série de artigos “Histórias de Vida de Testemunhas de Jeová” no aplicativo <em>JW Library</em>® ou no site jw.org.</p>
+
+</main>
+
+</div>
+
+<div id="modal-biblia">
+    <div class="modal-biblia-content">
+        <span id="modal-biblia-fechar">×</span>
+        <div id="modal-biblia-corpo"></div>
+    </div>
+</div>
+
+<script src="../biblia/abrev.js"></script>
+<script src="../biblia/scriptbbl.js"></script>
+<script src="../clickable/cache.js"></script>
+<script src="../clickable/agente_perguntas.js"></script>
+<script src="../clickable/agente_recap.js"></script>
+<script src="../clickable/agente-obj.js"></script>
+<script src="../clickable/agente-sub.js"></script>
+<script src="../clickable/agente-modal/agente-modal.js"></script>
+<script src="../clickable/clickable.js"></script>
+<script src="../menu/menu.js"></script>
+<script src="../mark.js"></script>
+<script src="../imagem/semanas/22-09/ilust/ilust-universal.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"></script>
+
+<script src="../imagem/swiper-zoom.js"></script>
+<script src="../imagem.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../save/config.js"></script>
+<script src="../../save/supabase.js"></script>
+<script src="../../navbar/navbar-unified.js"></script>
+<script src="../../save/sentinela-sync.js"></script>
+
+<div id="zoom-container" class="zoom-container">
+    <div class="zoom-header">
+        <button class="zoom-btn-fechar" aria-label="Fechar">×</button>
+    </div>
+    <div class="zoom-content"></div>
+    <div class="zoom-footer"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        document.querySelectorAll('.paragrafo').forEach((p, index) => {
+            if (!p.id) p.id = `paragrafo-sentinela-${index + 1}`;
+        });
+        if (window.CacheAnotacao) {
+            document.querySelectorAll('.paragrafo, .comentarios, .clickable').forEach(el => {
+                if (el.id) {
+                    const cachedContent = window.CacheAnotacao.carregar(el.id);
+                    if (cachedContent) el.innerHTML = cachedContent;
+                }
+            });
+        }
+        document.dispatchEvent(new CustomEvent('cacheRestored'));
+        if (window.UnifiedNavbar?.get()) {
+            window.UnifiedNavbar.get().setActivePage('watchtower');
+        }
+    }, 200);
+});
+</script>
+
+</body>
+</html>
