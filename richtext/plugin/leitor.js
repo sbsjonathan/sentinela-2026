@@ -119,14 +119,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildWaves() {
-      waves = Array.from({ length: 26 }, (_, i) => ({
-        pos: i / 26,
-        speed: rand(0.06, 0.13) * (Math.random() < 0.42 ? -1 : 1),
-        length: rand(0.10, 0.22),
-        maxThick: rand(0.5, 1.05),
-        maxGlow: rand(3.6, 7.4),
-        wob: rand(0.004, 0.015),
-        wobSpeed: rand(0.25, 0.75),
+      waves = Array.from({ length: 24 }, (_, i) => ({
+        pos: i / 24,
+        speed: rand(0.095, 0.145) * (Math.random() < 0.32 ? -1 : 1),
+        length: rand(0.08, 0.16),
+        maxThick: rand(0.34, 0.56),
+        maxGlow: rand(2.9, 4.4),
+        wob: rand(0.003, 0.010),
+        wobSpeed: rand(0.25, 0.7),
         phase: rand(0, Math.PI * 2)
       }));
     }
@@ -284,23 +284,19 @@ document.addEventListener('DOMContentLoaded', () => {
       for (const w of waves) w.pos = (w.pos + w.speed * dt + 1) % 1;
       if (isEffectOn) {
         const go = (time * 0.001 * 0.12) % 1;
-        const breathe = 0.90 + 0.10 * Math.sin(time * 0.0012);
-        const STEPS = 128;
+        const breathe = 0.94 + 0.06 * Math.sin(time * 0.0012);
         glowCtx.globalAlpha = glowAlpha * breathe;
-        glowCtx.globalCompositeOperation = 'screen';
-        for (let i = 0; i < STEPS; i++) {
-          const t = i / STEPS; let rCore = 3.2, rSpread = 2.0, localAlpha = 0.58, waveBoost = 0;
+        for (let i = 0; i < 120; i++) {
+          const t = i / 120; let rCore = 3.18, rSpread = 1.35, localAlpha = 0.6, waveBoost = 0;
           for (const w of waves) {
             const wp = ((w.pos + Math.sin(time * 0.001 * w.wobSpeed + w.phase) * w.wob) % 1 + 1) % 1;
             let d = Math.abs(t - wp); if (d > 0.5) d = 1 - d;
-            if (d < w.length) { const sh = Math.pow(Math.cos(d / w.length * Math.PI * 0.5), 2); rCore += w.maxThick * sh; rSpread += w.maxGlow * sh; localAlpha += 0.055 * sh; waveBoost += 0.26 * sh; }
+            if (d < w.length) { const sh = Math.pow(Math.cos(d / w.length * Math.PI * 0.5), 2); rCore += w.maxThick * sh; rSpread += w.maxGlow * sh; localAlpha += 0.05 * sh; waveBoost += 0.24 * sh; }
           }
           const pos = pointOnBorder(t), angle = Math.atan2(pos.nx, -pos.ny);
-          const colT = t + go + Math.sin(t * Math.PI * 4 + time * 0.00055) * 0.028, rgb = gradientColor(colT);
-          drawCoreBlob(pos.x, pos.y, rCore * 0.62, rSpread * 2.1 + 5.5, rgb, localAlpha * 0.32, 5.6, 0.72, angle);
-          drawCoreBlob(pos.x, pos.y, rCore, rSpread, rgb, Math.min(1, localAlpha + waveBoost * 0.12), 4.5, 0.4, angle);
+          const colT = t + go + Math.sin(t * Math.PI * 4 + time * 0.00055) * 0.024, rgb = gradientColor(colT);
+          drawHalo(pos.x, pos.y, waveBoost * 14, rgb, waveBoost, angle); drawCoreBlob(pos.x, pos.y, rCore, rSpread, rgb, localAlpha, 4.5, 0.4, angle);
         }
-        glowCtx.globalCompositeOperation = 'source-over';
         glowCtx.globalAlpha = 1;
       }
       renderBoom(time);
