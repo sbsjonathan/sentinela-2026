@@ -38,8 +38,8 @@ body {
 .container { 
     width: min(450px, 100vw);
     max-width: 450px;
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
