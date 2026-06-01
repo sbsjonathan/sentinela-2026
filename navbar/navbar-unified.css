@@ -64,11 +64,6 @@
     animation: none !important;
 }
 
-.bottom-navbar.booting {
-    will-change: auto;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-}
 
 .bottom-navbar.hidden {
     transform: translate3d(0, 100%, 0);
