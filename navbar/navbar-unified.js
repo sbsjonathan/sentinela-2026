@@ -264,11 +264,13 @@ class UnifiedNavbar {
             const toolbarHeight = this.measureElementHeight(toolbar, 68);
             const reservedToolbarMode = this.isToolbarReservedMode();
             const navVisible = Boolean(this.navbar && !this.isHidden && !this.isKeyboardOpen && !reservedToolbarMode);
+            const navReserved = Boolean(this.navbar && !this.isKeyboardOpen && !reservedToolbarMode);
             const occupiedBottom = navVisible ? navHeight : 0;
+            const layoutBottom = navReserved ? navHeight : 0;
 
             root.style.setProperty('--navbar-real-height', `${navHeight}px`);
             root.style.setProperty('--navbar-occupied-bottom', `${occupiedBottom}px`);
-            root.style.setProperty('--navbar-layout-bottom', `${occupiedBottom}px`);
+            root.style.setProperty('--navbar-layout-bottom', `${layoutBottom}px`);
             root.style.setProperty('--kbd-toolbar-real-height', `${toolbarHeight}px`);
 
             document.body.classList.toggle('navbar-is-visible', navVisible);
@@ -317,14 +319,21 @@ class UnifiedNavbar {
 
     onScroll() {
         if (this.isKeyboardOpen) return;
-        const currentScrollY = window.scrollY;
-        
-        if (currentScrollY > this.lastScrollY && currentScrollY > 10) {
+        const doc = document.documentElement;
+        const maxScroll = Math.max(0, doc.scrollHeight - window.innerHeight);
+        let currentScrollY = window.scrollY;
+        if (currentScrollY < 0) currentScrollY = 0;
+        else if (currentScrollY > maxScroll) currentScrollY = maxScroll;
+
+        const delta = currentScrollY - this.lastScrollY;
+        if (Math.abs(delta) < 6) return;
+
+        if (delta > 0 && currentScrollY > 10) {
             this.hideNavbar('scroll');
-        } else {
+        } else if (delta < 0) {
             this.showNavbar();
         }
-        this.lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
+        this.lastScrollY = currentScrollY;
     }
 
     hideNavbar(reason = 'scroll') {
@@ -334,8 +343,6 @@ class UnifiedNavbar {
         if (!this.isHidden && this.navbar) {
             this.navbar.classList.add('hidden');
             this.isHidden = true;
-            this.syncBottomMetrics();
-        } else {
             this.syncBottomMetrics();
         }
     }
@@ -349,8 +356,6 @@ class UnifiedNavbar {
         if (this.isHidden && this.navbar) {
             this.navbar.classList.remove('hidden');
             this.isHidden = false;
-            this.syncBottomMetrics();
-        } else {
             this.syncBottomMetrics();
         }
     }
