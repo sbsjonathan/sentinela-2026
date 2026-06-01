@@ -24,7 +24,7 @@ self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET' || !url.protocol.startsWith('http')) return;
 
     if (url.origin.includes('supabase.co') || url.origin.includes('workers.dev')) return;
-    
+
     event.respondWith(
         fetch(event.request).then((response) => {
             const resClone = response.clone();
@@ -45,7 +45,7 @@ self.addEventListener('message', async (event) => {
         try {
             const urlsToCache = await buildDownloadList();
             const cache = await caches.open(CACHE_NAME);
-            
+
             let loaded = 0;
             const total = urlsToCache.length;
 
@@ -66,8 +66,40 @@ self.addEventListener('message', async (event) => {
     } else if (event.data.action === 'CLEAR_CACHE') {
         await caches.delete(CACHE_NAME);
         event.source.postMessage({ type: 'CACHE_CLEARED' });
+    } else if (event.data.action === 'CACHE_STATUS') {
+        const status = await getCacheStatus();
+        const payload = { type: 'CACHE_STATUS', hasCache: status.hasCache, complete: status.complete };
+        if (event.ports && event.ports[0]) {
+            event.ports[0].postMessage(payload);
+        } else if (event.source) {
+            event.source.postMessage(payload);
+        }
     }
 });
+
+async function getCacheStatus() {
+    if (!('caches' in self)) return { hasCache: false, complete: false };
+
+    const hasCache = await caches.has(CACHE_NAME);
+    if (!hasCache) return { hasCache: false, complete: false };
+
+    const cache = await caches.open(CACHE_NAME);
+    const base = self.registration.scope;
+
+    const sentinela = await cache.match(base + 'biblia/biblia.html', { ignoreSearch: true });
+    if (!sentinela) return { hasCache: true, complete: false };
+
+    const keys = await cache.keys();
+    let bookCount = 0;
+    for (const req of keys) {
+        if (/\/biblia\/livro\/\d{2}-[^/]+\/[^/]+\.html(?:[?#]|$)/.test(req.url)) {
+            bookCount++;
+            if (bookCount >= 30) break;
+        }
+    }
+
+    return { hasCache: true, complete: bookCount >= 30 };
+}
 
 function getSemanaAtual() {
     const hoje = new Date();
@@ -82,7 +114,7 @@ function getSemanaAtual() {
 
 async function buildDownloadList() {
     const basePath = self.registration.scope;
-    
+
     let list = [
         '/',
         'index.html',
