@@ -62,7 +62,6 @@
 
     html {
         background-color: var(--bg-color);
-        overscroll-behavior-y: none; /* Evita o bounce elástico além dos limites da tela no iOS 16+ */
     }
 
     body {
@@ -291,17 +290,6 @@
     </main>
 
 <script src="../navbar/navbar-unified.js"></script>
-
-<script>
-window.addEventListener('DOMContentLoaded', function() {
-    const navbar = document.querySelector('.bottom-navbar');
-    if (navbar) {
-        navbar.classList.remove('hidden');
-        navbar.style.transform = 'translateY(0)';
-        navbar.style.transition = 'none';
-    }
-});
-</script>
 
 <script>
 (function(){
