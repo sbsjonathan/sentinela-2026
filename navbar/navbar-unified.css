@@ -3,7 +3,7 @@
     --navbar-occupied-bottom: var(--navbar-real-height);
     --navbar-layout-bottom: var(--navbar-occupied-bottom);
     --kbd-toolbar-real-height: 68px;
-    --navbar-bg: rgba(255, 255, 255, 0.95);
+    --navbar-bg: #ffffff;
     --navbar-border: rgba(0, 0, 0, 0.1);
     --navbar-active: #6B46C1;
     --navbar-inactive: #8E8E93;
@@ -12,7 +12,7 @@
     --navbar-bottom-padding: 8px;
     --navbar-safe-bottom: env(safe-area-inset-bottom, 0px);
 }[data-theme="dark"] {
-    --navbar-bg: rgba(0, 0, 0, 0.95);
+    --navbar-bg: #1c1c1e;
     --navbar-border: rgba(255, 255, 255, 0.1);
     --navbar-inactive: #8E8E93;
     --navbar-hover-bg: rgba(255, 255, 255, 0.05);
@@ -39,8 +39,6 @@
     right: 0 !important;
     width: 100% !important;
     background: var(--navbar-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid var(--navbar-border);
     display: flex !important;
     justify-content: space-around !important;
