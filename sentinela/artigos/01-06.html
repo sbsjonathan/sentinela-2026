@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#5e8c6b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>A Sentinela</title>
+
+    <meta name="color-scheme" content="light dark">
+    <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('tema-interface') || 'system';
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = savedTheme === 'dark' || (savedTheme === 'system' && prefersDark);
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+      } catch (e) {}
+    })();
+    </script>
+    <style>
+      html, body { background: #f3f4f6; }
+      html[data-theme="dark"], html[data-theme="dark"] body { background: #000000; }
+    </style>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans:wght@400;700;800&family=Noto+Serif:ital@1&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../biblia/stylebbl.css">
+    <link rel="stylesheet" href="../clickable/clickable.css">
+    <link rel="stylesheet" href="../menu/menu.css">
+    <link rel="stylesheet" href="../clickable/agente-modal/agente-modal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css">
+    <link rel="stylesheet" href="../imagem/swiper-zoom.css">
+    <link rel="stylesheet" href="../../navbar/navbar-unified.css">
+</head>
+<body  data-estudo="01-06" style="--cor-principal-estudo: #5e8c6b;" class="with-bottom-navbar">
+<script>
+  (function() {
+    try {
+      var color = getComputedStyle(document.body).getPropertyValue('--cor-principal-estudo').trim() || 'X';
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', color);
+    } catch (e) {}
+  })();
+</script>
+
+<nav class="bottom-navbar booting" data-context="navbar-context-watchtower">
+    <a href="#" class="navbar-item" data-page="home" onclick="irParaHome(event)">
+        <div class="navbar-icon icon-home"></div>
+        <span class="navbar-label">Início</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="bible" onclick="irParaBiblia(event)">
+        <div class="navbar-icon icon-bible"></div>
+        <span class="navbar-label">Bíblia</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="notes" onclick="irParaAnotacoes(event)">
+        <div class="navbar-icon icon-notes"></div>
+        <span class="navbar-label">Anotações</span>
+    </a>
+    <a href="#" class="navbar-item active" data-page="watchtower" onclick="irParaSentinela(event)">
+        <div class="navbar-icon icon-watchtower"></div>
+        <span class="navbar-label">A Sentinela</span>
+    </a>
+    <a href="#" class="navbar-item" data-page="save" onclick="irParaSalvar(event)">
+        <div class="navbar-icon icon-save"></div>
+        <span class="navbar-label">Salvar</span>
+    </a>
+</nav>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  window.semanaAtual = urlParams.get('semana') || '01-06';
+  window.estudoId = '2026324';
+</script>
+
+<div class="container">
+
+<header class="barra-estudo">
+<div>1 A 7 DE JUNHO DE 2026</div>
+</header>
+
+<main>
+
+<div class="secao-cantico"><p><span class="cantico">Cântico 111</span> <span class="cantico-titulo">Nossos motivos de alegria</span></p></div>
+
+<h1 class="estudo-titulo">
+Você pode ser feliz mesmo sendo odiado!
+</h1>
+
+<p class="citacao">
+“Felizes serão vocês sempre que os homens os odiarem.” — <a class="bbl">LUCAS 6:22</a>.
+</p>
+
+<div class="objetivo"><p class="objetivo-titulo">OBJETIVO</p><p class="objetivo-texto">Entender por que podemos ser felizes mesmo sendo odiados por servir a Jeová.</p></div>
+
+<div><p class="pergunta"><span>1.</span> Que declaração surpreendente Jesus fez?</p></div>
+
+<p class="paragrafo"><span>1</span> EM SEU Sermão do Monte, Jesus disse: “Felizes serão vocês sempre que os homens os odiarem.” (<a class="bbl">Luc. 6:22</a>) As pessoas que ouviram essas palavras devem ter ficado surpresas. Afinal de contas, ninguém gosta de ser odiado. Mas por que Jesus disse isso? Essa é uma boa pergunta porque os seguidores de Jesus hoje são odiados por muitas pessoas. Neste estudo, vamos ver por que somos odiados e por que podemos ser felizes apesar disso.</p>
+
+<h2 class="subtitulo">Por que somos odiados?</h2>
+
+<div><p class="pergunta"><span>2-3.</span> (a) Qual é um dos motivos de sermos perseguidos? (<a class="bbl">João 16:2, 3</a>) (b) Como isso pode mudar nosso ponto de vista sobre aqueles que nos perseguem?</p></div>
+
+<p class="paragrafo"><span>2</span> <strong><em>Somos odiados porque adoramos a Jeová.</em></strong> Falando sobre aqueles que perseguiriam e até matariam alguns de seus seguidores, Jesus disse: “Não conhecem nem ao Pai nem a mim.” <strong>(Leia <a class="bbl">João 16:2, 3</a>.)</strong> Quem é o verdadeiro culpado pela perseguição do povo de Deus? Satanás. Ele é “o deus deste mundo”. (<a class="bbl">2 Cor. 4:3, 4</a>) Ele cega as pessoas para que elas não conheçam a Jeová e as influencia para que elas persigam quem conhece e ama a Deus. (<a class="bbl">João 8:42-44</a>) Por que saber disso pode mudar nossos sentimentos com respeito àqueles que nos perseguem? Quando entendemos que essas pessoas estão sendo enganadas por Satanás, isso nos ajuda a não ter ódio delas.</p>
+
+<p class="paragrafo"><span>3</span> Veja o exemplo do irmão Pavel, *  que mora num país onde a nossa obra é proibida. Por continuar servindo a Jeová fielmente, ele foi preso, cruelmente espancado e colocado numa solitária por meses. Hoje Pavel diz: “Fica claro pra mim que é Satanás e os demônios que estão tentando impedir a adoração verdadeira. Pelo que eu vejo, a maioria das pessoas que trabalha na prisão não nos odeia. Elas estão apenas fazendo seu trabalho.” Um irmão da Croácia, que perseverou apesar da forte perseguição de seus pais, diz: “Agora eu entendo que meu verdadeiro inimigo é Satanás, e não meus pais.” — <a class="bbl">Efé. 6:12</a>.</p>
+
+<div><p class="pergunta"><span>4.</span> O que aprendemos dos exemplos de Jesus e de Estêvão? (Veja também a imagem.)</p></div>
+
+<p class="paragrafo"><span>4</span> Nós não odiamos aqueles que nos perseguem. Na verdade, nós devemos até mesmo orar por eles. (<a class="bbl">Mat. 5:44</a>) Veja o que podemos aprender do exemplo de Jesus e do discípulo Estêvão. Jesus tinha sido pregado na estaca de tortura por soldados romanos. Mas mesmo sofrendo, ele orou: “Pai, perdoa-lhes.” (<a class="bbl">Luc. 23:34</a>) Jesus estava pedindo que Jeová perdoasse os soldados que tinham recebido a ordem de matá-lo. Jesus também deve ter pensado na multidão que, por pura influência dos líderes religiosos, gritava exigindo sua morte. Ele percebeu que aquelas pessoas não tinham ideia do que estavam fazendo. Da mesma forma, enquanto estava sendo apedrejado, Estêvão pediu que Deus perdoasse seus assassinos. (<a class="bbl">Atos 7:58-60</a>) Será que Jeová respondeu às orações de Jesus e de Estêvão? Sim. Muitos envolvidos no julgamento e na morte de Jesus mais tarde se arrependeram, exerceram fé em Jesus e se batizaram. (<a class="bbl">Atos 2:36-41</a>) E pelo menos uma pessoa que aprovou o assassinato de Estêvão, Saulo de Tarso, se tornou cristão e se arrependeu muito das coisas horríveis que tinha feito por ignorância. — <a class="bbl">1 Tim. 1:13</a>.</p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026324/univ/art/2026324_univ_cnt_1_xl.jpg">
+  <figcaption>
+    Assim como Jesus e Estêvão oraram pelas pessoas que os perseguiam, nós também podemos orar pelos que nos perseguem (Veja o parágrafo 4.)
+  </figcaption>
+</figure>
+
+<div><p class="pergunta"><span>5.</span> O que você aprendeu da experiência de César?</p></div>
+
+<p class="paragrafo"><span>5</span> Hoje em dia, Jeová continua respondendo às orações que fazemos pelos que nos perseguem. Veja a experiência de César, que mora na Venezuela. Seu pai era um opositor violento. César conta: “Minha mãe era tudo que uma esposa e uma mãe deveria ser. Mesmo sempre colocando o Reino em primeiro lugar, ela nunca deixou meu pai de lado. Ela ensinou a mim e aos meus irmãos a respeitar nosso pai e a sempre obedecer a ele, a não ser que ele pedisse algo que fosse errado para Jeová.” Com o passar dos anos, o pai dele deixou de ser tão duro. César conta: “Um dia, depois de abrir meu coração a Jeová em oração, eu perguntei ao meu pai se ele queria estudar a Bíblia comigo. Eu não sei nem explicar a alegria que senti quando ele aceitou o estudo.” Com o tempo, o pai de César se batizou. É verdade que isso não acontece com todos que nos perseguem, mas alguns acabam mudando de atitude por observar nosso modo de agir e a forma respeitosa que falamos. Nós ficamos muito felizes quando isso acontece! Queremos muito ver como Jeová, o misericordioso “Juiz de toda a terra”, vai ajudar alguns que nos perseguiam a aprender sobre ele. — <a class="bbl">Gên. 18:25</a>.</p>
+
+<div><p class="pergunta"><span>6.</span> De acordo com <a class="bbl">Marcos 13:13</a>, qual é outra razão de sermos odiados?</p></div>
+
+<p class="paragrafo"><span>6</span> <strong><em>Somos odiados porque apoiamos Jesus.</em></strong> Jesus disse que os verdadeiros cristãos seriam odiados por todas as pessoas “por causa do [seu] nome”. <strong>(Leia <a class="bbl">Marcos 13:13</a>.)</strong> Mas o que o “nome” de Jesus representa? Representa quem ele é e o direito que ele tem de ser o Rei do Reino de Deus. Nós somos odiados pelas pessoas que preferem confiar nos governantes humanos, em vez de confiar naquele que Jeová escolheu para governar o Universo, Jesus Cristo. Mas essa situação que enfrentamos hoje não vai durar muito. Jesus já está governando como Rei do Reino de Deus desde 1914 e logo ele vai acabar com todos os governos que são contra sua autoridade.</p>
+
+<div><p class="pergunta"><span>7-8.</span> Qual é ainda outra razão de o povo de Jeová ser alvo de ódio? (<a class="bbl">João 15:18-20</a>) (Veja também as imagens.)</p></div>
+
+<p class="paragrafo"><span>7</span> <strong><em>Somos odiados porque rejeitamos o mundo de Satanás.</em></strong> Jesus explicou que seus seguidores seriam odiados porque “não fazem parte do mundo”. <strong>(Leia <a class="bbl">João 15:18-20</a>.)</strong> Assim como os primeiros cristãos, nós nos recusamos a ter o mesmo modo de pensar, agir e falar que o mundo de Satanás. Por causa disso, muitos irmãos e irmãs são maltratados no trabalho ou na escola. (<a class="bbl">1 Ped. 4:3, 4</a>) Mas ficamos felizes quando um opositor muda de atitude e começa a nos respeitar.</p>
+
+<p class="paragrafo"><span>8</span> Veja a experiência de Ignacio, da América Central. Por anos, um de seus professores da escola fazia piada do estilo de vida que ele levava por servir a Jeová. Mas antes de Ignacio terminar a escola, aquele professor perguntou como ele conseguia seguir os princípios da Bíblia, mesmo num ambiente tão desafiador. Ignacio explicou que, para ele, as leis de Deus são uma proteção. Daí ele convidou o professor para assistir a uma reunião e, para a surpresa de Ignacio, o professor aceitou o convite! O professor ficou tão impressionado com a forma amorosa que foi tratado que continuou assistindo às reuniões. Depois, o próprio professor sofreu oposição porque estava estudando a Bíblia, mas continuou fazendo progresso e foi batizado.</p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026324/univ/art/2026324_univ_cnt_2_xl.jpg"
+       alt="Uma encenação mostrando Ignacio pregando para seu professor.">
+  <figcaption>
+    Seja qual for nossa idade, nós podemos defender nossa fé com coragem
+  </figcaption>
+</figure>
+
+<div><p class="pergunta"><span>9-10.</span> (a) Por qual outro motivo os cristãos são diferentes do mundo de Satanás? (b) O que podemos aprender do exemplo do apóstolo Paulo?</p></div>
+
+<p class="paragrafo"><span>9</span> Outra coisa que deixa claro que somos diferentes do mundo de Satanás é que não nos envolvemos na política ou nas guerras. (<a class="bbl">João 18:36</a>) É verdade que nós seguimos o conselho em <a class="bbl">Romanos 13:1</a> e nos esforçamos para obedecer às leis do governo. Mas, como cristãos, não tomamos nenhum lado na política. Por isso, não nos candidatamos a cargos políticos e nem votamos em nenhum candidato. Por quê? Porque somos leais a Jeová e ao seu Reino, que tem Cristo como Rei. Muitas Testemunhas de Jeová são presas por causa da sua fé. Mesmo assim, esses irmãos e irmãs continuam pregando. Fazendo isso, eles imitam o exemplo do apóstolo Paulo, que passou anos em prisão domiciliar e na cadeia. (<a class="bbl">Atos 24:27; 28:16, 30</a>) Mesmo assim, ele continuou compartilhando as boas novas com quem quer que o escutasse, incluindo guardas da prisão, oficiais da corte, governadores, reis e talvez até oficiais do imperador romano Nero. — <a class="bbl">Atos 9:15</a>.</p>
+
+<p class="paragrafo"><span>10</span> Nossos irmãos que estão presos também pregam a quem quer que os escute, o que inclui juízes, oficiais do governo e guardas da prisão. Certo irmão passou mais de seis anos preso por não se envolver na política. Ele conta que não encarava esse tempo na prisão como uma punição, mas como uma designação de Jeová para encontrar pessoas sinceras. Imagine só que alegria ser usado por Jeová para alcançar essas pessoas com as boas novas! (<a class="bbl">Col. 4:3</a>) Vamos ver quais outros motivos temos para ser felizes mesmo quando somos odiados por servir a Jeová.</p>
+
+<h2 class="subtitulo">Por que podemos ser felizes mesmo sendo odiados?</h2>
+
+<div><p class="pergunta"><span>11.</span> Como a perseguição pode fortalecer nossa fé? Dê um exemplo.</p></div>
+
+<p class="paragrafo"><span>11</span> <strong><em>Nós sabemos que o ódio do mundo cumpre a profecia da Bíblia.</em></strong> Logo na primeira profecia registrada na Bíblia, Jeová deixou claro que Satanás e sua descendência — ou seja, aqueles que o seguem — odiariam aqueles que amam e servem a Jeová. (<a class="bbl">Gên. 3:15</a>) Jesus várias vezes confirmou que essa profecia era verdadeira. E as palavras dele foram registradas nos quatro Evangelhos. (<a class="bbl">Mat. 10:22</a>; <a class="bbl">Mar. 13:9-12</a>; <a class="bbl">Luc. 6:22, 23</a>; <a class="bbl">João 15:20</a>) Outros escritores da Bíblia também falaram sobre isso. (<a class="bbl">2 Tim. 3:12</a>; <a class="bbl">Tia. 1:2; 1 Ped. 4:12-14</a>; <a class="bbl">Judas 3, 17-19</a>) Então, quando somos perseguidos, nós não ficamos surpresos. Na verdade, ficamos felizes de ver que a profecia da Bíblia está se cumprindo. Isso nos dá a certeza de que estamos servindo ao Deus verdadeiro. Uma irmã que vive num país onde a nossa obra está restrita diz: “Quando me dediquei a Jeová, eu sabia que uma hora ou outra eu enfrentaria perseguição. Então, os desafios nunca me pegaram de surpresa nem me deixaram com medo.” Entre os muitos opositores que essa irmã enfrentou, estava seu próprio marido. Ele a maltratava e até mesmo queimou a Bíblia e as publicações dela. Mas em vez de deixar o medo tomar conta, ela ficou com a fé ainda mais forte. (<a class="bbl">Heb. 10:39</a>) Ela conclui: “A Bíblia já dizia que a gente seria perseguido, então eu sabia que isso iria acontecer. Passar por isso me convenceu de que essa é a religião verdadeira.”</p>
+
+<div><p class="pergunta"><span>12.</span> O que ajudou um irmão a suportar perseguição?</p></div>
+
+<p class="paragrafo"><span>12</span> Apesar de saber que vamos ser perseguidos, pode ser difícil perseverar. Um irmão escreveu o seguinte sobre o tempo que ficou na prisão: “Às vezes, eu me sentia deprimido ou preocupado, e só chorava.” O que ajudou esse irmão a perseverar? Ele disse: “Eu já começava o dia orando. Ao longo do dia, quando uma coisa ruim acontecia, eu orava de novo. E quando alguma injustiça me deixava com raiva, eu me trancava no banheiro e fazia outra oração.” Além disso, nosso irmão meditava nos exemplos, tanto do passado quanto do presente, de pessoas que perseveraram apesar de perseguição. Isso o ajudou a não desistir e a sentir a paz que Jesus prometeu a seus seguidores. — <a class="bbl">João 14:27; 16:33</a>.</p>
+
+<div><p class="pergunta"><span>13.</span> O que pode nos ajudar a vencer o ódio?</p></div>
+
+<p class="paragrafo"><span>13</span> <strong><em>Nosso amor é mais forte do que o ódio.</em></strong> Até dar seu último suspiro, Jesus amou seu Pai de todo o coração. Ele também amou seus amigos. (<a class="bbl">João 13:1; 15:13</a>) Quando cultivamos esse mesmo amor, tanto por Jeová como pelos nossos irmãos, nós também conseguimos vencer o ódio. Como? Para responder, vamos considerar o exemplo do apóstolo Paulo.</p>
+
+<div><p class="pergunta"><span>14.</span> O que ajudou Paulo a continuar fiel mesmo diante da morte?</p></div>
+
+<p class="paragrafo"><span>14</span> Pouco antes de ser morto, Paulo escreveu para o seu querido amigo Timóteo: “Deus não nos deu um espírito de covardia, mas de poder, de amor.” (<a class="bbl">2 Tim. 1:7</a>) O que ele quis dizer? Paulo estava dizendo que o forte amor por Jeová pode ajudar um cristão a estar disposto a enfrentar situações muito difíceis. (<a class="bbl">2 Tim. 1:8</a>) E realmente foi o amor que Paulo tinha por Jeová que o ajudou a continuar fiel e a enfrentar a morte com coragem. — <a class="bbl">Atos 20:22-24</a>.</p>
+
+<div><p class="pergunta"><span>15.</span> Como nossos irmãos hoje têm mostrado amor abnegado uns pelos outros? (Veja também a imagem.)</p></div>
+
+<p class="paragrafo"><span>15</span> Nós com certeza amamos muito nossos queridos irmãos que continuam fiéis mesmo sofrendo perseguição. Alguns hoje estão dispostos a se arriscar para ajudar seus irmãos, assim como Áquila e Priscila arriscaram suas vidas para ajudar Paulo. (<a class="bbl">Rom. 16:3, 4</a>) Por exemplo, na Rússia, muitos vão a tribunais para encorajar os irmãos que são presos. Quando uma irmã que tinha sido presa viu vários irmãos e irmãs no tribunal, ela ficou tão emocionada que não conseguia nem falar. O amor abnegado deles a fortaleceu num momento em que ela precisava muito. Somos muito felizes em saber que nosso amor é mais forte do que o ódio!</p>
+
+<figure>
+<img src="https://cms-imgp.jw-cdn.org/img/p/2026324/univ/art/2026324_univ_cnt_3_xl.jpg"
+       alt="Uma encenação mostrando irmãos apoiando uma irmã que está sendo presa por causa de sua fé.">
+  <figcaption>
+    Mesmo onde nossa obra é proibida ou restrita, nossos irmãos mostram um amor sem igual uns pelos outros
+  </figcaption>
+</figure>
+
+<div><p class="pergunta"><span>16.</span> Por que o apóstolo Pedro disse que aqueles que são maltratados por servirem a Deus podem ser felizes? (<a class="bbl">1 Pedro 4:14</a>)</p></div>
+
+<p class="paragrafo"><span>16</span> <strong><em>Nós sabemos que Jeová fica feliz quando perseveramos apesar do ódio.</em> (Leia <a class="bbl">1 Pedro 4:14</a>.)</strong> O apóstolo Pedro disse que aqueles que perseveram, mesmo quando são maltratados por servirem a Deus, têm um bom motivo para serem felizes. Mas por quê? Porque isso é uma prova de que o espírito de Deus “está repousando sobre [nós]”. Pedro se sentia feliz por perseverar apesar de perseguição porque sabia que tinha a aprovação de Deus. Logo depois do Pentecostes do ano 33, os guardas do templo foram enviados para prender Pedro e outros apóstolos porque eles estavam pregando. Mas Pedro defendeu sua fé com coragem. (<a class="bbl">Atos 5:24-29</a>) Mesmo depois de terem sido açoitados, Pedro e seus companheiros não pararam de pregar. Muito pelo contrário, eles ficaram felizes porque tinham sido “considerados dignos de ser desonrados por causa do nome [de Jesus]”. Nós também podemos sentir essa mesma alegria quando perseveramos apesar de oposição. — <a class="bbl">Atos 5:40-42</a>.</p>
+
+<div><p class="pergunta"><span>17.</span> O que Jesus disse aos seus discípulos na noite antes de morrer?</p></div>
+
+<p class="paragrafo"><span>17</span> Na noite antes da sua morte, Jesus disse aos seus discípulos: “Quem me ama será amado pelo meu Pai, e eu o amarei.” (<a class="bbl">João 14:21</a>) Estamos ansiosos para o dia em que as pessoas vão nos amar — e não nos odiar — por servir a Jeová! (<a class="bbl">2 Tes. 1:6-8</a>) Até que esse dia chegue, podemos encontrar consolo e força por nos concentrar nas muitas razões que temos para ser felizes mesmo sendo odiados.</p>
+
+<div class="secao-recapitulacao">
+  <hr class="linha-recapitulacao">
+  <h3 class="titulo-recapitulacao">O QUE VOCÊ DIRIA?</h3>
+  <ul class="lista-recapitulacao">
+          <li>Por que os seguidores de Jesus são odiados?</li>
+          <li>Em que sentido nosso amor é mais forte do que o ódio?</li>
+          <li>Por que podemos ser felizes mesmo sendo odiados?</li>
+  </ul>
+</div>
+
+<div class="secao-cantico"><p><span class="cantico">Cântico 149</span> <span class="cantico-titulo">Um cântico de vitória</span></p></div>
+
+<hr class="linha-divisoria">
+
+<p class="nota-rodape"><span class="simbolo-rodape">*</span> Alguns nomes foram mudados.</p>
+
+</main>
+
+</div>
+
+<div id="modal-biblia">
+    <div class="modal-biblia-content">
+        <span id="modal-biblia-fechar">×</span>
+        <div id="modal-biblia-corpo"></div>
+    </div>
+</div>
+
+<script src="../biblia/abrev.js"></script>
+<script src="../biblia/scriptbbl.js"></script>
+<script src="../clickable/cache.js"></script>
+<script src="../clickable/agente_perguntas.js"></script>
+<script src="../clickable/agente_recap.js"></script>
+<script src="../clickable/agente-obj.js"></script>
+<script src="../clickable/agente-sub.js"></script>
+<script src="../clickable/agente-modal/agente-modal.js"></script>
+<script src="../clickable/clickable.js"></script>
+<script src="../menu/menu.js"></script>
+<script src="../mark.js"></script>
+<script src="../imagem/semanas/22-09/ilust/ilust-universal.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"></script>
+
+<script src="../imagem/swiper-zoom.js"></script>
+<script src="../imagem.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../save/config.js"></script>
+<script src="../../save/supabase.js"></script>
+<script src="../../navbar/navbar-unified.js"></script>
+<script src="../../save/sentinela-sync.js"></script>
+
+<div id="zoom-container" class="zoom-container">
+    <div class="zoom-header">
+        <button class="zoom-btn-fechar" aria-label="Fechar">×</button>
+    </div>
+    <div class="zoom-content"></div>
+    <div class="zoom-footer"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        document.querySelectorAll('.paragrafo').forEach((p, index) => {
+            if (!p.id) p.id = `paragrafo-sentinela-${index + 1}`;
+        });
+        if (window.CacheAnotacao) {
+            document.querySelectorAll('.paragrafo, .comentarios, .clickable').forEach(el => {
+                if (el.id) {
+                    const cachedContent = window.CacheAnotacao.carregar(el.id);
+                    if (cachedContent) el.innerHTML = cachedContent;
+                }
+            });
+        }
+        document.dispatchEvent(new CustomEvent('cacheRestored'));
+        if (window.UnifiedNavbar?.get()) {
+            window.UnifiedNavbar.get().setActivePage('watchtower');
+        }
+    }, 200);
+});
+</script>
+
+</body>
+</html>
