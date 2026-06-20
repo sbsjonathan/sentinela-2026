@@ -165,6 +165,7 @@ class UnifiedNavbar {
         this.lastScrollY = 0;
         this.isHidden = false;
         this.isKeyboardOpen = false;
+        this.editableFocado = false;
         this.currentPage = this.detectCurrentPage();
         this._syncRaf = 0;
         this._metricsRaf = 0;
@@ -319,31 +320,22 @@ class UnifiedNavbar {
 
     onScroll() {
         if (this.isKeyboardOpen) return;
-        const doc = document.documentElement;
-        const maxScroll = Math.max(0, doc.scrollHeight - window.innerHeight);
-        let currentScrollY = window.scrollY;
-        if (currentScrollY < 0) currentScrollY = 0;
-        else if (currentScrollY > maxScroll) currentScrollY = maxScroll;
-
-        const delta = currentScrollY - this.lastScrollY;
-        if (Math.abs(delta) < 6) return;
-
-        if (delta > 0 && currentScrollY > 10) {
+        const currentScrollY = window.scrollY;
+        if (currentScrollY > this.lastScrollY && currentScrollY > 10) {
             this.hideNavbar('scroll');
-        } else if (delta < 0) {
+        } else {
             this.showNavbar();
         }
-        this.lastScrollY = currentScrollY;
+        this.lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
     }
 
     hideNavbar(reason = 'scroll') {
-        if (reason === 'scroll' && ['home', 'notes', 'save'].includes(this.currentPage)) {
+        if (reason === 'scroll' && !document.documentElement.dataset.programYear && ['home', 'notes', 'save'].includes(this.currentPage)) {
             return;
         }
         if (!this.isHidden && this.navbar) {
             this.navbar.classList.add('hidden');
             this.isHidden = true;
-            this.syncBottomMetrics();
         }
     }
 
@@ -356,7 +348,6 @@ class UnifiedNavbar {
         if (this.isHidden && this.navbar) {
             this.navbar.classList.remove('hidden');
             this.isHidden = false;
-            this.syncBottomMetrics();
         }
     }
 
@@ -373,6 +364,7 @@ class UnifiedNavbar {
     }
 
     keyboardOpenByViewport() {
+        if (this.editableFocado) return true;
         if (window.visualViewport) {
             return (window.innerHeight - window.visualViewport.height) > 120;
         }
@@ -404,6 +396,7 @@ class UnifiedNavbar {
         document.addEventListener('focusin', (e) => {
             const tag = e.target.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) {
+                this.editableFocado = true;
                 this.isKeyboardOpen = true;
                 this.hideNavbar('keyboard');
                 this.syncBottomMetrics();
@@ -411,6 +404,7 @@ class UnifiedNavbar {
         });
 
         document.addEventListener('focusout', () => {
+            this.editableFocado = false;
             setTimeout(sync, 60);
         });
 
@@ -525,6 +519,26 @@ async function irParaAnotacoes(event) {
     window.location.href = joinProjectPath(`richtext/container.html?semana=${window.getGlobalWeek()}`);
 }
 
+function ddmmParaISO(ddmm) {
+    const m = String(ddmm || "").match(/(\d{2})-(\d{2})/);
+    if (!m) return "";
+    const dia = parseInt(m[1], 10);
+    const mes = parseInt(m[2], 10) - 1;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    let melhor = null;
+    let menor = Infinity;
+    for (let dy = -1; dy <= 1; dy++) {
+        const d = new Date(hoje.getFullYear() + dy, mes, dia);
+        const diff = Math.abs(d.getTime() - hoje.getTime());
+        if (diff < menor) { menor = diff; melhor = d; }
+    }
+    const yyyy = melhor.getFullYear();
+    const mm = String(mes + 1).padStart(2, "0");
+    const dd = String(dia).padStart(2, "0");
+    return yyyy + "-" + mm + "-" + dd;
+}
+
 async function irParaSentinela(event) {
     if (event) {
         event.preventDefault();
@@ -538,17 +552,18 @@ async function irParaSentinela(event) {
     }
 
     window.semanaAtual = semana;
-    const artigoURL = joinProjectPath("sentinela/artigos/" + semana + ".html");
-    const fallbackURL = buildIndexEmBreveURL(semana);
 
-    if (window.location.pathname.toLowerCase().endsWith("/" + semana + ".html")) return false;
-
-    if (await urlExiste(artigoURL)) {
-        window.location.href = artigoURL;
+    const iso = ddmmParaISO(semana);
+    if (!iso) {
+        window.location.href = joinProjectPath("index.html");
         return false;
     }
 
-    window.location.href = fallbackURL;
+    if (window.location.pathname.toLowerCase().endsWith("/estudo.html") && window.location.search.indexOf("d=" + iso) !== -1) {
+        return false;
+    }
+
+    window.location.href = joinProjectPath("sentinela/artigos/estudo.html?d=" + iso);
     return false;
 }
 

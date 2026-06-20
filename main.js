@@ -1,337 +1,482 @@
+const WORKER_BASE = "https://hope2.momentaneo2021.workers.dev/";
+const CONTEUDO_CACHE_KEY = "sentinela-conteudo";
+const TITULO_PADRAO = "Estudo de A Sentinela";
+const COR_PADRAO = "#6c5ce7";
+const OFFLINE_CACHE = "artigo-offline-v1";
+
+const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const MES_ABREV = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+const ICONE_LIVRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11a2 2 0 0 1 2 2v13a1.5 1.5 0 0 0-1.5-1.5h-6A1.5 1.5 0 0 1 4 16Z"/><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13a2 2 0 0 0-2 2v13a1.5 1.5 0 0 1 1.5-1.5h6A1.5 1.5 0 0 0 20 16Z"/></svg>';
+const ICONE_LAPIS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 4.5l3 3L8 19l-4 1 1-4Z"/><path d="M14.5 6.5l3 3"/></svg>';
+const ICONE_NUVEM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.5-7.97 5.5 5.5 0 0 1 10.65-1.32A3.5 3.5 0 0 1 17.5 18"/><path d="M12 11.5v6"/><path d="M9.5 15l2.5 2.5 2.5-2.5"/></svg>';
+const ICONE_RING = '<svg class="ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="2.4"/><circle class="ring-fg" cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" transform="rotate(-90 12 12)" stroke-dasharray="56.5" stroke-dashoffset="56.5"/></svg>';
+
 class CarouselManager {
     constructor() {
         this.currentSlide = 3;
         this.totalSlides = 7;
-        this.slides = [];
-        this.slidesWrapper = null;
-        this.indicators = null;
         this.semanas = [];
+        this.cards = [];
+        this.chips = [];
+        this.dotEls = [];
+        this.baixando = {};
         this.semanaAtual = null;
-        this.isShowingEmBreve = false;
-        
-        this.mesesPtBr = [
-            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
-            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-        ];
-        
+        this.deck = null;
+        this.rail = null;
+        this.dots = null;
+        this.btnEstudo = null;
+        this.btnNotas = null;
+        this.observer = null;
         this.init();
     }
 
-    async init() {
+    init() {
         try {
-            this.gerarSemanasDinamicas();
-            this.createSlides();
-            this.setupNavigation();
-            this.goToSlide(this.currentSlide, false);
-            this.updateSemanaDisplay();
-            this.handleInitialURLState();
+            this.gerarSemanas();
+            this.deck = document.getElementById("deck");
+            this.rail = document.getElementById("rail");
+            this.dots = document.getElementById("dots");
+            this.btnEstudo = document.querySelector(".act-primary");
+            this.btnNotas = document.querySelector(".act-secondary");
+            this.render();
+            this.setupNavegacao();
+            this.observarCartoes();
+            this.setupCabecalho();
+
+            const params = new URLSearchParams(window.location.search);
+            const semanaParam = this.normalizeSemana(params.get("semana"));
+            if (semanaParam) {
+                const idx = this.semanas.findIndex((s) => s.parametro === semanaParam);
+                if (idx !== -1) this.currentSlide = idx;
+            }
+
+            this.marcarAtivo(this.currentSlide);
+            const alvo = this.currentSlide;
+            requestAnimationFrame(() => this.goToSlide(alvo, false));
+
+            this.atualizarConteudo();
+            this.atualizarBotaoAtivo();
         } catch (error) {
-            this.showError();
+            this.mostrarErro();
         }
     }
 
     normalizeSemana(value) {
-        const match = String(value || '').match(/\b(\d{2}-\d{2})\b/);
-        return match ? match[1] : '';
+        const match = String(value || "").match(/\b(\d{2}-\d{2})\b/);
+        return match ? match[1] : "";
     }
 
-    handleInitialURLState() {
-        const params = new URLSearchParams(window.location.search);
-        const semanaParam = this.normalizeSemana(params.get('semana'));
-        const estado = String(params.get('estado') || params.get('modo') || '').toLowerCase();
-
-        if (semanaParam) {
-            this.forceGoToWeek(semanaParam);
-        }
-
-        if (['em-breve', 'embreve', 'em_breve'].includes(estado)) {
-            const semana = semanaParam || window.getGlobalWeek();
-            requestAnimationFrame(() => this.mostrarEmBreveInline(semana));
-        }
-    }
-
-    gerarSemanasDinamicas() {
+    gerarSemanas() {
         const hoje = new Date();
-        const diaDaSemana = hoje.getDay();
-        const diasParaSegunda = diaDaSemana === 0 ? -6 : 1 - diaDaSemana;
-        
-        const segundaAtual = new Date(hoje);
-        segundaAtual.setDate(hoje.getDate() + diasParaSegunda);
-        segundaAtual.setHours(0, 0, 0, 0);
-
-        const diaAtualFormatado = String(segundaAtual.getDate()).padStart(2, '0');
-        const mesAtualFormatado = String(segundaAtual.getMonth() + 1).padStart(2, '0');
-        this.semanaAtual = `${diaAtualFormatado}-${mesAtualFormatado}`;
-        window.semanaAtual = this.semanaAtual;
+        const dow = hoje.getDay();
+        const diff = dow === 0 ? -6 : 1 - dow;
+        const seg = new Date(hoje);
+        seg.setDate(hoje.getDate() + diff);
+        seg.setHours(0, 0, 0, 0);
 
         this.semanas = [];
-
         for (let i = -3; i <= 3; i++) {
-            const dataSegunda = new Date(segundaAtual);
-            dataSegunda.setDate(dataSegunda.getDate() + (i * 7));
-            
-            const dataDomingo = new Date(dataSegunda);
-            dataDomingo.setDate(dataDomingo.getDate() + 6);
+            const ini = new Date(seg);
+            ini.setDate(seg.getDate() + i * 7);
+            const fim = new Date(ini);
+            fim.setDate(ini.getDate() + 6);
+            const dia = String(ini.getDate()).padStart(2, "0");
+            const mes = String(ini.getMonth() + 1).padStart(2, "0");
+            this.semanas.push({
+                parametro: `${dia}-${mes}`,
+                dataISO: `${ini.getFullYear()}-${mes}-${dia}`,
+                ini,
+                fim,
+                atual: i === 0
+            });
+        }
 
-            const paramDia = String(dataSegunda.getDate()).padStart(2, '0');
-            const paramMes = String(dataSegunda.getMonth() + 1).padStart(2, '0');
-            const parametro = `${paramDia}-${paramMes}`;
+        this.semanaAtual = this.semanas[3].parametro;
+        window.semanaAtual = this.semanaAtual;
+    }
 
-            let titulo = "";
-            if (dataSegunda.getMonth() === dataDomingo.getMonth()) {
-                titulo = `${dataSegunda.getDate()}-${dataDomingo.getDate()} de ${this.mesesPtBr[dataSegunda.getMonth()]}`;
-            } else {
-                titulo = `${dataSegunda.getDate()} de ${this.mesesPtBr[dataSegunda.getMonth()]} - ${dataDomingo.getDate()} de ${this.mesesPtBr[dataDomingo.getMonth()]}`;
-            }
+    rangeLongo(ini, fim) {
+        if (ini.getMonth() === fim.getMonth()) {
+            return `${ini.getDate()}–${fim.getDate()} de ${MESES[ini.getMonth()].toLowerCase()}`;
+        }
+        return `${ini.getDate()} ${MES_ABREV[ini.getMonth()]} – ${fim.getDate()} ${MES_ABREV[fim.getMonth()]}`;
+    }
 
-            this.semanas.push({ semana: titulo, parametro, titulo });
+    escaparHtml(s) {
+        return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    corValida(cor) {
+        return cor && /^#[0-9a-fA-F]{3,6}$/.test(cor) ? cor : COR_PADRAO;
+    }
+
+    lerCache() {
+        try {
+            const raw = localStorage.getItem(CONTEUDO_CACHE_KEY);
+            return raw ? JSON.parse(raw) : {};
+        } catch (error) {
+            return {};
         }
     }
 
-    createSlides() {
-        this.slidesWrapper = document.getElementById('slides-wrapper');
-        this.indicators = document.getElementById('indicators');
-        
-        if (!this.slidesWrapper) throw new Error('Slides wrapper não encontrado');
+    dados(iso) {
+        const c = this.lerCache()[iso];
+        return c && typeof c === "object" ? c : {};
+    }
 
-        this.slidesWrapper.innerHTML = '';
-        if (this.indicators) this.indicators.innerHTML = '';
+    salvarDados(iso, dados) {
+        try {
+            const mapa = this.lerCache();
+            mapa[iso] = dados;
+            localStorage.setItem(CONTEUDO_CACHE_KEY, JSON.stringify(mapa));
+        } catch (error) {}
+    }
 
-        this.semanas.forEach((config, index) => {
-            this.createSlide(config, index);
-            this.createIndicator(index);
+    render() {
+        if (!this.deck || !this.rail) throw new Error("estrutura ausente");
+        this.deck.innerHTML = "";
+        this.rail.innerHTML = "";
+        if (this.dots) this.dots.innerHTML = "";
+        this.cards = [];
+        this.chips = [];
+        this.dotEls = [];
+
+        this.semanas.forEach((s, i) => {
+            const d = this.dados(s.dataISO);
+            const cor = this.corValida(d.cor);
+
+            const chip = document.createElement("button");
+            chip.className = "chip" + (s.atual ? " current" : "");
+            chip.innerHTML = `<span class="m">${MES_ABREV[s.ini.getMonth()]}</span><span class="d">${s.ini.getDate()}</span>`;
+            chip.addEventListener("click", () => this.goToSlide(i, true));
+            this.rail.appendChild(chip);
+            this.chips.push(chip);
+
+            if (this.dots) {
+                const dot = document.createElement("div");
+                dot.className = "dot";
+                dot.addEventListener("click", () => this.goToSlide(i, true));
+                this.dots.appendChild(dot);
+                this.dotEls.push(dot);
+            }
+
+            const issue = document.createElement("div");
+            issue.className = "issue";
+            issue.innerHTML = `
+                <div class="cover" style="--cc:${cor}">
+                    <div class="cover-img"></div>
+                    <div class="glow"></div>
+                    <div class="cover-top">
+                        <span class="pill">${this.rangeLongo(s.ini, s.fim)}</span>
+                        ${s.atual ? '<span class="badge">Esta semana</span>' : ''}
+                    </div>
+                    <div class="cover-foot">
+                        <div class="kicker">Estudo de A Sentinela</div>
+                        <div class="title">${this.escaparHtml(d.titulo || TITULO_PADRAO)}</div>
+                    </div>
+                </div>`;
+            this.deck.appendChild(issue);
+            this.cards.push(issue);
+
+            if (d.imagem) this.definirImagem(issue, d.imagem, cor);
         });
     }
 
-    createSlide(config, index) {
-        const slide = document.createElement('div');
-        slide.className = 'slide';
-        slide.innerHTML = `
-            <div class="slide-content">
-                <h2 class="subtitulo">${config.titulo}</h2>
-                <div class="nav-links">
-                    <a href="richtext/container.html?semana=${config.parametro}" class="nav-link">
-                        <span class="icone">📝</span>
-                        Anotações do Discurso
-                    </a>
-                    <a href="javascript:void(0)" class="nav-link" data-semana="${config.parametro}">
-                        <span class="icone">📖</span>
-                        Estudo de A Sentinela
-                    </a>
-                </div>
-                <p class="descricao">Semana de ${config.semana}</p>
-            </div>
-        `;
-        this.slidesWrapper.appendChild(slide);
-        this.slides.push(slide);
+    definirImagem(issue, imagem, cor) {
+        const cover = issue.querySelector(".cover");
+        if (cover) cover.style.setProperty("--cc", this.corValida(cor));
+        const img = issue.querySelector(".cover-img");
+        if (!img) return;
+        if (!imagem) { img.style.backgroundImage = ""; return; }
+        const im = new Image();
+        im.onload = () => { img.style.backgroundImage = `url("${imagem}")`; };
+        im.src = imagem;
     }
 
-    createIndicator(index) {
-        if (!this.indicators) return;
-        const indicator = document.createElement('div');
-        indicator.className = 'indicator';
-        indicator.addEventListener('click', () => this.goToSlide(index));
-        this.indicators.appendChild(indicator);
-    }
-
-    setupNavigation() {
-        const prevBtn = document.getElementById('prev-btn');
-        const nextBtn = document.getElementById('next-btn');
-
-        if (prevBtn) prevBtn.addEventListener('click', () => this.previousSlide());
-        if (nextBtn) nextBtn.addEventListener('click', () => this.nextSlide());
-
-        this.slidesWrapper.addEventListener('click', async (e) => {
-            const link = e.target.closest('a[data-semana]');
-            if (link) {
-                e.preventDefault();
-                const semana = link.getAttribute('data-semana');
-                if (window.irParaSentinelaAcao) {
-                    window.irParaSentinelaAcao(semana);
+    setupNavegacao() {
+        if (this.btnEstudo) {
+            this.btnEstudo.addEventListener("click", () => {
+                const s = this.semanas[this.currentSlide];
+                if (!s) return;
+                const estado = this.btnEstudo.dataset.estado;
+                if (estado === "baixando") return;
+                if (estado === "abrir") {
+                    window.location.href = `sentinela/artigos/estudo.html?d=${s.dataISO}`;
                 } else {
-                    this.verificarESentinela(semana);
+                    this.baixarArtigo(this.currentSlide, this.btnEstudo);
                 }
-            }
-        });
+            });
+        }
+        if (this.btnNotas) {
+            this.btnNotas.addEventListener("click", () => {
+                const s = this.semanas[this.currentSlide];
+                if (s) window.location.href = `richtext/container.html?semana=${s.parametro}`;
+            });
+        }
+    }
 
-        this.setupSwipeNavigation();
+    observarCartoes() {
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach((e) => {
+                if (e.isIntersecting && e.intersectionRatio > 0.6) {
+                    const idx = this.cards.indexOf(e.target);
+                    if (idx >= 0) this.marcarAtivo(idx);
+                }
+            });
+        }, { root: this.deck, threshold: [0.6, 0.9] });
+        this.cards.forEach((c) => this.observer.observe(c));
+    }
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') this.previousSlide();
-            if (e.key === 'ArrowRight') this.nextSlide();
+    setupCabecalho() {
+        const head = document.getElementById("head");
+        if (!head || !this.rail) return;
+        this.rail.classList.add("colapsada");
+        head.classList.add("recolhido");
+        requestAnimationFrame(() => this.rail.classList.add("anima"));
+        head.addEventListener("click", () => {
+            const agora = this.rail.classList.toggle("colapsada");
+            head.classList.toggle("recolhido", agora);
         });
     }
 
-    setupSwipeNavigation() {
-        let startX = 0; let startY = 0;
-        let endX = 0; let endY = 0;
+    marcarAtivo(index) {
+        if (index < 0 || index >= this.totalSlides) return;
+        this.currentSlide = index;
+        this.chips.forEach((c, i) => c.classList.toggle("active", i === index));
+        this.dotEls.forEach((d, i) => d.classList.toggle("on", i === index));
 
-        this.slidesWrapper.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-        }, { passive: true });
+        const s = this.semanas[index];
+        const display = document.getElementById("semana-display");
+        if (display && s) display.textContent = this.rangeLongo(s.ini, s.fim);
 
-        this.slidesWrapper.addEventListener('touchend', (e) => {
-            endX = e.changedTouches[0].clientX;
-            endY = e.changedTouches[0].clientY;
-            
-            const deltaX = startX - endX;
-            const deltaY = startY - endY;
-            
-            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
-                if (deltaX > 0) this.nextSlide();
-                else this.previousSlide();
-            }
-        }, { passive: true });
+        if (s) document.documentElement.style.setProperty("--c", this.corValida(this.dados(s.dataISO).cor));
+
+        this.atualizarBotaoAtivo();
+
+        if (this.chips[index]) {
+            this.chips[index].scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        }
     }
 
     goToSlide(index, animate = true) {
         if (index < 0 || index >= this.totalSlides) return;
+        const issue = this.cards[index];
+        if (issue) issue.scrollIntoView({ behavior: animate ? "smooth" : "auto", inline: "center", block: "nearest" });
+        this.marcarAtivo(index);
+    }
 
-        this.currentSlide = index;
-        const translateX = -index * 100;
-        this.slidesWrapper.style.transform = `translateX(${translateX}%)`;
-        
-        if (!animate) {
-            this.slidesWrapper.style.transition = 'none';
-            this.slidesWrapper.offsetHeight;
-            this.slidesWrapper.style.transition = '';
+    forceGoToWeek(semanaParametro) {
+        const alvo = this.normalizeSemana(semanaParametro);
+        const index = this.semanas.findIndex((s) => s.parametro === alvo);
+        if (index !== -1) {
+            this.goToSlide(index, false);
+            return true;
         }
-
-        this.updateIndicators();
-        this.updateSemanaDisplay();
-    }
-
-    nextSlide() {
-        const nextIndex = (this.currentSlide + 1) % this.totalSlides;
-        this.goToSlide(nextIndex);
-    }
-
-    previousSlide() {
-        const prevIndex = (this.currentSlide - 1 + this.totalSlides) % this.totalSlides;
-        this.goToSlide(prevIndex);
-    }
-
-    updateIndicators() {
-        if (!this.indicators) return;
-        const indicators = this.indicators.querySelectorAll('.indicator');
-        indicators.forEach((indicator, index) => {
-            indicator.classList.toggle('active', index === this.currentSlide);
-        });
-    }
-
-    updateSemanaDisplay() {
-        const semanaDisplay = document.getElementById('semana-display');
-        if (semanaDisplay && this.semanas[this.currentSlide]) {
-            const config = this.semanas[this.currentSlide];
-            semanaDisplay.textContent = config.titulo;
-            
-            if (config.parametro === this.semanaAtual) {
-                semanaDisplay.style.color = '#667eea';
-                semanaDisplay.style.fontWeight = '700';
-            } else {
-                semanaDisplay.style.color = '';
-                semanaDisplay.style.fontWeight = '';
-            }
-        }
-    }
-
-    showError() {
-        this.slidesWrapper = document.getElementById('slides-wrapper');
-        if (this.slidesWrapper) {
-            this.slidesWrapper.innerHTML = `
-                <div class="slide"><div class="slide-content"><h2 class="subtitulo">Erro ao Carregar</h2></div></div>`;
-        }
+        return false;
     }
 
     getVisibleWeek() {
-        return this.normalizeSemana(this.semanas[this.currentSlide]?.parametro) || this.semanaAtual;
+        return this.semanas[this.currentSlide] ? this.semanas[this.currentSlide].parametro : this.semanaAtual;
     }
 
-    async artigoExiste(url) {
+    getCurrentWeek() {
+        return this.semanaAtual;
+    }
+
+    definirEstadoBotao(btn, estado, pct) {
+        if (!btn) return;
+        btn.dataset.estado = estado;
+        const ico = btn.querySelector(".act-ico");
+        const label = btn.querySelector(".act-label");
+        if (!ico || !label) return;
+        if (estado === "abrir") {
+            ico.innerHTML = ICONE_LIVRO;
+            label.textContent = "Abrir estudo";
+        } else if (estado === "baixando") {
+            ico.innerHTML = ICONE_RING;
+            label.textContent = "Baixando";
+            this.progresso(btn, pct || 0);
+        } else {
+            ico.innerHTML = ICONE_NUVEM;
+            label.textContent = "Baixar";
+        }
+    }
+
+    progresso(btn, p) {
+        const fg = btn.querySelector(".ring-fg");
+        if (!fg) return;
+        const v = Math.max(0, Math.min(1, p));
+        fg.style.strokeDashoffset = String(56.5 * (1 - v));
+    }
+
+    async baixouAntes(iso) {
+        if (!("caches" in window)) return false;
         try {
-            const response = await fetch(url, {
-                method: 'GET',
-                cache: 'no-store',
-                credentials: 'same-origin'
-            });
-
-            if (!response.ok) return false;
-
-            const finalURL = String(response.url || '').toLowerCase();
-            if (finalURL.includes('/404') || finalURL.endsWith('404.html')) return false;
-
-            const html = await response.text();
-            const sample = html.slice(0, 7000).toLowerCase();
-
-            if (sample.includes('page not found') || sample.includes('file not found')) return false;
-            if (sample.includes('github pages') && sample.includes('404')) return false;
-
-            return /data-estudo=["']?\d{2}-\d{2}/i.test(html)
-                || /<title>\s*a sentinela\s*<\/title>/i.test(html)
-                || /--cor-principal-estudo/i.test(html);
+            const cache = await caches.open(OFFLINE_CACHE);
+            const hit = await cache.match(`${WORKER_BASE}?semana=${iso}`);
+            return !!hit;
         } catch (error) {
             return false;
         }
     }
 
-    async verificarESentinela(semana) {
-        const semanaNormalizada = this.normalizeSemana(semana) || this.getVisibleWeek();
-        const artigoURL = `sentinela/artigos/${semanaNormalizada}.html`;
-
-        if (await this.artigoExiste(artigoURL)) {
-            window.location.href = artigoURL;
+    async atualizarBotaoAtivo() {
+        const btn = this.btnEstudo;
+        if (!btn) return;
+        const s = this.semanas[this.currentSlide];
+        if (!s) return;
+        const iso = s.dataISO;
+        if (iso in this.baixando) {
+            this.definirEstadoBotao(btn, "baixando", this.baixando[iso]);
             return;
         }
-
-        window.location.href = `index.html?semana=${semanaNormalizada}&estado=em-breve`;
+        const tem = await this.baixouAntes(iso);
+        const atualAgora = this.semanas[this.currentSlide];
+        if (!atualAgora || atualAgora.dataISO !== iso) return;
+        if (iso in this.baixando) {
+            this.definirEstadoBotao(btn, "baixando", this.baixando[iso]);
+            return;
+        }
+        this.definirEstadoBotao(btn, tem ? "abrir" : "baixar");
     }
 
-    mostrarEmBreveInline(semana) {
-        const semanaNormalizada = this.normalizeSemana(semana) || this.getVisibleWeek();
-        const [dia, mes] = semanaNormalizada.split('-');
-        const semanaFormatada = dia && mes ? `${dia}/${mes}` : '';
+    coletarAssets(html) {
+        const base = new URL("sentinela/artigos/estudo.html", window.location.href).href;
+        const urls = new Set();
+        const add = (u) => {
+            if (!u) return;
+            try {
+                const abs = new URL(u, base).href;
+                if (abs.indexOf("http") === 0) urls.add(abs);
+            } catch (error) {}
+        };
+        try {
+            const doc = new DOMParser().parseFromString(html, "text/html");
+            doc.querySelectorAll("link[href]").forEach((el) => {
+                const rel = (el.getAttribute("rel") || "").toLowerCase();
+                if (rel.indexOf("stylesheet") !== -1 || rel.indexOf("preload") !== -1 || rel.indexOf("icon") !== -1) add(el.getAttribute("href"));
+            });
+            doc.querySelectorAll("script[src]").forEach((el) => add(el.getAttribute("src")));
+            doc.querySelectorAll("img").forEach((el) => { add(el.getAttribute("src")); add(el.getAttribute("data-src")); });
+            doc.querySelectorAll("source[src]").forEach((el) => add(el.getAttribute("src")));
+        } catch (error) {}
+        const re = /https?:\/\/[^"'\s)]+\.(?:png|jpe?g|webp|gif|svg)/gi;
+        let m;
+        while ((m = re.exec(html)) !== null) add(m[0]);
+        return Array.from(urls).filter((u) => u.indexOf("workers.dev") === -1 && u.indexOf("supabase") === -1);
+    }
 
-        this.isShowingEmBreve = true;
-        window.semanaAtual = semanaNormalizada;
-        document.title = 'Estudo Em Breve';
-        document.body.className = 'with-bottom-navbar sentinela-em-breve-mode';
-        
-        document.body.innerHTML = `
-            <main class="sentinela-embreve-page">
-                <section class="sentinela-embreve-card">
-                    <div class="sentinela-embreve-icone">📖</div>
-                    <h1 class="sentinela-embreve-titulo">Estudo Em Breve</h1>
-                    ${semanaFormatada ? `<p class="sentinela-embreve-semana">Semana de ${semanaFormatada}</p>` : ''}
-                    <p class="sentinela-embreve-mensagem">O artigo de <strong>A Sentinela</strong> para esta semana ainda não foi publicado.</p>
-                    <div class="sentinela-embreve-botoes">
-                        <a href="index.html" class="sentinela-embreve-botao">← Voltar ao Início</a>
-                        <button type="button" class="sentinela-embreve-botao sentinela-embreve-botao-sec" onclick="window.location.reload()">Verificar novamente</button>
-                    </div>
-                </section>
-            </main>
-        `;
+    async baixarArtigo(index, btn) {
+        const s = this.semanas[index];
+        if (!s) return;
+        const iso = s.dataISO;
+        if (!("caches" in window)) {
+            window.location.href = `sentinela/artigos/estudo.html?d=${iso}`;
+            return;
+        }
+        if (!navigator.onLine) {
+            alert("Conecte-se à internet para baixar o estudo.");
+            return;
+        }
+        const url = `${WORKER_BASE}?semana=${iso}`;
+        this.baixando[iso] = 0;
+        if (this.currentSlide === index) this.definirEstadoBotao(btn, "baixando", 0);
+        const setP = (p) => {
+            this.baixando[iso] = p;
+            if (this.currentSlide === index && btn.dataset.estado === "baixando") this.progresso(btn, p);
+        };
+        try {
+            const resp = await fetch(url, { cache: "reload" });
+            if (!resp.ok) throw new Error("status");
+            const html = await resp.text();
+            if (!/^\s*<!doctype html>/i.test(html)) throw new Error("nao-publicado");
+            const cache = await caches.open(OFFLINE_CACHE);
+            await cache.put(url, new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } }));
+            const assets = this.coletarAssets(html);
+            const total = assets.length + 1;
+            let loaded = 1;
+            setP(loaded / total);
+            await Promise.all(assets.map(async (a) => {
+                try {
+                    const mesmaOrigem = a.indexOf(window.location.origin) === 0;
+                    await fetch(a, mesmaOrigem ? { cache: "reload" } : { mode: "no-cors", cache: "reload" });
+                } catch (error) {}
+                loaded++;
+                setP(loaded / total);
+            }));
+            delete this.baixando[iso];
+            if (this.currentSlide === index) this.definirEstadoBotao(btn, "abrir");
+        } catch (error) {
+            delete this.baixando[iso];
+            if (this.currentSlide === index) this.definirEstadoBotao(btn, "baixar");
+            if (error && error.message === "nao-publicado") {
+                alert("O estudo desta semana ainda não foi publicado.");
+            } else {
+                alert("Não consegui baixar o estudo agora. Tente de novo.");
+            }
+        }
+    }
 
-        requestAnimationFrame(() => {
-            try { window.UnifiedNavbar?.init?.(); } catch (error) {}
+    async buscarConteudo(iso) {
+        try {
+            const resp = await fetch(`${WORKER_BASE}?titulo=${encodeURIComponent(iso)}`, { cache: "no-store" });
+            if (!resp.ok) return;
+            const dados = await resp.json();
+            if (!dados || !dados.titulo) return;
+            const limpo = {
+                titulo: String(dados.titulo).trim(),
+                imagem: dados.imagem ? String(dados.imagem).trim() : "",
+                cor: dados.cor ? String(dados.cor).trim() : ""
+            };
+            this.salvarDados(iso, limpo);
+            this.aplicarConteudo(iso, limpo);
+        } catch (error) {}
+    }
+
+    aplicarConteudo(iso, dados) {
+        const index = this.semanas.findIndex((s) => s.dataISO === iso);
+        if (index < 0) return;
+        const issue = this.cards[index];
+        if (!issue) return;
+        const titulo = issue.querySelector(".title");
+        if (titulo) titulo.textContent = dados.titulo || TITULO_PADRAO;
+        this.definirImagem(issue, dados.imagem, dados.cor);
+        if (index === this.currentSlide) {
+            document.documentElement.style.setProperty("--c", this.corValida(dados.cor));
+        }
+    }
+
+    atualizarConteudo() {
+        if (!navigator.onLine) return;
+        const cache = this.lerCache();
+        const ordem = [this.currentSlide];
+        for (let i = 0; i < this.semanas.length; i++) {
+            if (i !== this.currentSlide) ordem.push(i);
+        }
+        ordem.forEach((i) => {
+            const s = this.semanas[i];
+            if (!s) return;
+            const c = cache[s.dataISO];
+            if (!c || !c.titulo) this.buscarConteudo(s.dataISO);
         });
     }
 
-    getCurrentWeek() { return this.semanaAtual; }
-    getCurrentSlideConfig() { return this.semanas[this.currentSlide]; }
-    forceGoToWeek(semanaParametro) {
-        const semanaNormalizada = this.normalizeSemana(semanaParametro);
-        const index = this.semanas.findIndex(config => config.parametro === semanaNormalizada);
-        if (index !== -1) { this.goToSlide(index); return true; }
-        return false;
+    mostrarErro() {
+        const deck = document.getElementById("deck");
+        if (deck) {
+            deck.innerHTML = '<div class="issue"><div class="cover" style="--cc:#6c5ce7"><div class="cover-foot"><div class="title">Não consegui carregar. Tente de novo.</div></div></div></div>';
+        }
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
     window.carousel = new CarouselManager();
 });
 
-window.goToWeek = (semana) => window.carousel ? window.carousel.forceGoToWeek(semana) : false;
-window.getCurrentWeek = () => window.carousel ? window.carousel.getCurrentWeek() : null;
-window.mostrarEstudoEmBreve = (semana) => window.carousel ? window.carousel.mostrarEmBreveInline(semana) : false;
-window.verificarESentinela = (semana) => window.carousel ? window.carousel.verificarESentinela(semana) : false;
+window.goToWeek = (semana) => (window.carousel ? window.carousel.forceGoToWeek(semana) : false);
+window.getCurrentWeek = () => (window.carousel ? window.carousel.getCurrentWeek() : null);

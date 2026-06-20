@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#3F3C6D">
+<title>Estudo de A Sentinela</title>
+<style>
+  :root { --indigo:#3F3C6D; --suave:#6b6b76; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif; background:#f4f4f7; }
+  .estado {
+    min-height:100dvh; display:flex; align-items:center; justify-content:center;
+    padding:calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  }
+  .box { text-align:center; color:var(--indigo); }
+  .sp { width:24px;height:24px;border:3px solid rgba(63,60,109,.25);border-top-color:var(--indigo);border-radius:50%;animation:g .8s linear infinite;margin:0 auto 14px; }
+  @keyframes g { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce){ .sp{ animation:none; } }
+  .box p { font-size:15px; font-weight:600; }
+
+  .aviso {
+    background:#fff; border-radius:20px; box-shadow:0 18px 50px rgba(0,0,0,.08);
+    padding:40px 28px; text-align:center; max-width:400px; width:100%;
+  }
+  .aviso .ic { font-size:3.4rem; margin-bottom:16px; opacity:.85; }
+  .aviso h1 { font-size:1.5rem; color:#375255; margin:0 0 12px; }
+  .aviso p { color:var(--suave); line-height:1.5; margin:0 0 24px; }
+  .aviso a { display:inline-block; background:#375255; color:#fff; text-decoration:none; font-weight:600; padding:14px 22px; border-radius:12px; }
+</style>
+</head>
+<body>
+  <div class="estado" id="estado">
+    <div class="box"><div class="sp"></div><p>Carregando o estudo…</p></div>
+  </div>
+<script>
+const PROXY = "https://hope2.momentaneo2021.workers.dev/";
+const OFFLINE_CACHE = "artigo-offline-v1";
+const elEstado = document.getElementById("estado");
+const pad = (n) => String(n).padStart(2, "0");
+
+function hojeISO() {
+  const h = new Date();
+  return `${h.getFullYear()}-${pad(h.getMonth() + 1)}-${pad(h.getDate())}`;
+}
+
+function ddmmParaISO(ddmm) {
+  const m = String(ddmm).match(/(\d{1,2})-(\d{1,2})/);
+  if (!m) return null;
+  const dd = Number(m[1]), mm = Number(m[2]);
+  const hoje = new Date();
+  let melhor = null, menor = Infinity;
+  for (const ano of [hoje.getFullYear() - 1, hoje.getFullYear(), hoje.getFullYear() + 1]) {
+    const d = new Date(ano, mm - 1, dd);
+    const dist = Math.abs(d - hoje);
+    if (dist < menor) { menor = dist; melhor = d; }
+  }
+  return melhor ? `${melhor.getFullYear()}-${pad(melhor.getMonth() + 1)}-${pad(melhor.getDate())}` : null;
+}
+
+function avisoIndisponivel() {
+  elEstado.innerHTML = `
+    <div class="aviso">
+      <div class="ic">📖</div>
+      <h1>Estudo indisponível</h1>
+      <p>O artigo de <strong>A Sentinela</strong> para esta semana ainda não foi publicado, ou não consegui carregá-lo agora.</p>
+      <a href="../../index.html">← Voltar ao início</a>
+    </div>`;
+}
+
+function escrever(html) {
+  document.open();
+  document.write(html);
+  document.close();
+}
+
+function ehArtigo(html) {
+  return typeof html === "string" && /^\s*<!DOCTYPE html>/i.test(html);
+}
+
+(function init() {
+  const p = new URLSearchParams(location.search);
+  let data = p.get("d");
+  if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+    data = ddmmParaISO(p.get("semana") || "") || hojeISO();
+  }
+  const url = `${PROXY}?semana=${data}`;
+
+  function usarCacheOuAviso() {
+    if (!("caches" in window)) { avisoIndisponivel(); return; }
+    caches.match(url).then((r) => {
+      if (!r) { avisoIndisponivel(); return; }
+      return r.text().then((html) => {
+        if (ehArtigo(html)) escrever(html);
+        else avisoIndisponivel();
+      });
+    }).catch(() => avisoIndisponivel());
+  }
+
+  fetch(url, { cache: "no-store" })
+    .then(async (r) => {
+      if (!r.ok) { usarCacheOuAviso(); return; }
+      const html = await r.text();
+      if (!ehArtigo(html)) { usarCacheOuAviso(); return; }
+      escrever(html);
+    })
+    .catch(() => usarCacheOuAviso());
+})();
+</script>
+</body>
+</html>
