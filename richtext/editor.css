@@ -107,6 +107,11 @@ body.zombie-toolbar-active {
   flex-direction: column;
 }
 
+body.with-bottom-navbar:not(.editor-has-focus) .app {
+  bottom: auto;
+  height: 100dvh;
+}
+
 .editor-scroll {
   flex: 1;
   min-height: 0;
@@ -122,6 +127,10 @@ body.zombie-toolbar-active {
 body.leitor-keep-toolbar .editor-scroll,
 body.zombie-toolbar-active .editor-scroll {
   padding-bottom: calc(var(--kbd-toolbar-real-height, 68px) + var(--kbd-toolbar-bottom-gap, 12px));
+}
+
+body.editor-has-focus:not(.leitor-keep-toolbar):not(.zombie-toolbar-active) .editor-scroll {
+  padding-bottom: calc(var(--kbd-toolbar-real-height, 68px) + var(--kbd-toolbar-bottom-gap, 12px) + 160px * var(--font-scale-global));
 }
 
 .page {
@@ -169,6 +178,13 @@ body.zombie-toolbar-active .editor-scroll {
 .children[hidden] { display: none !important; }
 ::selection { background: rgba(0, 122, 255, 0.23); }
 [data-theme="dark"] ::selection { background: rgba(10, 132, 255, 0.35); }
+
+.versiculo-ref { color: #007AFF; font-weight: 700; }
+[data-theme="dark"] .versiculo-ref { color: #0A84FF; }
+.versiculo-ref-toggle,
+.toggle-title .versiculo-ref-toggle { color: #007AFF; font-weight: 700; }
+[data-theme="dark"] .versiculo-ref-toggle,
+[data-theme="dark"] .toggle-title .versiculo-ref-toggle { color: #0A84FF; font-weight: 700; }
 .shake { animation: shake .4s cubic-bezier(.36,.07,.19,.97) both; }
 
 @keyframes shake {
