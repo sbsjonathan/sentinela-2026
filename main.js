@@ -115,6 +115,11 @@ class CarouselManager {
         return cor && /^#[0-9a-fA-F]{3,6}$/.test(cor) ? cor : COR_PADRAO;
     }
 
+    aplicarThemeColor(cor) {
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", cor);
+    }
+
     lerCache() {
         try {
             const raw = localStorage.getItem(CONTEUDO_CACHE_KEY);
@@ -254,7 +259,11 @@ class CarouselManager {
         const display = document.getElementById("semana-display");
         if (display && s) display.textContent = this.rangeLongo(s.ini, s.fim);
 
-        if (s) document.documentElement.style.setProperty("--c", this.corValida(this.dados(s.dataISO).cor));
+        if (s) {
+            const corSemana = this.corValida(this.dados(s.dataISO).cor);
+            document.documentElement.style.setProperty("--c", corSemana);
+            this.aplicarThemeColor(corSemana);
+        }
 
         this.atualizarBotaoAtivo();
 
@@ -447,7 +456,9 @@ class CarouselManager {
         if (titulo) titulo.textContent = dados.titulo || TITULO_PADRAO;
         this.definirImagem(issue, dados.imagem, dados.cor);
         if (index === this.currentSlide) {
-            document.documentElement.style.setProperty("--c", this.corValida(dados.cor));
+            const corSemana = this.corValida(dados.cor);
+            document.documentElement.style.setProperty("--c", corSemana);
+            this.aplicarThemeColor(corSemana);
         }
     }
 
