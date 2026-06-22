@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#08080a" media="(prefers-color-scheme: dark)">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Reunião de Domingo</title>
     <meta name="apple-mobile-web-app-title" content="Reunião">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
@@ -45,96 +45,5 @@
 
     <script src="navbar/navbar-unified.js"></script>
     <script src="main.js"></script>
-
-    <!-- ===== PAINEL DE DIAGNÓSTICO TEMPORÁRIO (remover depois) ===== -->
-    <div id="dbgPanel" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(8,10,14,0.94);color:#cfe;font:11px/1.45 ui-monospace,Menlo,monospace;padding:calc(env(safe-area-inset-top) + 8px) 10px 8px;border-bottom:1px solid #2a3a4a;">
-      <div style="display:flex;gap:8px;margin-bottom:6px;">
-        <button id="dbgRefresh" style="flex:1;padding:9px;background:#1f6feb;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;">Atualizar</button>
-        <button id="dbgCopy" style="flex:1;padding:9px;background:#238636;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;">Copiar</button>
-        <button id="dbgHide" style="padding:9px 13px;background:#30363d;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;">X</button>
-      </div>
-      <textarea id="dbgOut" readonly style="width:100%;height:36vh;background:#0d1117;color:#9fe6d0;border:1px solid #30363d;border-radius:8px;padding:8px;font:11px/1.45 ui-monospace,Menlo,monospace;resize:none;"></textarea>
-    </div>
-    <script>
-    (function () {
-      function probeH(val) {
-        var d = document.createElement("div");
-        d.style.cssText = "position:absolute;top:0;left:0;width:0;visibility:hidden;height:" + val;
-        document.body.appendChild(d);
-        var h = d.getBoundingClientRect().height;
-        d.remove();
-        return Math.round(h);
-      }
-      function measure() {
-        var dpr = window.devicePixelRatio || 1;
-        var safe = document.createElement("div");
-        safe.style.cssText = "position:absolute;top:0;left:0;width:0;visibility:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)";
-        document.body.appendChild(safe);
-        var scs = getComputedStyle(safe);
-        var sT = Math.round(parseFloat(scs.paddingTop) || 0);
-        var sB = Math.round(parseFloat(scs.paddingBottom) || 0);
-        safe.remove();
-        var nav = document.querySelector(".bottom-navbar");
-        var navInfo = "(navbar NAO encontrado no DOM)";
-        if (nav) {
-          var r = nav.getBoundingClientRect();
-          var ncs = getComputedStyle(nav);
-          var gap = Math.round(window.innerHeight - r.bottom);
-          navInfo = "pos=" + ncs.position + " cssBottom=" + ncs.bottom +
-            "\ntop=" + Math.round(r.top) + " bottom=" + Math.round(r.bottom) + " height=" + Math.round(r.height) +
-            "\npadBottom=" + Math.round(parseFloat(ncs.paddingBottom) || 0) +
-            "\n>>> GAP abaixo do navbar (innerHeight - navbar.bottom) = " + gap + " px";
-        }
-        var b = document.body, bcs = getComputedStyle(b), br = b.getBoundingClientRect();
-        var rs = getComputedStyle(document.documentElement);
-        function v(n) { return (rs.getPropertyValue(n) || "").trim() || "—"; }
-        return [
-          "standalone(PWA): " + (navigator.standalone === true ? "SIM" : String(navigator.standalone)),
-          "--- VIEWPORT ---",
-          "innerHeight: " + Math.round(window.innerHeight),
-          "visualViewport.h: " + (window.visualViewport ? Math.round(window.visualViewport.height) : "-"),
-          "visualViewport.offsetTop: " + (window.visualViewport ? Math.round(window.visualViewport.offsetTop) : "-"),
-          "100dvh: " + probeH("100dvh"),
-          "100svh: " + probeH("100svh"),
-          "100lvh: " + probeH("100lvh"),
-          "100vh: " + probeH("100vh"),
-          "screen.height: " + Math.round(screen.height) + "  dpr: " + dpr + "  (h/dpr=" + Math.round(screen.height / dpr) + ")",
-          "--- SAFE AREA ---",
-          "top: " + sT + "   bottom: " + sB,
-          "--- BODY ---",
-          "pos=" + bcs.position + "  padBottom=" + Math.round(parseFloat(bcs.paddingBottom) || 0),
-          "rect: top=" + Math.round(br.top) + " bottom=" + Math.round(br.bottom) + " h=" + Math.round(br.height),
-          "classes: " + b.className,
-          "--- NAVBAR VARS ---",
-          "real-height: " + v("--navbar-real-height"),
-          "layout-bottom: " + v("--navbar-layout-bottom"),
-          "occupied-bottom: " + v("--navbar-occupied-bottom"),
-          "safe-bottom: " + v("--navbar-safe-bottom"),
-          "--- NAVBAR ELEM ---",
-          navInfo
-        ].join("\n");
-      }
-      function show() { var el = document.getElementById("dbgOut"); if (el) el.value = measure(); }
-      function boot() { setTimeout(show, 800); }
-      if (document.readyState === "complete") boot(); else window.addEventListener("load", boot);
-      document.addEventListener("click", function (e) {
-        var t = e.target;
-        if (!t) return;
-        if (t.id === "dbgRefresh") show();
-        if (t.id === "dbgHide") { var p = document.getElementById("dbgPanel"); if (p) p.style.display = "none"; }
-        if (t.id === "dbgCopy") {
-          var el = document.getElementById("dbgOut");
-          if (el) {
-            el.select();
-            try { navigator.clipboard.writeText(el.value); } catch (x) {}
-            try { document.execCommand("copy"); } catch (x) {}
-            t.textContent = "Copiado!";
-            setTimeout(function () { t.textContent = "Copiar"; }, 1200);
-          }
-        }
-      });
-    })();
-    </script>
-    <!-- ===== FIM DO PAINEL DE DIAGNÓSTICO ===== -->
 </body>
 </html>
