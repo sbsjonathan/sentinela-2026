@@ -118,6 +118,7 @@ class CarouselManager {
     aplicarThemeColor(cor) {
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute("content", cor);
+        document.body.style.backgroundColor = cor;
     }
 
     lerCache() {
