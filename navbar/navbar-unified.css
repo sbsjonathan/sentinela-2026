@@ -11,7 +11,9 @@
     --navbar-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
     --navbar-bottom-padding: 8px;
     --navbar-safe-bottom: env(safe-area-inset-bottom, 0px);
-}[data-theme="dark"] {
+}
+
+[data-theme="dark"] {
     --navbar-bg: #1c1c1e;
     --navbar-border: rgba(255, 255, 255, 0.1);
     --navbar-inactive: #8E8E93;
@@ -61,7 +63,6 @@
     transition: none !important;
     animation: none !important;
 }
-
 
 .bottom-navbar.hidden {
     transform: translate3d(0, 100%, 0);
@@ -200,7 +201,9 @@ body.zombie-toolbar-active .bottom-navbar {
     border: 2px solid white;
     border-radius: 50%;
     z-index: 10;
-}[data-theme="dark"] .navbar-item[data-page="save"].logged-in::before { border-color: #000; }
+}
+
+[data-theme="dark"] .navbar-item[data-page="save"].logged-in::before { border-color: #000; }
 
 .page-save .sync-status-badge {
     position: fixed; top: 50px; right: 15px; background: #10b981; color: white;
@@ -233,7 +236,7 @@ body.zombie-toolbar-active .bottom-navbar {
 
 @media (max-width: 390px) {
     .navbar-item { min-width: 50px; padding: 6px 8px !important; }
-    .navbar-icon { width: 20px !important; height: 20px !important; } /* Mantem proporção se a tela for menor que iPhone SE */
+    .navbar-icon { width: 20px !important; height: 20px !important; }
     .navbar-label { font-size: 9px !important; }
 }
 
@@ -245,10 +248,6 @@ body.zombie-toolbar-active .bottom-navbar {
 .navbar-context-watchtower .navbar-item[data-page="watchtower"] { color: var(--navbar-active); }
 .navbar-context-save .navbar-item[data-page="save"] { color: var(--navbar-active); }
 
-/* =========================================================
-   MODO PWA (STANDALONE) - Ajustes Finos
-   Abaixa a altura da barra removendo padding, MAS NÃO TOCA NOS ÍCONES
-   ========================================================= */
 @media (display-mode: standalone) {
     :root {
         --navbar-bottom-padding: 0px;
