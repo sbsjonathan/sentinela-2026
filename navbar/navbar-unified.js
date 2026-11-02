@@ -120,6 +120,25 @@ function joinProjectPath(relativePath) {
     return new URL(relativePath.replace(/^\/+/, ''), getProjectRootURL()).href;
 }
 
+(function initSharedAppIcons() {
+    // Change this only when the artwork changes, independently of app releases.
+    const ICON_REVISION = '2026.11.02.12';
+    for (const [rel, file, sizes] of [
+        ['icon', 'favicon-32.png', '32x32'],
+        ['apple-touch-icon', 'apple-touch-icon.png', '180x180']
+    ]) {
+        const links = Array.from(document.head.querySelectorAll(`link[rel="${rel}"]`));
+        const link = links.shift() || document.createElement('link');
+        links.forEach(duplicate => duplicate.remove());
+        link.rel = rel;
+        link.type = 'image/png';
+        link.sizes = sizes;
+        const href = joinProjectPath(`assets/icons/${file}?v=${ICON_REVISION}`);
+        if (link.href !== href) link.href = href;
+        if (!link.isConnected) document.head.append(link);
+    }
+})();
+
 function isIndexPageNavbar() {
     const path = window.location.pathname.toLowerCase();
     return path.includes('index.html') || path === '/' || path.endsWith('/');
@@ -624,7 +643,7 @@ document.addEventListener('touchend', function (event) {
 // Reopening an installed iPhone app may resume the page without another load event.
 (function manageAppUpdates() {
     if (!('serviceWorker' in navigator)) return;
-    const release = '2026.11.02.11';
+    const release = '2026.11.02.12';
     const root = getProjectRootURL();
     let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
     const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);
