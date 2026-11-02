@@ -11,27 +11,33 @@ export function bibleBookNumber(value, abbreviations = {}) {
   return bookSlugs.indexOf(aliases[slug] || slug) + 1;
 }
 
-export function bibleChapterURL(book, chapter, verse) {
+export function bibleChapterURL(book, chapter, verse, endVerse = null, endChapter = null) {
   const url = new URL('biblia.html', import.meta.url);
   const number = Number(book);
   if (Number.isInteger(number) && number >= 1 && number <= 66) url.searchParams.set('book', number);
   if (Number.isInteger(Number(chapter)) && Number(chapter) >= 1 && Number(chapter) <= 150) url.searchParams.set('chapter', Number(chapter));
   if (Number.isInteger(Number(verse)) && Number(verse) >= 1 && Number(verse) <= 176) url.searchParams.set('verse', Number(verse));
+  const lastChapter = Number(endChapter) || Number(chapter), lastVerse = Number(endVerse);
+  if (url.searchParams.has('verse') && Number.isInteger(lastChapter) && lastChapter >= Number(chapter) && lastChapter <= 150 &&
+      Number.isInteger(lastVerse) && lastVerse >= 1 && lastVerse <= 176 && (lastChapter > Number(chapter) || lastVerse >= Number(verse))) {
+    url.searchParams.set('endVerse', lastVerse);
+    if (lastChapter !== Number(chapter)) url.searchParams.set('endChapter', lastChapter);
+  }
   return url;
 }
 
 export function legacyChapterURL(search) {
   const params = new URLSearchParams(search);
   const book = bibleBookNumber(params.get('livro')) || Number(params.get('book'));
-  return bibleChapterURL(book, params.get('cap') || params.get('chapter'), params.get('verso') || params.get('verse'));
+  return bibleChapterURL(book, params.get('cap') || params.get('chapter'), params.get('verso') || params.get('verse'), params.get('endVerse'), params.get('endChapter'));
 }
 
 export function bibleReferenceURL(reference, abbreviations = {}) {
   const first = String(reference || '').split(';')[0].trim().replace(/^[([]\s*/, '');
-  const match = first.match(/^(.+?)\s*(\d{1,3})\s*:\s*(\d{1,3})/);
+  const match = first.match(/^(.+?)\s*(\d{1,3})\s*:\s*(\d{1,3})(?:\s*[-–—]\s*(?:(\d{1,3})\s*:\s*)?(\d{1,3}))?/);
   if (!match) return null;
   const book = bibleBookNumber(match[1], abbreviations);
-  return book ? bibleChapterURL(book, Number(match[2]), Number(match[3])) : null;
+  return book ? bibleChapterURL(book, Number(match[2]), Number(match[3]), match[5], match[4]) : null;
 }
 
 export function appendBibleChapterLink(container, reference, abbreviations = {}) {

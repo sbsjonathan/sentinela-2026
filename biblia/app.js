@@ -18,8 +18,21 @@ function save(key,value){try{localStorage.setItem(key,JSON.stringify(value));}ca
 function read(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
 function rpc(action,args={}){return new Promise((resolve,reject)=>{if(!worker)return reject(new Error('Reabra a página no Safari para iniciar o leitor.'));const id=++serial;pending.set(id,{resolve,reject});worker.postMessage({id,action,args});});}
 function openingRoute(){
- const params=new URLSearchParams(location.search),book=Number(params.get('book')),chapter=Number(params.get('chapter')),verse=Number(params.get('verse'));
- return {book:book>=1&&book<=66?book:null,chapter:chapter>0?chapter:null,verse:verse>0?verse:null,grid:params.get('from')==='navbar'||params.get('resume')==='0'};
+ const params=new URLSearchParams(location.search),book=Number(params.get('book')),chapter=Number(params.get('chapter')),verse=Number(params.get('verse')),endVerse=Number(params.get('endVerse')),endChapter=Number(params.get('endChapter'));
+ return {book:book>=1&&book<=66?book:null,chapter:chapter>0?chapter:null,verse:verse>0?verse:null,endVerse:Number.isInteger(endVerse)&&endVerse>0&&endVerse<=176?endVerse:null,endChapter:Number.isInteger(endChapter)&&endChapter>=chapter&&endChapter<=150?endChapter:null,grid:params.get('from')==='navbar'||params.get('resume')==='0'};
+}
+function referenceEnd(reference){
+ const crosses=(reference.endChapter&&Number(reference.endChapter)!==Number(reference.chapter))||(reference.endBook&&Number(reference.endBook)!==Number(reference.book));
+ return crosses?Infinity:reference.endVerse??reference.verse;
+}
+function highlightPassage(verse,endVerse=verse){
+ const start=Number(verse),last=endVerse==null?start:Number(endVerse),end=last>=start?last:start;
+ for(const element of ui.verses.querySelectorAll('[data-verse]')){
+  const number=Number(element.dataset.verse);
+  element.classList.toggle('highlight',Number.isInteger(start)&&start>0&&number>=start&&number<=end);
+ }
+ const target=document.getElementById(`verse-${start}`);
+ if(target&&ui.verses.contains(target))target.scrollIntoView({block:'center'});
 }
 function saveOpeningView(){
  if(!state.publication||!state.books.length)return;
@@ -51,7 +64,7 @@ function restoreOpeningView(){
   const wantsReading=route.book?route.chapter&&String(route.book)===state.book&&String(route.chapter)===state.chapter:!route.grid&&saved.book&&String(saved.book)===state.book&&String(saved.chapter)===state.chapter;
   if(state.hasReading&&wantsReading){
    showReading(true);
-   if(route.verse){const target=document.getElementById(`verse-${route.verse}`);if(target){target.classList.add('highlight');target.scrollIntoView({block:'center'});}}
+   if(route.verse)highlightPassage(route.verse,referenceEnd(route));
   }else if(route.book)showChapters(route.book);else showBooks();
   performance.mark('bible-local-view');
   return true;
@@ -100,7 +113,7 @@ function renderVerses(data){
  else{for(const verse of data.verses){const p=document.createElement('p');p.className='bible-paragraph';p.id=`verse-${verse.number}`;p.dataset.verse=String(verse.number);const n=document.createElement('span');n.className='verse-number';n.textContent=verse.number;p.append(n,document.createTextNode(verse.text));for(const note of verse.notes||[])p.append(noteButton(note,verse.number));f.append(p);}}
  ui.verses.replaceChildren(f);textActions?.refresh();readAlong?.refresh();
 }
-async function loadChapter(book,chapter,chapters,scroll=false,verse=null){const epoch=++state.epoch;try{const list=chapters||chapterNumbers(book)||await rpc('chapters',{publication:state.publication,book:Number(book)});if(epoch!==state.epoch)return;const data=await rpc('chapter',{publication:state.publication,book:Number(book),chapter:Number(chapter)});if(epoch!==state.epoch)return;if(verse!=null&&!data.verses.some(v=>Number(v.number)===Number(verse)))throw new Error('Este versículo não existe no capítulo selecionado.');state.book=String(book);state.chapter=String(chapter);state.chapters=list;state.data=data;state.hasReading=true;ui['reading-title'].textContent=nameOf(book).toLocaleUpperCase('pt-BR');renderVerses(data);ui.position.textContent=`${chapter} de ${list.length}`;showReading();currentSaved();updateButtons();bibleAudio?.prepare(audioContext()).catch(()=>{});if(verse!=null){const target=document.getElementById(`verse-${verse}`);if(target){target.classList.add('highlight');target.scrollIntoView({block:'center'});}}else if(scroll)window.scrollTo(0,0);saveOpeningView();}catch(e){if(epoch===state.epoch)notice(e.message,true);}}
+async function loadChapter(book,chapter,chapters,scroll=false,verse=null,endVerse=null){const epoch=++state.epoch;try{const list=chapters||chapterNumbers(book)||await rpc('chapters',{publication:state.publication,book:Number(book)});if(epoch!==state.epoch)return;const data=await rpc('chapter',{publication:state.publication,book:Number(book),chapter:Number(chapter)});if(epoch!==state.epoch)return;if(verse!=null&&!data.verses.some(v=>Number(v.number)===Number(verse)))throw new Error('Este versículo não existe no capítulo selecionado.');state.book=String(book);state.chapter=String(chapter);state.chapters=list;state.data=data;state.hasReading=true;ui['reading-title'].textContent=nameOf(book).toLocaleUpperCase('pt-BR');renderVerses(data);ui.position.textContent=`${chapter} de ${list.length}`;showReading();currentSaved();updateButtons();bibleAudio?.prepare(audioContext()).catch(()=>{});if(verse!=null)highlightPassage(verse,endVerse);else if(scroll)window.scrollTo(0,0);saveOpeningView();}catch(e){if(epoch===state.epoch)notice(e.message,true);}}
 async function selectPublication(preferred){const epoch=++state.epoch;for(const url of mediaURLs.values())if(typeof url==='string')URL.revokeObjectURL(url);mediaURLs.clear();state.publication=ui.publication.value;state.books=[];state.hasReading=false;state.book='';state.chapter='';state.documentHistory=[];notice('Abrindo a Bíblia…');try{const [books,catalog,info]=await Promise.all([rpc('books',{publication:state.publication}),rpc('sections',{publication:state.publication}),rpc('publication-info',{publication:state.publication})]);if(epoch!==state.epoch)return;state.books=books;state.pubInfo=info;state.sections=catalog.sections?.length?catalog.sections:[{id:'books',title:'Livros',kind:'books'}];state.bookInfo=catalog.bookInfo||{};renderTabs();if(preferred?.book&&preferred?.chapter)await loadChapter(preferred.book,preferred.chapter,null,true);else showBooks();saveOpeningView();}catch(e){notice(e.message,true);}}
 async function refresh(preferred){const list=await rpc('publications');state.publications=list;ui.publication.replaceChildren();for(const p of list)ui.publication.add(new Option(p.title,p.id));if(!list.length){screen('empty','Bíblia','Sua biblioteca pessoal');return;}const chosen=preferred||read('jwpub-reading',{});ui.publication.value=list.find(p=>p.id===chosen.publication)?.id??list[0].id;await selectPublication(chosen);}
 async function importFile(file){if(!file||state.busy)return;if(!/\.jwpub$/i.test(file.name))return notice('Escolha um arquivo .jwpub no app Arquivos.',true);if(file.size>250*1024*1024)return notice('O arquivo ultrapassa o limite de 250 MB.',true);setBusy(true);notice('Abrindo o JWPUB neste iPhone…');try{const saved=read('jwpub-reading',{}),pub=await rpc('import',{file});navigator.storage?.persist?.().catch(()=>{});await refresh(pub.id===saved.publication?saved:{publication:pub.id});}catch(e){notice(e.message,true);}finally{setBusy(false);ui['file-input'].value='';}}
@@ -135,11 +148,7 @@ async function openSearchResult(item){
   return;
  }
  if(target.book&&target.chapter){
-  await loadChapter(target.book,target.chapter,null,true,target.verse||1);
-  if(target.endVerse){
-   const end=target.endChapter&&Number(target.endChapter)!==Number(target.chapter)?Infinity:Number(target.endVerse);
-   for(const element of ui.verses.querySelectorAll('[data-verse]'))if(Number(element.dataset.verse)>=(Number(target.verse)||1)&&Number(element.dataset.verse)<=end)element.classList.add('highlight');
-  }
+  await loadChapter(target.book,target.chapter,null,true,target.verse||1,referenceEnd(target));
   return;
  }
  throw new Error('Não foi possível localizar o texto deste resultado.');
@@ -174,7 +183,7 @@ ui['note-close'].onclick=closeNotes;
 ui['note-dialog'].addEventListener('close',()=>{++noteEpoch;document.body.classList.remove('sheet-open');if(noteTrigger?.isConnected)noteTrigger.focus({preventScroll:true});});
 for(const dialog of document.querySelectorAll('dialog')){dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientY<r.top||e.clientY>r.bottom||e.clientX<r.left||e.clientX>r.right)dialog.close();}});dialog.addEventListener('close',()=>{if(!document.querySelector('dialog[open]'))document.body.classList.remove('sheet-open');});}
 function openDialog(id){document.body.classList.add('sheet-open');ui[id].showModal();}
-ui['open-reference'].onclick=()=>{const ref=currentNote?.target;if(ref){closeNotes();loadChapter(ref.book,ref.chapter,null,false,ref.verse);}};
+ui['open-reference'].onclick=()=>{const ref=currentNote?.target;if(ref){closeNotes();loadChapter(ref.book,ref.chapter,null,false,ref.verse,referenceEnd(ref));}};
 ui['add-file'].onclick=ui['empty-add'].onclick=()=>ui['file-input'].click();ui['file-input'].onchange=e=>importFile(e.target.files[0]);ui.publication.onchange=()=>selectPublication();ui.back.onclick=back;ui.previous.onclick=()=>nextChapter(-1);ui.next.onclick=()=>nextChapter(1);ui.smaller.onclick=()=>changeFont(-1);ui.larger.onclick=()=>changeFont(1);ui.bookmark.onclick=toggleBookmark;
 ui.menu.onclick=()=>openDialog('options-dialog');
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>ui[b.dataset.close].close());
@@ -189,9 +198,9 @@ async function prepareIncludedBible(){
   // A cached view is already interactive. Never reset it after a user's tap.
   if(!visible){
    await refresh(route.book||route.grid?{publication:bundled.id}:undefined);setBusy(false);
-   if(route.book){if(route.chapter)await loadChapter(route.book,route.chapter,null,true,route.verse);else await showChapters(route.book);}
+   if(route.book){if(route.chapter)await loadChapter(route.book,route.chapter,null,true,route.verse,referenceEnd(route));else await showChapters(route.book);}
   }else if(state.epoch===openingEpoch){
-   if(route.book&&route.chapter&&(state.book!==String(route.book)||state.chapter!==String(route.chapter)))await loadChapter(route.book,route.chapter,null,true,route.verse);
+   if(route.book&&route.chapter&&(state.book!==String(route.book)||state.chapter!==String(route.chapter)))await loadChapter(route.book,route.chapter,null,true,route.verse,referenceEnd(route));
    else if(!route.book&&!route.grid){const saved=read('jwpub-reading',{});if(saved.book&&saved.chapter&&(state.book!==String(saved.book)||state.chapter!==String(saved.chapter)))await loadChapter(saved.book,saved.chapter,null,true);}
   }
   openingRestored=true;saveOpeningView();
