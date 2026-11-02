@@ -19,11 +19,13 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
   }
   document.body.append(toolbar);
   const events=new AbortController(),signal=events.signal;
-  let selected=[],anchorVerse=null,anchorElement=null,anchorOffset=0,chapterKey='',frame=0;
+  let selected=[],anchorVerse=null,anchorElement=null,chapterKey='',frame=0;
   let gesture=null,holdTimer=0,suppressUntil=0;
   const nativeControl='.note-marker,.study-word,a,.inline-reference';
   const tell=(message,error=false)=>{if(typeof onNotice==='function')onNotice(message,error);};
   const numericVerse=e=>{const value=Number(e?.dataset.verse);return Number.isInteger(value)&&value>0?value:null;};
+  const verseNumber=n=>Array.from(root.querySelectorAll('.verse-number'))
+    .find(number=>numericVerse(number.closest('[data-verse]'))===n);
   const chapterId=data=>data?`${data.book}:${data.chapter}`:'';
   function hasNativeSelection() {
     const value=window.getSelection();if(!value || value.isCollapsed || !value.rangeCount)return false;
@@ -62,27 +64,43 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
     root.querySelectorAll('.verse-number[role="button"]').forEach(el=>el.setAttribute('aria-pressed',String(selected.includes(numericVerse(el.closest('[data-verse]'))))));
     buttons.study.hidden=typeof onStudy!=='function'||!value.notes.length;
     buttons.bookmark.hidden=typeof onBookmark!=='function';buttons.listen.hidden=typeof onListen!=='function';
-    toolbar.hidden=false;position();
+    // A verse can span many inline fragments/paragraphs. Its number is the only
+    // stable anchor, independent of where in that text the reader tapped.
+    anchorElement=verseNumber(value.startVerse);
+    if(!anchorElement){clear();return;}
+    toolbar.hidden=false;position(true);
   }
-  function position() {
+  function position(reveal=false) {
     frame=0;if(toolbar.hidden || !anchorElement)return;
     if(!anchorElement.isConnected || !root.getClientRects().length){clear();return;}
-    const rect=anchorElement.getBoundingClientRect(),view=window.visualViewport;
+    let rect=anchorElement.getBoundingClientRect();const view=window.visualViewport;
     const viewLeft=view?.offsetLeft||0,viewTop=view?.offsetTop||0,viewWidth=view?.width||innerWidth,viewBottom=viewTop+(view?.height||innerHeight);
     const header=document.querySelector('.app-header')?.getBoundingClientRect();
     const player=document.querySelector('#audio-player:not([hidden])');const footer=(player||document.querySelector('.bottom-navbar'))?.getBoundingClientRect();
-    const topEdge=Math.max(viewTop+8,header?.bottom+7||0),bottomEdge=Math.min(viewBottom-8,footer?.top-8||viewBottom-8);
-    if(rect.bottom<topEdge || rect.top>bottomEdge){clear();return;}
-    const anchorY=Math.max(rect.top,Math.min(rect.bottom,rect.top+anchorOffset));
-    const menuRect=toolbar.getBoundingClientRect(),middle=Math.min(viewLeft+viewWidth-12,Math.max(viewLeft+12,(rect.left+rect.right)/2));
+    // Keep clear of the header without wasting the space above the first,
+    // enlarged chapter number (including at the largest reading font).
+    const topEdge=Math.max(viewTop+8,header?.bottom+2||0),bottomEdge=Math.min(viewBottom-8,footer?.top-8||viewBottom-8);
+    const menuRect=toolbar.getBoundingClientRect(),gap=12;
+    const firstTop=topEdge+menuRect.height+gap,lastTop=bottomEdge-rect.height;
+    if(lastTop<firstTop){clear();return;}
+    if(reveal){
+      // Make room once when opening, including when a long verse starts above
+      // the screen. Later scrolling must never drag the reader back here.
+      const targetTop=Math.max(firstTop,Math.min(lastTop,rect.top));
+      if(Math.abs(rect.top-targetTop)>0.5){
+        window.scrollBy({top:rect.top-targetTop,behavior:'instant'});
+        rect=anchorElement.getBoundingClientRect();
+      }
+    }
+    const top=rect.top-menuRect.height-gap;
+    // Do not clamp the menu onto the selected text or detach it from its number.
+    // WebKit can round scroll offsets to whole pixels while text rects remain fractional.
+    if(top<topEdge-1 || rect.bottom>bottomEdge+1){clear();return;}
+    const middle=(rect.left+rect.right)/2;
     const left=Math.max(viewLeft+8,Math.min(viewLeft+viewWidth-menuRect.width-8,middle-menuRect.width/2));
-    let top=anchorY-menuRect.height-15,below=false;
-    if(top<topEdge){top=anchorY+22;below=true;}
-    top=Math.max(topEdge,Math.min(bottomEdge-menuRect.height,top));
     toolbar.style.left=left+'px';toolbar.style.top=top+'px';toolbar.style.setProperty('--arrow-x',Math.max(13,Math.min(menuRect.width-13,middle-left))+'px');
-    toolbar.classList.toggle('below',below);
   }
-  function queuePosition(){if(!frame)frame=requestAnimationFrame(position);}
+  function queuePosition(){if(!frame)frame=requestAnimationFrame(()=>position());}
   function choose(event) {
     const target=event.target instanceof Element?event.target:null;
     if(!target || target.closest(nativeControl))return;
@@ -95,7 +113,6 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
     if(selected.length===1&&selected[0]===n){clear();return;}
     if(anchorVerse==null || selected.length>1&&selected.includes(n)){anchorVerse=n;selected=[n];}
     else selected=data.verses.map(v=>Number(v.number)).filter(v=>v>0&&v>=Math.min(anchorVerse,n)&&v<=Math.max(anchorVerse,n));
-    anchorElement=el;const rect=el.getBoundingClientRect();anchorOffset=Number.isFinite(event.clientY)&&event.clientY?Math.max(0,event.clientY-rect.top):Math.min(18,rect.height/2);
     paint();
   }
   function leaveToNative() {
@@ -139,6 +156,7 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
   document.addEventListener('pointerdown',event=>{if(toolbar.hidden)return;const el=event.target instanceof Element?event.target:null;if(el && (toolbar.contains(el)||root.contains(el)&&!el.closest(nativeControl)))return;clear();},{capture:true,signal});
   document.addEventListener('keydown',event=>{if(event.key==='Escape')clear();},{signal});
   window.addEventListener('scroll',queuePosition,{passive:true,signal});window.addEventListener('resize',queuePosition,{passive:true,signal});
+  document.fonts?.addEventListener('loadingdone',queuePosition,{signal});
   window.visualViewport?.addEventListener('resize',queuePosition,{passive:true,signal});window.visualViewport?.addEventListener('scroll',queuePosition,{passive:true,signal});
   function callback(fn,value){clear();try{Promise.resolve(fn(value)).catch(e=>tell(e?.message||'Não foi possível concluir esta ação.',true));}catch(e){tell(e?.message||'Não foi possível concluir esta ação.',true);}}
   function legacyCopy(text){

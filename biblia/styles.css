@@ -22,7 +22,6 @@ body.audio-open #action-status{bottom:calc(var(--bottom) + env(safe-area-inset-b
 .text-actions button:active{background:#444}
 .text-actions button svg{width:23px;height:23px;stroke-width:1.3}
 .text-actions::after{content:'';position:absolute;left:var(--arrow-x,50%);bottom:-8px;transform:translateX(-50%);border-left:9px solid transparent;border-right:9px solid transparent;border-top:9px solid #272727}
-.text-actions.below::after{top:-8px;bottom:auto;border-top:0;border-bottom:9px solid #272727}
 #verses.has-text-selection .text-unselected{opacity:.35}
 #verses.has-text-selection .text-selected{opacity:1;background:#eef0f5}
 #verses{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
