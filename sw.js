@@ -1,8 +1,8 @@
 /* One worker owns Sentinela's offline shell and included Bible. */
 const PREFIX = 'sentinela-integrado-';
-const APP_VERSION = '2026.11.02.5';
+const APP_VERSION = '2026.11.02.6';
 // Bump the shell version when application code changes. The large Bible cache is independent.
-const SHELL_CACHE = PREFIX + 'shell-v5';
+const SHELL_CACHE = PREFIX + 'shell-v6';
 const BIBLE_CACHE = PREFIX + 'bible-v1';
 const RUNTIME_CACHE = PREFIX + 'runtime-v1';
 const OWN_CACHES = [SHELL_CACHE, BIBLE_CACHE, RUNTIME_CACHE];

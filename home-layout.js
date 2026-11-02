@@ -3,6 +3,13 @@
 (() => {
   if (!new URLSearchParams(location.search).has('diagnostico')) return;
   const settle = () => new Promise(resolve => setTimeout(resolve, 350));
+  async function settleInitialLayout() {
+    const animations = document.querySelector('.dock')?.getAnimations?.() || [];
+    // Only the finite entrance animation affects the card's measured position.
+    await Promise.all(animations.filter(animation => animation.animationName === 'dockUp')
+      .map(animation => animation.finished.catch(() => {})));
+    await settle();
+  }
   const viewport = document.querySelector('meta[name="viewport"]');
   const originalViewport = viewport?.content;
   const originalStyle = Object.fromEntries(['position','inset','height'].map(name => [name,{value:document.body.style.getPropertyValue(name),priority:document.body.style.getPropertyPriority(name)}]));
@@ -50,7 +57,7 @@
       standalone:navigator.standalone===true||matchMedia('(display-mode: standalone)').matches,
       platform:navigator.platform,userAgent:navigator.userAgent,devicePixelRatio,samples:[]};
     try {
-      await settle(); report.samples.push(sample('atual'));
+      await settleInitialLayout(); report.samples.push(sample('atual'));
       document.body.style.setProperty('position','relative','important');
       document.body.style.setProperty('inset','auto','important');
       document.body.style.setProperty('height','100vh','important');

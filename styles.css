@@ -43,12 +43,12 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* O PWA do iOS pode reportar 100dvh sem a faixa da barra de status.
-   As quatro bordas definem a altura; capa, cartão e menu continuam no mesmo flex. */
+/* No PWA do iOS, o bloco fixo e 100dvh podem excluir a altura da barra de status.
+   O fluxo com 100vh ocupa a tela inteira; capa, cartão e menu seguem no mesmo flex. */
 body.home-screen.is-pwa.with-bottom-navbar {
-  position: fixed;
-  inset: 0;
-  height: auto;
+  position: relative;
+  inset: auto;
+  height: 100vh;
   padding-bottom: 0 !important;
 }
 
