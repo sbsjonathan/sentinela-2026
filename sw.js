@@ -1,7 +1,8 @@
 /* One worker owns Sentinela's offline shell and included Bible. */
 const PREFIX = 'sentinela-integrado-';
+const APP_VERSION = '2026.11.02.4';
 // Bump the shell version when application code changes. The large Bible cache is independent.
-const SHELL_CACHE = PREFIX + 'shell-v3';
+const SHELL_CACHE = PREFIX + 'shell-v4';
 const BIBLE_CACHE = PREFIX + 'bible-v1';
 const RUNTIME_CACHE = PREFIX + 'runtime-v1';
 const OWN_CACHES = [SHELL_CACHE, BIBLE_CACHE, RUNTIME_CACHE];
@@ -13,7 +14,7 @@ const BUNDLE_ROOT = new URL('./', BUNDLE_URL).href;
 const RECEIPT_URL = new URL('.offline-receipt-v1', BUNDLE_ROOT).href;
 const VERIFIED = 'x-sentinela-sha256';
 const VERIFIED_BYTES = 'x-sentinela-bytes';
-let assetMemo, manifestMemo, bibleJob, fullJob, generation = 0;
+let assetMemo, manifestMemo, bibleJob, fullJob, refreshJob, generation = 0;
 const validResponse = r => r && r.ok && !r.redirected && r.status !== 206;
 const errorMessage = e => e && e.message || 'Não foi possível preparar os arquivos offline.';
 function reporter(event) {
@@ -23,12 +24,27 @@ function reporter(event) {
     try { if (event.source) event.source.postMessage(message); } catch (_) {}
   };
 }
+function releaseURL(path) {
+  const url = new URL(path, SCOPE); url.searchParams.set('appVersion', APP_VERSION); return url.href;
+}
+async function fetchWithTimeout(url, options = {}, timeout = 20000) {
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeout);
+  try { return await fetch(url, {...options,signal:controller.signal}); }
+  finally { clearTimeout(timer); }
+}
+function validateAssets(data) {
+  if (data?.version !== APP_VERSION || !Array.isArray(data.shell) || !Array.isArray(data.app) || !data.shell.length || !data.revisions) throw new Error('A lista de arquivos ainda não corresponde à atualização '+APP_VERSION+'.');
+  for (const path of [...data.shell,...data.app]) {
+    if (typeof path !== 'string' || !absolute(path).startsWith(SCOPE) || !/^[a-f0-9]{64}$/.test(data.revisions[path]||'')) throw new Error('Arquivo de atualização sem verificação.');
+  }
+  return data;
+}
 async function readManifest(url, cacheName, refresh = false) {
   const cache = await caches.open(cacheName);
   let response = await cache.match(url);
   if (!refresh && validResponse(response)) return {cache,response,data:await response.clone().json()};
   try {
-    const fresh = await fetch(url, {cache:'reload'});
+    const fresh = await fetchWithTimeout(url === ASSET_URL ? releaseURL(url) : url, {cache:'no-store'}, 15000);
     if (!validResponse(fresh)) throw new Error('Pacote offline indisponível.');
     response = fresh;
   } catch (error) { if (!validResponse(response)) throw error; }
@@ -37,8 +53,7 @@ async function readManifest(url, cacheName, refresh = false) {
 async function assetManifest(refresh = false) {
   if (assetMemo && !refresh) return assetMemo;
   const {cache,response,data} = await readManifest(ASSET_URL, SHELL_CACHE, refresh);
-  if (!Array.isArray(data.shell) || !Array.isArray(data.app) || !data.shell.length) throw new Error('Lista offline inválida.');
-  for (const path of [...data.shell,...data.app]) if (typeof path !== 'string' || !absolute(path).startsWith(SCOPE)) throw new Error('Caminho offline inválido.');
+  validateAssets(data);
   await cache.put(ASSET_URL,response); assetMemo=data; return data;
 }
 function parseBundle(data) {
@@ -89,31 +104,72 @@ async function ensureBundleEntry(cache,entry,token) {
   }
   throw lastError;
 }
+function verifiedStatic(response,path,assets) {
+  return validResponse(response) && response.headers.get(VERIFIED)===assets.revisions[path];
+}
+async function verifyStatic(cache,path,assets,response) {
+  if (!validResponse(response)) throw new Error('Arquivo indisponível: '+path);
+  const bytes=await response.arrayBuffer();
+  if (await sha256(bytes)!==assets.revisions[path]) throw new Error('O servidor ainda está entregando uma versão antiga ou incompleta de '+path+'.');
+  const headers=new Headers(response.headers);headers.delete('content-encoding');headers.delete('content-length');
+  headers.set(VERIFIED,assets.revisions[path]);headers.set(VERIFIED_BYTES,String(bytes.byteLength));headers.set('x-sentinela-app-version',APP_VERSION);
+  const result=new Response(bytes,{status:200,headers});await cache.put(absolute(path),result.clone());return result;
+}
 async function ensureStaticFiles(paths,progress=()=>{},token=generation,refresh=false) {
-  const cache=await caches.open(SHELL_CACHE),failed=[],files=[...new Set(paths)];
+  const assets=await assetManifest(),cache=await caches.open(SHELL_CACHE),failed=[],files=[...new Set(paths)];
   let loaded=0,cursor=0;
   async function worker(){
     while(cursor<files.length){
       if(token!==generation)throw new Error('Download cancelado.');
-      const path=files[cursor++],url=absolute(path);
+      const path=files[cursor++];
       try{
-        let response=await cache.match(url);
-        if(refresh||!validResponse(response)){
-          response=await fetch(url,{cache:'reload'});
-          if(!validResponse(response))throw new Error('Arquivo indisponível: '+path);
+        let response=await cache.match(absolute(path));
+        if(!refresh&&!verifiedStatic(response,path,assets)&&validResponse(response)){
+          try{response=await verifyStatic(cache,path,assets,response);}catch(_){response=null;}
+        }
+        if(refresh||!verifiedStatic(response,path,assets)){
+          response=await fetchWithTimeout(releaseURL(path),{cache:'no-store'});
           if(token!==generation)throw new Error('Download cancelado.');
-          await cache.put(url,response);
+          await verifyStatic(cache,path,assets,response);
         }
         loaded++;
       }catch(_){failed.push(path);}
       progress({loaded,total:files.length,failed:failed.length});
     }
   }
-  // Small shell files can download together; large Bible parts keep their two-request limit.
   await Promise.allSettled(Array.from({length:Math.min(4,files.length)},()=>worker()));
   if(token!==generation)throw new Error('Download cancelado.');
-  if(failed.length)throw Object.assign(new Error('Alguns arquivos do aplicativo não foram baixados.'),{failed});
+  if(failed.length)throw Object.assign(new Error('Alguns arquivos do aplicativo ainda não puderam ser atualizados.'),{failed});
 }
+async function staticComplete(paths,cache,assets) {
+  const hits=await Promise.all(paths.map(path=>cache.match(absolute(path))));
+  return hits.every((response,index)=>verifiedStatic(response,paths[index],assets));
+}
+async function migratePreviousShells(names) {
+  const assets=await assetManifest(),cache=await caches.open(SHELL_CACHE);
+  for(const name of names){
+    const previous=await caches.open(name);
+    for(const path of assets.app){
+      if(validResponse(await cache.match(absolute(path))))continue;
+      const old=await previous.match(absolute(path));if(!validResponse(old))continue;
+      try{await verifyStatic(cache,path,assets,old.clone());}
+      catch(_){await cache.put(absolute(path),old);}
+    }
+  }
+}
+function refreshApp(send=()=>{}) {
+  if(refreshJob){refreshJob.listeners.add(send);if(refreshJob.last)send(refreshJob.last);return refreshJob.promise;}
+  const token=generation,job={listeners:new Set([send]),last:null};
+  const emit=message=>{job.last=message;for(const listener of job.listeners)listener(message);};
+  refreshJob=job;
+  job.promise=(async()=>{
+    const assets=await assetManifest();
+    await ensureStaticFiles(assets.app,p=>emit({type:'APP_REFRESH_PROGRESS',version:APP_VERSION,...p}),token);
+    emit({type:'APP_REFRESH_COMPLETE',version:APP_VERSION,complete:true});
+  })().catch(error=>{emit({type:'APP_REFRESH_ERROR',version:APP_VERSION,message:errorMessage(error),failed:error.failed||[]});throw error;})
+  .finally(()=>{if(refreshJob===job)refreshJob=null;});return job.promise;
+}
+
 function prepareBible(send) {
   if (bibleJob) {bibleJob.listeners.add(send);if(bibleJob.last)send(bibleJob.last);return bibleJob.promise;}
   const job={listeners:new Set([send]),last:null},token=generation;
@@ -145,10 +201,7 @@ function prepareBible(send) {
   .finally(()=>{if(bibleJob===job)bibleJob=null;});
   return job.promise;
 }
-async function cachedStaticComplete(paths,cache){
-  const keys = new Set((await cache.keys()).map(request=>request.url));
-  return paths.every(path=>keys.has(absolute(path)));
-}
+
 async function manifestFingerprint(manifest) {
   return sha256(new TextEncoder().encode(manifest.entries.map(entry=>`${entry.url}|${entry.bytes}|${entry.sha256}`).join('\n')));
 }
@@ -157,10 +210,9 @@ async function getCacheStatus({fast=false}={}){
   const shellCache=await caches.open(SHELL_CACHE),bibleCache=await caches.open(BIBLE_CACHE);
   let assets,shellComplete=false,appComplete=false,loaded=0,total=0,bytesLoaded=0,bytesTotal=0;
   try{const response=await shellCache.match(ASSET_URL);assets=response&&await response.json();}catch(_){}
-  if(assets&&Array.isArray(assets.app)&&Array.isArray(assets.shell)){
-    const keys=new Set((await shellCache.keys()).map(request=>request.url));
-    shellComplete=assets.shell.every(path=>keys.has(absolute(path)));
-    appComplete=assets.app.every(path=>keys.has(absolute(path)));
+  if(assets?.version===APP_VERSION&&Array.isArray(assets.app)&&Array.isArray(assets.shell)&&assets.revisions){
+    shellComplete=await staticComplete(assets.shell,shellCache,assets);
+    appComplete=await staticComplete(assets.app,shellCache,assets);
   }
   try{
     const response=await bibleCache.match(BUNDLE_URL),manifest=response&&parseBundle(await response.json());
@@ -181,7 +233,7 @@ async function getCacheStatus({fast=false}={}){
     }
   }catch(_){}
   const bibleComplete=shellComplete&&total>0&&loaded===total;
-  return {hasCache,complete:appComplete&&bibleComplete,appComplete,shellComplete,bibleComplete,loaded,total,bytesLoaded,bytesTotal};
+  return {version:APP_VERSION,hasCache,complete:appComplete&&bibleComplete,appComplete,shellComplete,bibleComplete,loaded,total,bytesLoaded,bytesTotal};
 }
 function downloadApp(send){
   if(fullJob){fullJob.listeners.add(send);if(fullJob.last)send(fullJob.last);return fullJob.promise;}
@@ -198,23 +250,48 @@ function downloadApp(send){
 }
 self.addEventListener('install',event=>event.waitUntil((async()=>{
   const assets=await assetManifest(true);
-  // Finish the new, small application version before replacing the previous shell.
-  // The 126 MB Bible cache and the user's IndexedDB library are never redownloaded here.
-  await ensureStaticFiles(assets.app,()=>{},generation,true);await self.skipWaiting();
+  // Only the verified reading/application core can block activation. Auxiliary
+  // pages refresh afterwards; one old image or editor asset cannot freeze updates.
+  await ensureStaticFiles(assets.shell,()=>{},generation,true);await self.skipWaiting();
 })()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
-  // Preserve artigo-offline-v1, imported publications, and unrelated apps' caches.
-  for(const name of await caches.keys())if(name.startsWith(PREFIX)&&!OWN_CACHES.includes(name))await caches.delete(name);
+  const names=await caches.keys();
+  const oldShells=names.filter(name=>name.startsWith(PREFIX+'shell-')&&name!==SHELL_CACHE);
+  const legacyShells=names.filter(name=>/^reuniao-cache-/.test(name));
+  const upgrading=oldShells.length>0||legacyShells.length>0;
+  await migratePreviousShells([...oldShells,...legacyShells]);
+  // Bible, article caches, personal data and unrelated applications survive.
+  for(const name of names)if(name.startsWith(PREFIX)&&!OWN_CACHES.includes(name))await caches.delete(name);
   await self.clients.claim();
+  const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+  const rootPath=new URL(SCOPE).pathname,indexPath=new URL('index.html',SCOPE).pathname;
+  for(const client of clients){
+    if(!client.url.startsWith(SCOPE))continue;
+    client.postMessage({type:'APP_VERSION',version:APP_VERSION,shell:SHELL_CACHE,ready:true,installedVersion:APP_VERSION});
+    if(!upgrading)continue;
+    const url=new URL(client.url);
+    if(![rootPath,indexPath].includes(url.pathname)||url.searchParams.get('atualizado')===APP_VERSION)continue;
+    url.searchParams.set('atualizado',APP_VERSION);
+    // Awaiting navigation here deadlocks its fetch against worker activation.
+    client.navigate(url.href).catch(()=>{});
+  }
 })()));
+async function appVersion() {
+  let ready=false;
+  try{const assets=await assetManifest(),cache=await caches.open(SHELL_CACHE);ready=await staticComplete(assets.shell,cache,assets);}catch(_){}
+  return {type:'APP_VERSION',version:APP_VERSION,shell:SHELL_CACHE,ready,installedVersion:ready?APP_VERSION:null};
+}
 self.addEventListener('message',event=>{
   if(!event.data||!event.data.action)return;
   const send=reporter(event),action=event.data.action;
-  if(action==='PREPARE_BIBLE_OFFLINE')event.waitUntil(prepareBible(send).catch(()=>{}));
+  if(action==='GET_APP_VERSION')event.waitUntil(appVersion().then(send));
+  else if(action==='SKIP_WAITING')event.waitUntil(self.skipWaiting());
+  else if(action==='REFRESH_APP')event.waitUntil(refreshApp(send).catch(()=>{}));
+  else if(action==='PREPARE_BIBLE_OFFLINE')event.waitUntil(prepareBible(send).catch(()=>{}));
   else if(action==='START_DOWNLOAD')event.waitUntil(downloadApp(send).catch(()=>{}));
   else if(action==='CACHE_STATUS')event.waitUntil(getCacheStatus({fast:event.data.fast===true}).then(status=>send({type:'CACHE_STATUS',...status})).catch(error=>send({type:'CACHE_STATUS',complete:false,bibleComplete:false,message:errorMessage(error)})));
   else if(action==='CLEAR_CACHE')event.waitUntil((async()=>{
-    generation++;await Promise.allSettled([bibleJob&&bibleJob.promise,fullJob&&fullJob.promise].filter(Boolean));
+    generation++;await Promise.allSettled([bibleJob&&bibleJob.promise,fullJob&&fullJob.promise,refreshJob&&refreshJob.promise].filter(Boolean));
     for(const name of await caches.keys())if(name.startsWith(PREFIX))await caches.delete(name);
     assetMemo=undefined;manifestMemo=undefined;send({type:'CACHE_CLEARED'});
   })());
@@ -228,12 +305,21 @@ async function serveBundle(request){
   try{const response=await fetch(request);return entry?await verifyAndStore(cache,entry,response):response;}
   catch(_){return new Response('Este arquivo ainda não está disponível offline.',{status:503});}
 }
+async function serveRecovery(request) {
+  const cache=await caches.open(SHELL_CACHE),url=absolute('atualizar.html');
+  try{
+    const response=await fetchWithTimeout(request.url,{cache:'no-store'});
+    if(!validResponse(response))throw new Error('Atualização indisponível.');
+    return response;
+  }catch(error){const saved=await cache.match(url);if(saved)return saved;throw error;}
+}
 self.addEventListener('fetch',event=>{
   const request=event.request,url=new URL(request.url);
   if(request.method!=='GET'||!url.protocol.startsWith('http')||request.headers.has('range'))return;
   if(url.hostname.endsWith('supabase.co')||url.hostname.endsWith('workers.dev'))return;
   // Do not cache streamed audio/video. Packaged illustrations are handled below.
   if(/\.(?:mp3|mp4|m4a|m3u8)$/i.test(url.pathname))return;
+  if(url.origin===self.location.origin&&url.pathname===new URL('atualizar.html',SCOPE).pathname){event.respondWith(serveRecovery(request));return;}
   if(url.href.startsWith(BUNDLE_ROOT)){event.respondWith(serveBundle(request));return;}
   event.respondWith((async()=>{
     const local=url.href.startsWith(SCOPE),canonical=new URL(url.href);canonical.search='';
@@ -245,15 +331,17 @@ self.addEventListener('fetch',event=>{
     };
     // Static application files are immutable for this shell version. Read locally
     // first, even when the network is connected but slow or unresponsive.
-    if(local){const cached=await(await caches.open(SHELL_CACHE)).match(canonical.href);if(validResponse(cached))return cached;}
+    const forceNetwork=request.cache==='reload'||request.cache==='no-store';
+    if(local&&!forceNetwork){const cached=await(await caches.open(SHELL_CACHE)).match(canonical.href);if(validResponse(cached))return cached;}
     try{
-      const response=await fetch(request);
+      let assets=assetMemo;try{if(local&&!assets)assets=await assetManifest();}catch(_){}
+      const path=local?decodeURIComponent(canonical.pathname.slice(new URL(SCOPE).pathname.length)):null;
+      const known=assets&&path&&assets.revisions[path];
+      const response=known?await fetchWithTimeout(releaseURL(path),{cache:'no-store'}):await fetch(request);
       if(!response.ok&&response.type!=='opaque')return await fallback()||response;
+      if(known)return await verifyStatic(await caches.open(SHELL_CACHE),path,assets,response);
       if(!response.redirected&&response.status!==206){
         try{await(await caches.open(RUNTIME_CACHE)).put(request,response.clone());}catch(_){}
-        if(local&&assetMemo&&[...assetMemo.shell,...assetMemo.app].some(path=>absolute(path)===canonical.href)){
-          try{await(await caches.open(SHELL_CACHE)).put(canonical.href,response.clone());}catch(_){}
-        }
       }
       return response;
     }catch(_){return await fallback()||new Response('Conecte-se para carregar este conteúdo.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}});}

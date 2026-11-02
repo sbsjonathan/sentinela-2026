@@ -618,9 +618,85 @@ document.addEventListener('touchend', function (event) {
     lastTouchEnd = now;
 }, false);
 
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        const swPath = joinProjectPath('sw.js');
-        navigator.serviceWorker.register(swPath).catch(() => {});
+// Reopening an installed iPhone app may resume the page without another load event.
+(function manageAppUpdates() {
+    if (!('serviceWorker' in navigator)) return;
+    const release = '2026.11.02.4';
+    const root = getProjectRootURL();
+    let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
+    const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);
+    const versionNode = document.createElement('p');
+    versionNode.className = 'app-version';
+    versionNode.textContent = 'Conferindo a versão do aplicativo…';
+    const offlineSection = document.querySelector('.offline-section');
+    if (offlineSection) {
+        const update = document.createElement('a');
+        update.className = 'btn btn-secondary';
+        update.href = new URL('atualizar.html', root).href;
+        update.textContent = 'Verificar atualização';
+        const diagnose = document.createElement('a');
+        diagnose.className = 'btn btn-secondary';
+        diagnose.href = new URL('index.html?diagnostico=1', root).href;
+        diagnose.textContent = 'Diagnóstico da tela inicial';
+        versionNode.style.cssText = 'font-size:12px;margin:12px 0;color:inherit;opacity:.7';
+        offlineSection.append(versionNode, update, diagnose);
+    }
+    function askVersion(worker) {
+        return new Promise(resolve => {
+            if (!worker) return resolve(null);
+            const channel = new MessageChannel();
+            const timeout = setTimeout(() => { channel.port1.close(); resolve(null); }, 1800);
+            channel.port1.onmessage = ({data}) => {
+                if (data?.type !== 'APP_VERSION') return;
+                clearTimeout(timeout); channel.port1.close(); resolve(data);
+            };
+            worker.postMessage({action:'GET_APP_VERSION'}, [channel.port2]);
+        });
+    }
+    async function applyVersion() {
+        const active = navigator.serviceWorker.controller || registration?.active;
+        const info = await askVersion(active);
+        if (!info?.ready) { if (offlineSection) versionNode.textContent = 'Versão local: ' + pageRelease; return; }
+        if (offlineSection) versionNode.textContent = 'Versão instalada: ' + info.version;
+        if (isIndexPageNavbar() && info.version !== pageRelease && !navigating) {
+            const destination = new URL(location.href);
+            if (destination.searchParams.get('atualizado') !== info.version) {
+                navigating = true; destination.searchParams.set('atualizado', info.version);
+                location.replace(destination.href); return;
+            }
+        }
+        let refreshed;
+        try { refreshed = localStorage.getItem('sentinela-app-refreshed'); } catch (_) {}
+        if (!refreshing && refreshed !== info.version && navigator.onLine) {
+            refreshing = true; active.postMessage({action:'REFRESH_APP'});
+        }
+    }
+    async function check(force = false) {
+        if (checking || (!force && Date.now() - lastCheck < 60000)) return checking;
+        lastCheck = Date.now();
+        checking = (async () => {
+            try {
+                registration = await navigator.serviceWorker.register(new URL('sw.js',root), {scope:new URL(root).pathname,updateViaCache:'none'});
+                registration.addEventListener('updatefound', () => {
+                    const candidate = registration.installing;
+                    candidate?.addEventListener('statechange', () => { if (candidate.state === 'activated') applyVersion(); });
+                }, {once:true});
+                applyVersion();
+                if (navigator.onLine) await registration.update();
+            } catch (_) { /* Existing local reading is independent of the update network. */ }
+        })().finally(() => { checking = null; });
+        return checking;
+    }
+    navigator.serviceWorker.addEventListener('controllerchange', () => { refreshing = false; applyVersion(); });
+    navigator.serviceWorker.addEventListener('message', ({data}) => {
+        if (data?.type === 'APP_REFRESH_COMPLETE') {
+            refreshing = false;
+            try { localStorage.setItem('sentinela-app-refreshed', data.version || release); } catch (_) {}
+        } else if (data?.type === 'APP_REFRESH_ERROR') refreshing = false;
     });
-}
+    addEventListener('pageshow', () => check());
+    addEventListener('online', () => check(true));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+    if (document.readyState === 'complete') check(); else addEventListener('load', () => check(), {once:true});
+    window.SentinelaAppUpdate = {version:release, check};
+})();
