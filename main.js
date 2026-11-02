@@ -329,7 +329,7 @@ class CarouselManager {
         try {
             const cache = await caches.open(OFFLINE_CACHE);
             const hit = await cache.match(`${WORKER_BASE}?semana=${iso}`);
-            return !!hit;
+            return !!hit && hit.ok && window.SentinelaArticleRuntime.isArticle(await hit.text());
         } catch (error) {
             return false;
         }
@@ -404,7 +404,7 @@ class CarouselManager {
             const resp = await fetch(url, { cache: "reload" });
             if (!resp.ok) throw new Error("status");
             const html = await resp.text();
-            if (!/^\s*<!doctype html>/i.test(html)) throw new Error("nao-publicado");
+            if (!window.SentinelaArticleRuntime.isArticle(html)) throw new Error("nao-publicado");
             const cache = await caches.open(OFFLINE_CACHE);
             await cache.put(url, new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } }));
             const assets = this.coletarAssets(html);
@@ -413,8 +413,9 @@ class CarouselManager {
             setP(loaded / total);
             await Promise.all(assets.map(async (a) => {
                 try {
-                    const mesmaOrigem = a.indexOf(window.location.origin) === 0;
-                    await fetch(a, mesmaOrigem ? { cache: "reload" } : { mode: "no-cors", cache: "reload" });
+                    const mesmaOrigem = new URL(a).origin === window.location.origin;
+                    const asset = await fetch(a, mesmaOrigem ? { cache: "reload" } : { mode: "no-cors", cache: "reload" });
+                    if (asset.ok || asset.type === "opaque") await cache.put(a, asset);
                 } catch (error) {}
                 loaded++;
                 setP(loaded / total);

@@ -1,8 +1,9 @@
 /* One worker owns Sentinela's offline shell and included Bible. */
 const PREFIX = 'sentinela-integrado-';
-const APP_VERSION = '2026.11.02.9';
+const APP_VERSION = '2026.11.02.10';
+importScripts('./sentinela/artigos/article-runtime.js?appVersion=' + APP_VERSION);
 // Bump the shell version when application code changes. The large Bible cache is independent.
-const SHELL_CACHE = PREFIX + 'shell-v9';
+const SHELL_CACHE = PREFIX + 'shell-v10';
 const BIBLE_CACHE = PREFIX + 'bible-v1';
 const RUNTIME_CACHE = PREFIX + 'runtime-v1';
 const OWN_CACHES = [SHELL_CACHE, BIBLE_CACHE, RUNTIME_CACHE];
@@ -313,6 +314,32 @@ async function serveRecovery(request) {
     return response;
   }catch(error){const saved=await cache.match(url);if(saved)return saved;throw error;}
 }
+function isStudyURL(value) {
+  try {
+    const url = new URL(value);
+    return url.origin === self.location.origin && url.pathname === new URL('sentinela/artigos/estudo.html', SCOPE).pathname;
+  } catch (_) { return false; }
+}
+async function downloadedStudy(request) {
+  try {
+    const runtime = self.SentinelaArticleRuntime, date = runtime.resolveDate(request.url);
+    const cache = await caches.open(runtime.CACHE_NAME), response = await cache.match(runtime.cacheKey(date));
+    if (!validResponse(response)) return null;
+    const html = await response.text();
+    if (!runtime.isArticle(html)) return null;
+    return new Response(runtime.prepareHTML(html, {date, rootURL:SCOPE}), {headers:{
+      'Content-Type':'text/html; charset=utf-8', 'Cache-Control':'no-store',
+      'X-Sentinela-Article-Cache':'hit', 'X-Sentinela-App-Version':APP_VERSION
+    }});
+  } catch (_) { return null; }
+}
+async function isStudyAsset(event) {
+  if (!['style','script','image','font'].includes(event.request.destination)) return false;
+  if (isStudyURL(event.request.referrer)) return true;
+  if (!event.clientId) return false;
+  try { return isStudyURL((await self.clients.get(event.clientId))?.url); }
+  catch (_) { return false; }
+}
 self.addEventListener('fetch',event=>{
   const request=event.request,url=new URL(request.url);
   if(request.method!=='GET'||!url.protocol.startsWith('http')||request.headers.has('range'))return;
@@ -322,6 +349,11 @@ self.addEventListener('fetch',event=>{
   if(url.origin===self.location.origin&&url.pathname===new URL('atualizar.html',SCOPE).pathname){event.respondWith(serveRecovery(request));return;}
   if(url.href.startsWith(BUNDLE_ROOT)){event.respondWith(serveBundle(request));return;}
   event.respondWith((async()=>{
+    // A saved article is the navigation response itself: never display the
+    // loading page or contact the publication proxy just to reopen a download.
+    if(request.mode==='navigate'&&isStudyURL(request.url)){
+      const article=await downloadedStudy(request);if(article)return article;
+    }
     const local=url.href.startsWith(SCOPE),canonical=new URL(url.href);canonical.search='';
     if(local&&canonical.pathname.endsWith('/'))canonical.pathname+='index.html';
     const fallback=async()=>{
@@ -337,6 +369,16 @@ self.addEventListener('fetch',event=>{
       let assets=assetMemo;try{if(local&&!assets)assets=await assetManifest();}catch(_){}
       const path=local?decodeURIComponent(canonical.pathname.slice(new URL(SCOPE).pathname.length)):null;
       const known=assets&&path&&assets.revisions[path];
+      // Reader styles, fonts, illustrations and CDN scripts must not wait for a
+      // slow connection when already downloaded. Keep app-version integrity for
+      // local code; unrelated pages retain their existing runtime strategy.
+      if(!forceNetwork&&await isStudyAsset(event)){
+        const saved=await(await caches.open(RUNTIME_CACHE)).match(request)||await(await caches.open(self.SentinelaArticleRuntime.CACHE_NAME)).match(request);
+        if(saved){
+          if(!known&&(saved.ok||saved.type==='opaque'))return saved;
+          if(known){try{return await verifyStatic(await caches.open(SHELL_CACHE),path,assets,saved.clone());}catch(_){}}
+        }
+      }
       const response=known?await fetchWithTimeout(releaseURL(path),{cache:'no-store'}):await fetch(request);
       if(!response.ok&&response.type!=='opaque')return await fallback()||response;
       if(known)return await verifyStatic(await caches.open(SHELL_CACHE),path,assets,response);
