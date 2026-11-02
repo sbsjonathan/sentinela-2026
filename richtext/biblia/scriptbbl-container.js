@@ -1,4 +1,5 @@
 (function() {
+  const readerRoutes = import(new URL('../../biblia/legacy-routes.js', document.currentScript.src).href).catch(() => null);
   if (window.bibleSystemInitialized) return;
   window.bibleSystemInitialized = true;
 
@@ -82,6 +83,10 @@
     try {
       const resultado = await buscarVersiculo(referencia);
       corpo.innerHTML = `<h3>${resultado.titulo}</h3><div>${resultado.texto}</div>`;
+      corpo.dataset.reference = referencia;
+      readerRoutes.then(routes => {
+        if (routes && corpo.dataset.reference === referencia) routes.appendBibleChapterLink(corpo, referencia, ABREVIACOES);
+      });
     } catch (error) {
       corpo.innerHTML = '<h3>Erro</h3><div>Não foi possível carregar a referência.</div>';
     }

@@ -30,32 +30,7 @@
     })();
   </script>
 
-  <script>
-    (function() {
-      if (!('serviceWorker' in navigator)) return;
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        regs.forEach(function(reg) { reg.update(); });
-      }).catch(function(){});
-      navigator.serviceWorker.addEventListener('message', function(e) {
-        if (e.data && e.data.type === 'CACHE_CLEARED') {
-          if (!sessionStorage.getItem('sw-reloaded-once')) {
-            sessionStorage.setItem('sw-reloaded-once', '1');
-            location.reload();
-          }
-        }
-      });
-      var APP_BUILD = 'v3';
-      try {
-        var seen = localStorage.getItem('app-build');
-        if (seen !== APP_BUILD) {
-          localStorage.setItem('app-build', APP_BUILD);
-          navigator.serviceWorker.ready.then(function(reg) {
-            if (reg.active) reg.active.postMessage({ action: 'CLEAR_CACHE' });
-          }).catch(function(){});
-        }
-      } catch(e) {}
-    })();
-  </script>
+
 
   <link rel="stylesheet" href="editor.css">
   <link rel="stylesheet" href="barra.css">

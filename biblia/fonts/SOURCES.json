@@ -1,0 +1,44 @@
+[
+  {
+    "family": "Noto Sans",
+    "weight": "100 900",
+    "subset": "latin-ext",
+    "file": "noto-sans-variable-latin-ext.woff2",
+    "url": "https://fonts.gstatic.com/s/notosans/v42/o-0bIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjc5aDdu2ui.woff2"
+  },
+  {
+    "family": "Noto Sans",
+    "weight": "100 900",
+    "subset": "latin",
+    "file": "noto-sans-variable-latin.woff2",
+    "url": "https://fonts.gstatic.com/s/notosans/v42/o-0bIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjc5a7duw.woff2"
+  },
+  {
+    "family": "Sumana",
+    "weight": "400",
+    "subset": "latin-ext",
+    "file": "sumana-400-latin-ext.woff2",
+    "url": "https://fonts.gstatic.com/s/sumana/v12/4UaDrE5TqRBjGj-2-RLj36w.woff2"
+  },
+  {
+    "family": "Sumana",
+    "weight": "400",
+    "subset": "latin",
+    "file": "sumana-400-latin.woff2",
+    "url": "https://fonts.gstatic.com/s/sumana/v12/4UaDrE5TqRBjGj-29xLj.woff2"
+  },
+  {
+    "family": "Sumana",
+    "weight": "700",
+    "subset": "latin-ext",
+    "file": "sumana-700-latin-ext.woff2",
+    "url": "https://fonts.gstatic.com/s/sumana/v12/4UaArE5TqRBjGj--TDf27o3M2po.woff2"
+  },
+  {
+    "family": "Sumana",
+    "weight": "700",
+    "subset": "latin",
+    "file": "sumana-700-latin.woff2",
+    "url": "https://fonts.gstatic.com/s/sumana/v12/4UaArE5TqRBjGj--TDf24I3M.woff2"
+  }
+]

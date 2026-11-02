@@ -1,0 +1,19 @@
+/* The Bible shares A Sentinela's menu and its measured iPhone safe area. */
+body.sentinela-bible{--bible-menu-height:var(--navbar-layout-bottom,70px);--navbar-bg:#fff;--navbar-shadow:0 -1px 8px #00000008}
+body.sentinela-bible.with-bottom-navbar{padding-bottom:var(--bible-menu-height)!important}
+body.sentinela-bible.audio-open.with-bottom-navbar{padding-bottom:calc(var(--bible-menu-height) + 116px)!important}
+.sentinela-bible .bottom-navbar,.sentinela-bible .bottom-navbar *{font-family:"Noto Sans",-apple-system,BlinkMacSystemFont,sans-serif!important}
+.sentinela-bible .audio-player{bottom:var(--bible-menu-height);z-index:1001}
+.sentinela-bible #audio-follow{bottom:calc(var(--bible-menu-height) + 122px);z-index:1002}
+.sentinela-bible #action-status{bottom:calc(var(--bible-menu-height) + 15px);z-index:1100}
+.sentinela-bible.audio-open #action-status{bottom:calc(var(--bible-menu-height) + 130px)}
+.sentinela-bible .text-actions{z-index:1003}
+.sentinela-bible .reader{min-height:calc(100dvh - var(--header) - var(--bible-menu-height) - env(safe-area-inset-top))}
+.offline-notice{padding:9px 15px;background:#eae6f0;color:#604184;font-size:12px;line-height:1.5}
+.offline-notice.offline-error{background:#fff0dd;color:#714817}
+#offline-status{gap:12px}
+#offline-status span{flex-shrink:0}
+.sentinela-bible .welcome .button{margin-top:12px}
+
+/* Avoid flashing the first-install welcome screen on an already prepared reader. */
+.bible-restoring #empty,.bible-restoring #status:not(.error){display:none!important}

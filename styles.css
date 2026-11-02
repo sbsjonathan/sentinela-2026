@@ -43,6 +43,27 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* No PWA, capa, cartão e menu compartilham a altura real da tela.
+   Evita depender de dois elementos fixed no viewport standalone do iOS. */
+body.home-screen.is-pwa.with-bottom-navbar {
+  position: relative;
+  inset: auto;
+  height: 100vh;
+  height: 100dvh;
+  padding-bottom: 0 !important;
+}
+
+body.home-screen.is-pwa > .dock {
+  flex: 0 0 auto;
+}
+
+body.home-screen.is-pwa > .bottom-navbar {
+  position: relative !important;
+  inset: auto !important;
+  flex: 0 0 auto;
+  /* O padding de safe-area do menu continua protegendo o gesto do iPhone. */
+}
+
 .deck {
   flex: 1;
   min-height: 0;

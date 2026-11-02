@@ -330,6 +330,7 @@ class UnifiedNavbar {
     }
 
     hideNavbar(reason = 'scroll') {
+        if (reason === 'scroll' && document.body.hasAttribute('data-bible-reader')) return;
         if (reason === 'scroll' && !document.documentElement.dataset.programYear && ['home', 'notes', 'save'].includes(this.currentPage)) {
             return;
         }

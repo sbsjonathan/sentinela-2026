@@ -1,3 +1,6 @@
+// Resolve from this script so the reader works under any application base path.
+const articleBibleReaderRoutes = import(new URL('../../biblia/legacy-routes.js', document.currentScript.src).href).catch(() => null);
+
 // scriptbbl.js - Versão final com "Robô 2.0" E suporte a referências complexas.
 
 document.addEventListener('cacheRestored', () => {
@@ -116,6 +119,10 @@ document.addEventListener('cacheRestored', () => {
     modalCorpo.innerHTML = '<h3>Carregando...</h3>';
     const resultado = await buscarVersiculo(referencia);
     modalCorpo.innerHTML = `<h3>${resultado.titulo}</h3><div>${resultado.texto}</div>`;
+    modalCorpo.dataset.reference = referencia;
+    articleBibleReaderRoutes.then(routes => {
+      if (routes && modalCorpo.dataset.reference === referencia) routes.appendBibleChapterLink(modalCorpo, referencia, ABREVIACOES);
+    });
   }
 
   // FUNÇÃO ATUALIZADA para detectar múltiplas referências com ";"

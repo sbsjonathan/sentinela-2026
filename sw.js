@@ -1,253 +1,261 @@
-const CACHE_NAME = 'reuniao-cache-v4';
-
-self.addEventListener('install', (event) => {
-    self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        }).then(() => self.clients.claim())
-    );
-});
-
-self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
-
-    if (event.request.method !== 'GET' || !url.protocol.startsWith('http')) return;
-
-    if (url.origin.includes('supabase.co') || url.origin.includes('workers.dev')) return;
-
-    event.respondWith(
-        fetch(event.request).then((response) => {
-            const resClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, resClone);
-            });
-            return response;
-        }).catch(() => {
-            return caches.match(event.request, { ignoreSearch: true });
-        })
-    );
-});
-
-self.addEventListener('message', async (event) => {
-    if (!event.data) return;
-
-    if (event.data.action === 'START_DOWNLOAD') {
-        try {
-            const urlsToCache = await buildDownloadList();
-            const cache = await caches.open(CACHE_NAME);
-
-            let loaded = 0;
-            const total = urlsToCache.length;
-
-            for (const url of urlsToCache) {
-                try {
-                    const res = await fetch(url);
-                    if (res.ok || res.type === 'opaque') {
-                        await cache.put(url, res);
-                    }
-                } catch(e) {}
-                loaded++;
-                event.source.postMessage({ type: 'DOWNLOAD_PROGRESS', loaded, total });
-            }
-            event.source.postMessage({ type: 'DOWNLOAD_COMPLETE' });
-        } catch (err) {
-            event.source.postMessage({ type: 'DOWNLOAD_ERROR' });
-        }
-    } else if (event.data.action === 'CLEAR_CACHE') {
-        await caches.delete(CACHE_NAME);
-        event.source.postMessage({ type: 'CACHE_CLEARED' });
-    } else if (event.data.action === 'CACHE_STATUS') {
-        const status = await getCacheStatus();
-        const payload = { type: 'CACHE_STATUS', hasCache: status.hasCache, complete: status.complete };
-        if (event.ports && event.ports[0]) {
-            event.ports[0].postMessage(payload);
-        } else if (event.source) {
-            event.source.postMessage(payload);
-        }
-    }
-});
-
-async function getCacheStatus() {
-    if (!('caches' in self)) return { hasCache: false, complete: false };
-
-    const hasCache = await caches.has(CACHE_NAME);
-    if (!hasCache) return { hasCache: false, complete: false };
-
-    const cache = await caches.open(CACHE_NAME);
-    const base = self.registration.scope;
-
-    const sentinela = await cache.match(base + 'biblia/biblia.html', { ignoreSearch: true });
-    if (!sentinela) return { hasCache: true, complete: false };
-
-    const keys = await cache.keys();
-    let bookCount = 0;
-    for (const req of keys) {
-        if (/\/biblia\/livro\/\d{2}-[^/]+\/[^/]+\.html(?:[?#]|$)/.test(req.url)) {
-            bookCount++;
-            if (bookCount >= 30) break;
-        }
-    }
-
-    return { hasCache: true, complete: bookCount >= 30 };
+/* One worker owns Sentinela's offline shell and included Bible. */
+const PREFIX = 'sentinela-integrado-';
+// Bump the shell version when application code changes. The large Bible cache is independent.
+const SHELL_CACHE = PREFIX + 'shell-v2';
+const BIBLE_CACHE = PREFIX + 'bible-v1';
+const RUNTIME_CACHE = PREFIX + 'runtime-v1';
+const OWN_CACHES = [SHELL_CACHE, BIBLE_CACHE, RUNTIME_CACHE];
+const SCOPE = self.registration.scope;
+const absolute = path => new URL(path, SCOPE).href;
+const ASSET_URL = absolute('offline-assets.json');
+const BUNDLE_URL = absolute('biblia/bundled/manifest.json');
+const BUNDLE_ROOT = new URL('./', BUNDLE_URL).href;
+const RECEIPT_URL = new URL('.offline-receipt-v1', BUNDLE_ROOT).href;
+const VERIFIED = 'x-sentinela-sha256';
+const VERIFIED_BYTES = 'x-sentinela-bytes';
+let assetMemo, manifestMemo, bibleJob, fullJob, generation = 0;
+const validResponse = r => r && r.ok && !r.redirected && r.status !== 206;
+const errorMessage = e => e && e.message || 'Não foi possível preparar os arquivos offline.';
+function reporter(event) {
+  return payload => {
+    const message = { ...payload, requestId: event.data.requestId };
+    try { if (event.ports && event.ports[0]) event.ports[0].postMessage(message); } catch (_) {}
+    try { if (event.source) event.source.postMessage(message); } catch (_) {}
+  };
 }
-
-function getSemanaAtual() {
-    const hoje = new Date();
-    const dia = hoje.getDay();
-    const diff = dia === 0 ? -6 : 1 - dia;
-    const segunda = new Date(hoje);
-    segunda.setDate(hoje.getDate() + diff);
-    const dd = String(segunda.getDate()).padStart(2, '0');
-    const mm = String(segunda.getMonth() + 1).padStart(2, '0');
-    return `${dd}-${mm}`;
+async function readManifest(url, cacheName, refresh = false) {
+  const cache = await caches.open(cacheName);
+  let response = await cache.match(url);
+  if (!refresh && validResponse(response)) return {cache,response,data:await response.clone().json()};
+  try {
+    const fresh = await fetch(url, {cache:'reload'});
+    if (!validResponse(fresh)) throw new Error('Pacote offline indisponível.');
+    response = fresh;
+  } catch (error) { if (!validResponse(response)) throw error; }
+  return {cache,response,data:await response.clone().json()};
 }
-
-async function buildDownloadList() {
-    const basePath = self.registration.scope;
-
-    let list = [
-        '/',
-        'index.html',
-        'styles.css',
-        'main.js',
-        'manifest.json',
-        'assets/icons/apple-touch-icon.png',
-        'assets/icons/favicon-32.png',
-        'assets/icons/icon-192.png',
-        'assets/icons/icon-512.png',
-        'assets/icons/maskable-icon-512.png',
-        'worker/worker.html',
-        'navbar/navbar-unified.css',
-        'navbar/navbar-unified.js',
-        'navbar/network-sensor.js',
-        'save/auth-supabase.html',
-        'save/config.js',
-        'save/supabase.js',
-        'save/sync-bridge.js',
-        'save/unified-load.js',
-        'save/auto-save.js',
-        'save/feedback.js',
-        'save/sentinela-sync.js',
-        'save/asmb-sync.js',
-        'save/offline-manager.js',
-        'richtext/container.html',
-        'richtext/editor.css',
-        'richtext/barra.css',
-        'richtext/perf-low.css',
-        'richtext/editor.js',
-        'richtext/barra.js',
-        'richtext/perf-profile.js',
-        'richtext/cache-r.js',
-        'richtext/liquid-glass.js',
-        'richtext/leitor.js',
-        'richtext/plugin/negrita.css',
-        'richtext/plugin/bullet.css',
-        'richtext/plugin/cores.css',
-        'richtext/plugin/font.css',
-        'richtext/plugin/leitor.css',
-        'richtext/plugin/undo.js',
-        'richtext/plugin/negrita.js',
-        'richtext/plugin/bullet.js',
-        'richtext/plugin/cores.js',
-        'richtext/plugin/font.js',
-        'richtext/plugin/leitor.js',
-        'richtext/biblia/stylebbl.css',
-        'richtext/biblia/abrev.js',
-        'richtext/biblia/scriptbbl-container.js',
-        'sentinela/style.css',
-        'sentinela/imagem.js',
-        'sentinela/mark.js',
-        'sentinela/clickable/clickable.css',
-        'sentinela/clickable/clickable.js',
-        'sentinela/clickable/cache.js',
-        'sentinela/clickable/agente_perguntas.js',
-        'sentinela/clickable/agente_recap.js',
-        'sentinela/clickable/agente-obj.js',
-        'sentinela/clickable/agente-sub.js',
-        'sentinela/clickable/agente-modal/agente-modal.css',
-        'sentinela/clickable/agente-modal/agente-modal.js',
-        'sentinela/menu/menu.css',
-        'sentinela/menu/menu.js',
-        'sentinela/imagem/swiper-zoom.css',
-        'sentinela/imagem/swiper-zoom.js',
-        'sentinela/biblia/abrev.js',
-        'sentinela/biblia/scriptbbl.js',
-        'sentinela/imagem/semanas/22-09/ilust/ilust-universal.js',
-        'biblia/biblia.html',
-        'biblia/capitulo.html',
-        'biblia/livro/style-bbl.css',
-        'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-        'https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css'
-    ];
-
-    const bibleBooks = [
-        { folder: '01-genesis', file: 'genesis' }, { folder: '02-exodo', file: 'exodo' },
-        { folder: '03-levitico', file: 'levitico' }, { folder: '04-numeros', file: 'numeros' },
-        { folder: '05-deuteronomio', file: 'deuteronomio' }, { folder: '06-josue', file: 'josue' },
-        { folder: '07-juizes', file: 'juizes' }, { folder: '08-rute', file: 'rute' },
-        { folder: '09-1samuel', file: '1samuel' }, { folder: '10-2samuel', file: '2samuel' },
-        { folder: '11-1reis', file: '1reis' }, { folder: '12-2reis', file: '2reis' },
-        { folder: '13-1cronicas', file: '1cronicas' }, { folder: '14-2cronicas', file: '2cronicas' },
-        { folder: '15-esdras', file: 'esdras' }, { folder: '16-neemias', file: 'neemias' },
-        { folder: '17-ester', file: 'ester' }, { folder: '18-jo', file: 'jo' },
-        { folder: '19-salmos', file: 'salmos' }, { folder: '20-proverbios', file: 'proverbios' },
-        { folder: '21-eclesiastes', file: 'eclesiastes' }, { folder: '22-canticos', file: 'canticos' },
-        { folder: '23-isaias', file: 'isaias' }, { folder: '24-jeremias', file: 'jeremias' },
-        { folder: '25-lamentacoes', file: 'lamentacoes' }, { folder: '26-ezequiel', file: 'ezequiel' },
-        { folder: '27-daniel', file: 'daniel' }, { folder: '28-oseias', file: 'oseias' },
-        { folder: '29-joel', file: 'joel' }, { folder: '30-amos', file: 'amos' },
-        { folder: '31-obadias', file: 'obadias' }, { folder: '32-jonas', file: 'jonas' },
-        { folder: '33-miqueias', file: 'miqueias' }, { folder: '34-naum', file: 'naum' },
-        { folder: '35-habacuque', file: 'habacuque' }, { folder: '36-sofonias', file: 'sofonias' },
-        { folder: '37-ageu', file: 'ageu' }, { folder: '38-zacarias', file: 'zacarias' },
-        { folder: '39-malaquias', file: 'malaquias' }, { folder: '40-mateus', file: 'mateus' },
-        { folder: '41-marcos', file: 'marcos' }, { folder: '42-lucas', file: 'lucas' },
-        { folder: '43-joao', file: 'joao' }, { folder: '44-atos', file: 'atos' },
-        { folder: '45-romanos', file: 'romanos' }, { folder: '46-1corintios', file: '1corintios' },
-        { folder: '47-2corintios', file: '2corintios' }, { folder: '48-galatas', file: 'galatas' },
-        { folder: '49-efesios', file: 'efesios' }, { folder: '50-filipenses', file: 'filipenses' },
-        { folder: '51-colossenses', file: 'colossenses' }, { folder: '52-1tessalonicenses', file: '1tessalonicenses' },
-        { folder: '53-2tessalonicenses', file: '2tessalonicenses' }, { folder: '54-1timoteo', file: '1timoteo' },
-        { folder: '55-2timoteo', file: '2timoteo' }, { folder: '56-tito', file: 'tito' },
-        { folder: '57-filemon', file: 'filemon' }, { folder: '58-hebreus', file: 'hebreus' },
-        { folder: '59-tiago', file: 'tiago' }, { folder: '60-1pedro', file: '1pedro' },
-        { folder: '61-2pedro', file: '2pedro' }, { folder: '62-1joao', file: '1joao' },
-        { folder: '63-2joao', file: '2joao' }, { folder: '64-3joao', file: '3joao' },
-        { folder: '65-judas', file: 'judas' }, { folder: '66-apocalipse', file: 'apocalipse' }
-    ];
-
-    for (const b of bibleBooks) {
-        list.push(`biblia/livro/${b.folder}/${b.file}.html`);
-        list.push(`sentinela/biblia/data/${b.file}.json`);
-    }
-
-    const semana = getSemanaAtual();
-    const sentinelaUrl = `sentinela/artigos/${semana}.html`;
-    list.push(sentinelaUrl);
-
+async function assetManifest(refresh = false) {
+  if (assetMemo && !refresh) return assetMemo;
+  const {cache,response,data} = await readManifest(ASSET_URL, SHELL_CACHE, refresh);
+  if (!Array.isArray(data.shell) || !Array.isArray(data.app) || !data.shell.length) throw new Error('Lista offline inválida.');
+  for (const path of [...data.shell,...data.app]) if (typeof path !== 'string' || !absolute(path).startsWith(SCOPE)) throw new Error('Caminho offline inválido.');
+  await cache.put(ASSET_URL,response); assetMemo=data; return data;
+}
+function parseBundle(data) {
+  const chunks = data && data.database && data.database.chunks;
+  if (!Array.isArray(chunks) || !chunks.length || !Array.isArray(data.media) || !data.media.length) throw new Error('Pacote da Bíblia inválido.');
+  const entries = [...chunks,...data.media].map(entry => {
+    const url = new URL(entry.path,BUNDLE_ROOT).href;
+    if (!url.startsWith(BUNDLE_ROOT) || !Number.isSafeInteger(entry.bytes) || entry.bytes<=0 || !/^[a-f0-9]{64}$/.test(entry.sha256)) throw new Error('Arquivo da Bíblia inválido.');
+    return {...entry,url};
+  });
+  if (new Set(entries.map(e=>e.url)).size !== entries.length) throw new Error('Arquivos duplicados no pacote.');
+  return {...data,entries,byURL:new Map(entries.map(e=>[e.url,e]))};
+}
+async function bundleManifest(network = false) {
+  if (manifestMemo && !network) return manifestMemo;
+  const {cache,response,data} = await readManifest(BUNDLE_URL,BIBLE_CACHE,network);
+  const parsed=parseBundle(data); await cache.put(BUNDLE_URL,response); manifestMemo=parsed; return parsed;
+}
+async function sha256(bytes) {
+  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function verifyAndStore(cache,entry,response) {
+  if (!validResponse(response)) throw new Error('Falha ao baixar '+entry.path);
+  const bytes=await response.arrayBuffer();
+  if (bytes.byteLength!==entry.bytes || await sha256(bytes)!==entry.sha256) throw new Error('Arquivo incompleto ou inválido: '+entry.path);
+  const headers=new Headers(response.headers);
+  headers.delete('content-encoding'); headers.delete('content-length');
+  headers.set(VERIFIED,entry.sha256); headers.set(VERIFIED_BYTES,String(entry.bytes));
+  const verified=new Response(bytes,{status:200,headers});
+  await cache.put(entry.url,verified.clone()); return verified;
+}
+function verifiedHit(response,entry) {
+  return validResponse(response) && response.headers.get(VERIFIED)===entry.sha256 && response.headers.get(VERIFIED_BYTES)===String(entry.bytes);
+}
+async function ensureBundleEntry(cache,entry,token) {
+  if (token!==generation) throw new Error('Download cancelado.');
+  const cached=await cache.match(entry.url);
+  if (verifiedHit(cached,entry)) return;
+  if (cached) { try { await verifyAndStore(cache,entry,cached); return; } catch (_) {} }
+  let lastError;
+  for (let attempt=0;attempt<2;attempt++) {
+    if (token!==generation) throw new Error('Download cancelado.');
     try {
-        const res = await fetch(basePath + sentinelaUrl);
-        if (res.ok) {
-            const html = await res.text();
-            const matches = [...html.matchAll(/class=["']imagem(\d+)["']/g)];
-            for (let m of matches) {
-                let id = m[1];
-                list.push(`sentinela/imagem/semanas/${semana}/img${id}.png`);
-                list.push(`sentinela/imagem/semanas/${semana}/leg${id}.txt`);
-            }
-        }
-    } catch(e) {}
-
-    return list.map(path => path.startsWith('http') ? path : basePath + path);
+      const response=await fetch(entry.url,{cache:'reload'});
+      if (token!==generation) throw new Error('Download cancelado.');
+      await verifyAndStore(cache,entry,response); return;
+    } catch (error) {lastError=error;}
+  }
+  throw lastError;
 }
+async function ensureStaticFiles(paths,progress=()=>{},token=generation,refresh=false) {
+  const cache=await caches.open(SHELL_CACHE),failed=[],files=[...new Set(paths)];
+  let loaded=0,cursor=0;
+  async function worker(){
+    while(cursor<files.length){
+      if(token!==generation)throw new Error('Download cancelado.');
+      const path=files[cursor++],url=absolute(path);
+      try{
+        let response=await cache.match(url);
+        if(refresh||!validResponse(response)){
+          response=await fetch(url,{cache:'reload'});
+          if(!validResponse(response))throw new Error('Arquivo indisponível: '+path);
+          if(token!==generation)throw new Error('Download cancelado.');
+          await cache.put(url,response);
+        }
+        loaded++;
+      }catch(_){failed.push(path);}
+      progress({loaded,total:files.length,failed:failed.length});
+    }
+  }
+  // Small shell files can download together; large Bible parts keep their two-request limit.
+  await Promise.allSettled(Array.from({length:Math.min(4,files.length)},()=>worker()));
+  if(token!==generation)throw new Error('Download cancelado.');
+  if(failed.length)throw Object.assign(new Error('Alguns arquivos do aplicativo não foram baixados.'),{failed});
+}
+function prepareBible(send) {
+  if (bibleJob) {bibleJob.listeners.add(send);if(bibleJob.last)send(bibleJob.last);return bibleJob.promise;}
+  const job={listeners:new Set([send]),last:null},token=generation;
+  const emit=payload=>{job.last=payload;for(const listener of job.listeners)listener(payload);};
+  bibleJob=job;
+  job.promise=(async()=>{
+    const assets=await assetManifest(); await ensureStaticFiles(assets.shell,()=>{},token);
+    // A missing auxiliary page must not label already saved Bible text as unsaved.
+    try { await ensureStaticFiles(assets.app,()=>{},token); } catch(error) { if(token!==generation)throw error; }
+    const manifest=await bundleManifest(),cache=await caches.open(BIBLE_CACHE),failed=[];
+    let loaded=0,bytesLoaded=0,cursor=0;
+    const total=manifest.entries.length,bytesTotal=manifest.entries.reduce((n,e)=>n+e.bytes,0);
+    emit({type:'BIBLE_OFFLINE_PROGRESS',loaded,total,bytesLoaded,bytesTotal});
+    async function worker(){
+      while(cursor<total){
+        const entry=manifest.entries[cursor++];
+        try{await ensureBundleEntry(cache,entry,token);loaded++;bytesLoaded+=entry.bytes;}
+        catch(error){if(token!==generation)throw error;failed.push(entry.path);}
+        emit({type:'BIBLE_OFFLINE_PROGRESS',loaded,total,bytesLoaded,bytesTotal,failed:failed.length});
+      }
+    }
+    // Two requests bound digest memory while downloading 8 MiB database parts on iPhone.
+    await Promise.allSettled([worker(),worker()]);
+    if(token!==generation)throw new Error('Download cancelado.');
+    if(failed.length)throw Object.assign(new Error('Download incompleto. Conecte-se e tente novamente para continuar de onde parou.'),{failed});
+    if(!(await getCacheStatus()).bibleComplete)throw new Error('Não foi possível confirmar todos os arquivos da Bíblia.');
+    const result={type:'BIBLE_OFFLINE_COMPLETE',complete:true,loaded,total,bytesLoaded,bytesTotal};emit(result);return result;
+  })().catch(error=>{emit({type:'BIBLE_OFFLINE_ERROR',complete:false,message:errorMessage(error),failed:error.failed||[]});throw error;})
+  .finally(()=>{if(bibleJob===job)bibleJob=null;});
+  return job.promise;
+}
+async function cachedStaticComplete(paths,cache){
+  const keys = new Set((await cache.keys()).map(request=>request.url));
+  return paths.every(path=>keys.has(absolute(path)));
+}
+async function manifestFingerprint(manifest) {
+  return sha256(new TextEncoder().encode(manifest.entries.map(entry=>`${entry.url}|${entry.bytes}|${entry.sha256}`).join('\n')));
+}
+async function getCacheStatus({fast=false}={}){
+  const names=await caches.keys(),hasCache=OWN_CACHES.some(name=>names.includes(name));
+  const shellCache=await caches.open(SHELL_CACHE),bibleCache=await caches.open(BIBLE_CACHE);
+  let assets,shellComplete=false,appComplete=false,loaded=0,total=0,bytesLoaded=0,bytesTotal=0;
+  try{const response=await shellCache.match(ASSET_URL);assets=response&&await response.json();}catch(_){}
+  if(assets&&Array.isArray(assets.app)&&Array.isArray(assets.shell)){
+    const keys=new Set((await shellCache.keys()).map(request=>request.url));
+    shellComplete=assets.shell.every(path=>keys.has(absolute(path)));
+    appComplete=assets.app.every(path=>keys.has(absolute(path)));
+  }
+  try{
+    const response=await bibleCache.match(BUNDLE_URL),manifest=response&&parseBundle(await response.json());
+    if(manifest){
+      total=manifest.entries.length;
+      const fingerprint=await manifestFingerprint(manifest);
+      let receipt;
+      if(fast){try{const saved=await bibleCache.match(RECEIPT_URL);receipt=saved&&await saved.json();}catch(_){}}
+      // The receipt is written only after inspecting verified headers for every file.
+      // Cache.keys detects eviction or removal without reopening 731 response bodies.
+      const trusted=fast&&receipt?.version===1&&receipt.fingerprint===fingerprint;
+      const keys=trusted?new Set((await bibleCache.keys()).map(request=>request.url)):null;
+      for(const entry of manifest.entries){
+        bytesTotal+=entry.bytes;
+        if(trusted?keys.has(entry.url):verifiedHit(await bibleCache.match(entry.url),entry)){loaded++;bytesLoaded+=entry.bytes;}
+      }
+      if(loaded===total&&!trusted)await bibleCache.put(RECEIPT_URL,new Response(JSON.stringify({version:1,fingerprint}),{headers:{'Content-Type':'application/json'}}));
+    }
+  }catch(_){}
+  const bibleComplete=shellComplete&&total>0&&loaded===total;
+  return {hasCache,complete:appComplete&&bibleComplete,appComplete,shellComplete,bibleComplete,loaded,total,bytesLoaded,bytesTotal};
+}
+function downloadApp(send){
+  if(fullJob){fullJob.listeners.add(send);if(fullJob.last)send(fullJob.last);return fullJob.promise;}
+  const job={listeners:new Set([send]),last:null},token=generation;
+  const emit=payload=>{job.last=payload;for(const listener of job.listeners)listener(payload);};fullJob=job;
+  job.promise=(async()=>{
+    const assets=await assetManifest(true),manifest=await bundleManifest(true),total=assets.app.length+manifest.entries.length;
+    await ensureStaticFiles(assets.app,p=>emit({type:'DOWNLOAD_PROGRESS',loaded:p.loaded,total,phase:'app'}),token);
+    await prepareBible(p=>{if(p.type==='BIBLE_OFFLINE_PROGRESS')emit({...p,type:'DOWNLOAD_PROGRESS',loaded:assets.app.length+p.loaded,total,phase:'bible'});});
+    if(token!==generation||!(await getCacheStatus()).complete)throw new Error('O aplicativo ainda não está completo para uso offline.');
+    emit({type:'DOWNLOAD_COMPLETE',complete:true});
+  })().catch(error=>{emit({type:'DOWNLOAD_ERROR',complete:false,message:errorMessage(error),failed:error.failed||[]});throw error;})
+  .finally(()=>{if(fullJob===job)fullJob=null;});return job.promise;
+}
+self.addEventListener('install',event=>event.waitUntil((async()=>{
+  const assets=await assetManifest(true);
+  // Finish the new, small application version before replacing the previous shell.
+  // The 126 MB Bible cache and the user's IndexedDB library are never redownloaded here.
+  await ensureStaticFiles(assets.app,()=>{},generation,true);await self.skipWaiting();
+})()));
+self.addEventListener('activate',event=>event.waitUntil((async()=>{
+  // Preserve artigo-offline-v1, imported publications, and unrelated apps' caches.
+  for(const name of await caches.keys())if(name.startsWith(PREFIX)&&!OWN_CACHES.includes(name))await caches.delete(name);
+  await self.clients.claim();
+})()));
+self.addEventListener('message',event=>{
+  if(!event.data||!event.data.action)return;
+  const send=reporter(event),action=event.data.action;
+  if(action==='PREPARE_BIBLE_OFFLINE')event.waitUntil(prepareBible(send).catch(()=>{}));
+  else if(action==='START_DOWNLOAD')event.waitUntil(downloadApp(send).catch(()=>{}));
+  else if(action==='CACHE_STATUS')event.waitUntil(getCacheStatus({fast:event.data.fast===true}).then(status=>send({type:'CACHE_STATUS',...status})).catch(error=>send({type:'CACHE_STATUS',complete:false,bibleComplete:false,message:errorMessage(error)})));
+  else if(action==='CLEAR_CACHE')event.waitUntil((async()=>{
+    generation++;await Promise.allSettled([bibleJob&&bibleJob.promise,fullJob&&fullJob.promise].filter(Boolean));
+    for(const name of await caches.keys())if(name.startsWith(PREFIX))await caches.delete(name);
+    assetMemo=undefined;manifestMemo=undefined;send({type:'CACHE_CLEARED'});
+  })());
+});
+async function serveBundle(request){
+  const url=new URL(request.url);url.search='';const cache=await caches.open(BIBLE_CACHE);
+  if(url.href===BUNDLE_URL){const saved=await cache.match(BUNDLE_URL);if(validResponse(saved))return saved;try{await bundleManifest();}catch(_){}return await cache.match(BUNDLE_URL)||new Response('Bíblia indisponível offline.',{status:503});}
+  let manifest;try{manifest=await bundleManifest();}catch(_){}
+  const entry=manifest&&manifest.byURL.get(url.href),cached=await cache.match(url.href);
+  if(entry&&verifiedHit(cached,entry))return cached;
+  try{const response=await fetch(request);return entry?await verifyAndStore(cache,entry,response):response;}
+  catch(_){return new Response('Este arquivo ainda não está disponível offline.',{status:503});}
+}
+self.addEventListener('fetch',event=>{
+  const request=event.request,url=new URL(request.url);
+  if(request.method!=='GET'||!url.protocol.startsWith('http')||request.headers.has('range'))return;
+  if(url.hostname.endsWith('supabase.co')||url.hostname.endsWith('workers.dev'))return;
+  // Do not cache streamed audio/video. Packaged illustrations are handled below.
+  if(/\.(?:mp3|mp4|m4a|m3u8)$/i.test(url.pathname))return;
+  if(url.href.startsWith(BUNDLE_ROOT)){event.respondWith(serveBundle(request));return;}
+  event.respondWith((async()=>{
+    const local=url.href.startsWith(SCOPE),canonical=new URL(url.href);canonical.search='';
+    if(local&&canonical.pathname.endsWith('/'))canonical.pathname+='index.html';
+    const fallback=async()=>{
+      const shell=await caches.open(SHELL_CACHE),runtime=await caches.open(RUNTIME_CACHE);
+      if(local)return await shell.match(canonical.href)||await shell.match(request)||await runtime.match(request)||await runtime.match(canonical.href);
+      return await runtime.match(request);
+    };
+    // Static application files are immutable for this shell version. Read locally
+    // first, even when the network is connected but slow or unresponsive.
+    if(local){const cached=await(await caches.open(SHELL_CACHE)).match(canonical.href);if(validResponse(cached))return cached;}
+    try{
+      const response=await fetch(request);
+      if(!response.ok&&response.type!=='opaque')return await fallback()||response;
+      if(!response.redirected&&response.status!==206){
+        try{await(await caches.open(RUNTIME_CACHE)).put(request,response.clone());}catch(_){}
+        if(local&&assetMemo&&[...assetMemo.shell,...assetMemo.app].some(path=>absolute(path)===canonical.href)){
+          try{await(await caches.open(SHELL_CACHE)).put(canonical.href,response.clone());}catch(_){}
+        }
+      }
+      return response;
+    }catch(_){return await fallback()||new Response('Conecte-se para carregar este conteúdo.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}});}
+  })());
+});
