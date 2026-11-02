@@ -43,14 +43,49 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* No PWA, capa, cartão e menu compartilham a altura real da tela.
-   Evita depender de dois elementos fixed no viewport standalone do iOS. */
+/* O PWA do iOS pode reportar 100dvh sem a faixa da barra de status.
+   As quatro bordas definem a altura; capa, cartão e menu continuam no mesmo flex. */
 body.home-screen.is-pwa.with-bottom-navbar {
-  position: relative;
-  inset: auto;
-  height: 100vh;
-  height: 100dvh;
+  position: fixed;
+  inset: 0;
+  height: auto;
   padding-bottom: 0 !important;
+}
+
+/* Material fosco atrás do relógio e dos indicadores nativos do iPhone. */
+.home-statusbar { display: none; }
+body.home-screen.is-pwa > .home-statusbar {
+  --statusbar-material: rgba(245, 245, 247, 0.72);
+  --statusbar-solid: #f2f2f7;
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 1100;
+  pointer-events: none;
+  background: var(--statusbar-solid);
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  body.home-screen.is-pwa > .home-statusbar {
+    background: var(--statusbar-material);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  body.home-screen.is-pwa > .home-statusbar {
+    --statusbar-material: rgba(28, 28, 30, 0.72);
+    --statusbar-solid: #1c1c1e;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  body.home-screen.is-pwa > .home-statusbar {
+    background: var(--statusbar-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 body.home-screen.is-pwa > .dock {
