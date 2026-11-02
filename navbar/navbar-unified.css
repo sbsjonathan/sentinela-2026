@@ -215,6 +215,18 @@ body.zombie-toolbar-active .bottom-navbar {
 .page-save .sync-status-badge.logged-out { background: #6b7280; box-shadow: 0 2px 10px rgba(107, 114, 128, 0.3); }
 .page-save .sync-status-badge.error { background: #ef4444; box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3); }
 
+/* Maintenance links need their own row, including when the label wraps on iPhone. */
+.offline-section > a.btn {
+    display: block;
+    box-sizing: border-box;
+    min-height: 44px;
+    text-align: center;
+    text-decoration: none;
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
 @keyframes navbarSpin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
