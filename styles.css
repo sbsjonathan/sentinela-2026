@@ -43,12 +43,16 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* No PWA do iOS, o bloco fixo e 100dvh podem excluir a altura da barra de status.
-   O fluxo com 100vh ocupa a tela inteira; capa, cartão e menu seguem no mesmo flex. */
+/* O iOS pode sobrepor a barra de status (safe-top > 0) ou reservá-la fora da página.
+   No primeiro caso, dvh pode omitir esse inset até o documento ocupar a tela.
+   No segundo, 100vh pode incluir uma área que a página não pode usar. Somamos
+   somente o inset superior a dvh e limitamos a vh, inclusive após essa expansão.
+   O inset inferior já pertence ao padding do menu; não deve ser somado aqui. */
 body.home-screen.is-pwa.with-bottom-navbar {
   position: relative;
   inset: auto;
   height: 100vh;
+  height: min(100vh, calc(100dvh + env(safe-area-inset-top, 0px)));
   padding-bottom: 0 !important;
 }
 

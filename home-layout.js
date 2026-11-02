@@ -31,12 +31,15 @@
   }
   function sample(name) {
     const visual = window.visualViewport;
-    return {name,viewportMeta:viewport?.content,innerHeight,innerWidth,outerHeight,outerWidth,
+    return {name,viewportMeta:viewport?.content,
+      statusBarStyle:document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.content,
+      innerHeight,innerWidth,outerHeight,outerWidth,
       screen:{height:screen.height,width:screen.width,availHeight:screen.availHeight,availWidth:screen.availWidth,orientation:screen.orientation?.type},
       visualViewport:visual?{height:visual.height,width:visual.width,offsetTop:visual.offsetTop,offsetLeft:visual.offsetLeft,scale:visual.scale}:null,
       clientHeight:document.documentElement.clientHeight,scrollHeight:document.documentElement.scrollHeight,
       safeTop:probeHeight('env(safe-area-inset-top, 0px)'),safeBottom:probeHeight('env(safe-area-inset-bottom, 0px)'),
-      units:{vh:probeHeight('100vh'),svh:probeHeight('100svh'),lvh:probeHeight('100lvh'),dvh:probeHeight('100dvh'),fixed:probeHeight('',true)},
+      units:{vh:probeHeight('100vh'),svh:probeHeight('100svh'),lvh:probeHeight('100lvh'),dvh:probeHeight('100dvh'),fixed:probeHeight('',true),
+        home:probeHeight('min(100vh, calc(100dvh + env(safe-area-inset-top, 0px)))')},
       body:rectangle('body'),nav:rectangle('.bottom-navbar'),dock:rectangle('.dock'),status:rectangle('.home-statusbar')};
   }
   function restore() {
