@@ -62,7 +62,7 @@
     const form = node('form', 'search-query-form'); form.id = 'search-form'; form.setAttribute('role', 'search');
     const label = node('label', '', 'Palavra, assunto ou passagem'); label.htmlFor = 'search-input';
     const field = node('div', 'search-query-field');
-    const input = node('input'); input.id = 'search-input'; input.type = 'search';
+    const input = node('input'); input.id = 'search-input'; input.type = 'text'; input.setAttribute('role', 'searchbox');
     input.placeholder = 'Sangue, fé ou João 3:16'; input.autocomplete = 'off'; input.spellcheck = false; input.maxLength = 180;
     input.setAttribute('autocapitalize', 'none'); input.setAttribute('enterkeyhint', 'search'); input.setAttribute('aria-describedby', 'search-message');
     const clearButton = node('button', 'search-clear'); clearButton.type = 'button'; clearButton.hidden = true;
