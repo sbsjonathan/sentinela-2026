@@ -609,19 +609,22 @@ function bootUnifiedNavbarWhenPossible() {
 
 bootUnifiedNavbarWhenPossible();
 
-let lastTouchEnd = 0;
+// Suppress repeated navigation taps only. Text selection and its native handles
+// must keep their touch events, including double taps in the Bible reader.
+let lastNavbarTouchEnd = 0;
 document.addEventListener('touchend', function (event) {
+    if (!(event.target instanceof Element) || !event.target.closest('.bottom-navbar')) return;
     const now = (new Date()).getTime();
-    if (now - lastTouchEnd <= 300) {
+    if (now - lastNavbarTouchEnd <= 300) {
         event.preventDefault();
     }
-    lastTouchEnd = now;
-}, false);
+    lastNavbarTouchEnd = now;
+}, { passive: false });
 
 // Reopening an installed iPhone app may resume the page without another load event.
 (function manageAppUpdates() {
     if (!('serviceWorker' in navigator)) return;
-    const release = '2026.11.02.8';
+    const release = '2026.11.02.9';
     const root = getProjectRootURL();
     let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
     const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);

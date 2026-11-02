@@ -20,13 +20,29 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
   document.body.append(toolbar);
   const events=new AbortController(),signal=events.signal;
   let selected=[],anchorVerse=null,anchorElement=null,anchorOffset=0,chapterKey='',frame=0;
+  let gesture=null,holdTimer=0,suppressUntil=0;
+  const nativeControl='.note-marker,.study-word,a,.inline-reference';
   const tell=(message,error=false)=>{if(typeof onNotice==='function')onNotice(message,error);};
   const numericVerse=e=>{const value=Number(e?.dataset.verse);return Number.isInteger(value)&&value>0?value:null;};
   const chapterId=data=>data?`${data.book}:${data.chapter}`:'';
+  function hasNativeSelection() {
+    const value=window.getSelection();if(!value || value.isCollapsed || !value.rangeCount)return false;
+    for(let i=0;i<value.rangeCount;i++)if(value.getRangeAt(i).intersectsNode(root))return true;
+    return false;
+  }
   function clear() {
     selected=[];anchorVerse=null;anchorElement=null;chapterKey='';toolbar.hidden=true;
     root.classList.remove('has-text-selection');root.removeAttribute('data-selected-reference');
     root.querySelectorAll('.text-selected,.text-unselected').forEach(e=>e.classList.remove('text-selected','text-unselected'));
+    root.querySelectorAll('.verse-number[role="button"]').forEach(e=>e.setAttribute('aria-pressed','false'));
+  }
+  function refresh() {
+    clear();
+    for(const number of root.querySelectorAll('.verse-number')){
+      const n=numericVerse(number.closest('[data-verse]'));if(n==null)continue;
+      number.setAttribute('role','button');number.tabIndex=0;number.setAttribute('aria-label',`Opções do versículo ${n}`);
+      number.setAttribute('aria-controls',toolbar.id);number.setAttribute('aria-pressed','false');
+    }
   }
   function selection() {
     const data=getChapter();if(!data || chapterId(data)!==chapterKey || !selected.length)return null;
@@ -43,6 +59,7 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
     const value=selection();if(!value){clear();return;}
     root.classList.add('has-text-selection');root.dataset.selectedReference=value.reference;
     root.querySelectorAll('[data-verse]').forEach(el=>{const n=numericVerse(el);el.classList.toggle('text-selected',selected.includes(n));el.classList.toggle('text-unselected',n!=null&&!selected.includes(n));});
+    root.querySelectorAll('.verse-number[role="button"]').forEach(el=>el.setAttribute('aria-pressed',String(selected.includes(numericVerse(el.closest('[data-verse]'))))));
     buttons.study.hidden=typeof onStudy!=='function'||!value.notes.length;
     buttons.bookmark.hidden=typeof onBookmark!=='function';buttons.listen.hidden=typeof onListen!=='function';
     toolbar.hidden=false;position();
@@ -68,20 +85,58 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
   function queuePosition(){if(!frame)frame=requestAnimationFrame(position);}
   function choose(event) {
     const target=event.target instanceof Element?event.target:null;
-    if(!target || target.closest('.note-marker,.study-word,a,.inline-reference'))return;
+    if(!target || target.closest(nativeControl))return;
+    // A native range belongs to Safari: never replace it or compete with its handles/menu.
+    if(hasNativeSelection() || performance.now()<suppressUntil || event.detail>1 || event.button>0 || event.metaKey || event.ctrlKey || event.altKey){clear();return;}
     const el=target.closest('[data-verse]');if(!el || !root.contains(el))return;
     const n=numericVerse(el),data=getChapter();if(n==null || !(data?.verses||[]).some(v=>Number(v.number)===n))return;
-    event.preventDefault();event.stopPropagation();
+    event.stopPropagation();
     const key=chapterId(data);if(key!==chapterKey)clear();chapterKey=key;
     if(selected.length===1&&selected[0]===n){clear();return;}
     if(anchorVerse==null || selected.length>1&&selected.includes(n)){anchorVerse=n;selected=[n];}
     else selected=data.verses.map(v=>Number(v.number)).filter(v=>v>0&&v>=Math.min(anchorVerse,n)&&v<=Math.max(anchorVerse,n));
     anchorElement=el;const rect=el.getBoundingClientRect();anchorOffset=Number.isFinite(event.clientY)&&event.clientY?Math.max(0,event.clientY-rect.top):Math.min(18,rect.height/2);
-    window.getSelection()?.removeAllRanges();paint();
+    paint();
+  }
+  function leaveToNative() {
+    suppressUntil=Math.max(suppressUntil,performance.now()+700);clear();
+  }
+  function startGesture(event) {
+    clearTimeout(holdTimer);
+    if(event.isPrimary===false || event.button>0 || event.touches?.length>1){gesture=null;leaveToNative();return;}
+    const point=event.touches?.[0]||event;
+    gesture={id:event.pointerId,x:point.clientX,y:point.clientY,start:performance.now(),moved:false,native:hasNativeSelection()};
+    if(gesture.native)leaveToNative();
+    holdTimer=setTimeout(()=>{if(gesture){gesture.native=true;leaveToNative();}},400);
+  }
+  function moveGesture(event) {
+    if(!gesture || event.pointerId!=null&&gesture.id!==event.pointerId)return;
+    const point=event.touches?.[0]||event;
+    if(Math.hypot(point.clientX-gesture.x,point.clientY-gesture.y)>8){gesture.moved=true;clearTimeout(holdTimer);leaveToNative();}
+  }
+  function endGesture(event) {
+    if(!gesture || event.pointerId!=null&&gesture.id!==event.pointerId)return;
+    clearTimeout(holdTimer);
+    if(gesture.native || gesture.moved || performance.now()-gesture.start>=400 || event.type.endsWith('cancel'))leaveToNative();
+    gesture=null;
+  }
+  // Pointer Events cover current iPhones; touch events keep older WebKit on the same contract.
+  if('PointerEvent' in window){
+    root.addEventListener('pointerdown',startGesture,{passive:true,signal});
+    document.addEventListener('pointermove',moveGesture,{passive:true,signal});
+    document.addEventListener('pointerup',endGesture,{passive:true,signal});
+    document.addEventListener('pointercancel',endGesture,{passive:true,signal});
+  }else{
+    root.addEventListener('touchstart',startGesture,{passive:true,signal});
+    document.addEventListener('touchmove',moveGesture,{passive:true,signal});
+    document.addEventListener('touchend',endGesture,{passive:true,signal});
+    document.addEventListener('touchcancel',endGesture,{passive:true,signal});
   }
   root.addEventListener('click',choose,{capture:true,signal});
-  root.addEventListener('contextmenu',event=>{const el=event.target instanceof Element?event.target.closest('[data-verse]'):null;if(el && !event.target.closest('.note-marker,.study-word,a,.inline-reference')){event.preventDefault();if(!selected.length)choose(event);}},{signal});
-  document.addEventListener('pointerdown',event=>{if(toolbar.hidden)return;const el=event.target instanceof Element?event.target:null;if(el && (toolbar.contains(el)||root.contains(el)&&!el.closest('.note-marker,.study-word,a,.inline-reference')))return;clear();},{capture:true,signal});
+  root.addEventListener('contextmenu',leaveToNative,{signal});
+  root.addEventListener('keydown',event=>{if(!['Enter',' '].includes(event.key) || !event.target.matches?.('.verse-number[role="button"]'))return;event.preventDefault();choose(event);},{signal});
+  document.addEventListener('selectionchange',()=>{if(hasNativeSelection())leaveToNative();},{signal});
+  document.addEventListener('pointerdown',event=>{if(toolbar.hidden)return;const el=event.target instanceof Element?event.target:null;if(el && (toolbar.contains(el)||root.contains(el)&&!el.closest(nativeControl)))return;clear();},{capture:true,signal});
   document.addEventListener('keydown',event=>{if(event.key==='Escape')clear();},{signal});
   window.addEventListener('scroll',queuePosition,{passive:true,signal});window.addEventListener('resize',queuePosition,{passive:true,signal});
   window.visualViewport?.addEventListener('resize',queuePosition,{passive:true,signal});window.visualViewport?.addEventListener('scroll',queuePosition,{passive:true,signal});
@@ -100,5 +155,6 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
   buttons.bookmark.onclick=()=>{const value=selection();if(value&&typeof onBookmark==='function')callback(onBookmark,value);};
   buttons.listen.onclick=()=>{const value=selection();if(value&&typeof onListen==='function')callback(onListen,value);};
   buttons.study.onclick=()=>{const value=selection();if(value&&typeof onStudy==='function')callback(onStudy,value);};
-  return {clear,refresh:clear,getSelection:selection,destroy(){clear();events.abort();if(frame)cancelAnimationFrame(frame);toolbar.remove();}};
+  refresh();
+  return {clear,refresh,getSelection:selection,destroy(){clear();events.abort();clearTimeout(holdTimer);if(frame)cancelAnimationFrame(frame);toolbar.remove();}};
 }
