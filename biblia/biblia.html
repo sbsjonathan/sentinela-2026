@@ -24,7 +24,7 @@
 <header class="app-header">
 <button id="back" class="header-back" aria-label="Voltar" hidden><svg><use href="#i-back"/></svg><span>Voltar</span></button>
 <div class="header-title"><h1 id="screen-title">Bíblia</h1><p id="screen-subtitle">Sua biblioteca pessoal</p></div>
-<div class="header-actions"><button id="listen-chapter" class="icon-button" aria-label="Ouvir capítulo" hidden><svg><use href="#i-headphones"/></svg></button><button id="search" class="icon-button" aria-label="Buscar na Bíblia"><svg><use href="#i-search"/></svg></button><button id="bookmark" class="icon-button" aria-label="Marcar capítulo" hidden><svg><use href="#i-bookmark"/></svg></button><button id="menu" class="icon-button" aria-label="Opções"><svg><use href="#i-more"/></svg></button></div>
+<div class="header-actions"><button id="listen-chapter" class="icon-button" aria-label="Ouvir capítulo" hidden><svg><use href="#i-headphones"/></svg></button><button id="search" class="icon-button" aria-label="Buscar na Bíblia"><svg><use href="#i-search"/></svg></button><button id="bookmark" class="icon-button" aria-label="Meus marcadores" hidden><svg><use href="#i-bookmark"/></svg></button><button id="menu" class="icon-button" aria-label="Opções"><svg><use href="#i-more"/></svg></button></div>
 </header>
 <nav id="section-tabs" class="section-tabs" aria-label="Seções da Bíblia" hidden></nav>
 <main>
@@ -38,7 +38,7 @@
 <section id="section-list" class="section-list" hidden></section>
 <article id="reader" class="reader" hidden><h2 id="reading-title" tabindex="-1"></h2><div id="verses" class="verses"></div><nav class="chapter-nav" aria-label="Navegação entre capítulos"><button id="previous" class="text-button">‹ Anterior</button><span id="position"></span><button id="next" class="text-button">Próximo ›</button></nav></article>
 <article id="document" class="document reader" hidden><h2 id="document-title" tabindex="-1"></h2><div id="document-body"></div></article>
-<section id="bookmarks" class="saved-page" hidden><h2>Marcadores</h2><p class="page-hint">Seus capítulos para voltar depois.</p><div id="bookmark-list"></div></section>
+<section id="bookmarks" class="saved-page" hidden><h2>Marcadores</h2><p class="page-hint">Seus capítulos e versículos para voltar depois.</p><div id="bookmark-list"></div></section>
 <section id="library" class="library" hidden><h2>Biblioteca</h2><label for="publication">Tradução da Bíblia</label><select id="publication"></select><button id="add-file" class="button primary">Adicionar arquivo JWPUB</button><p class="page-hint">A Bíblia de Estudo já está incluída. Seus marcadores e outros arquivos ficam neste iPhone.</p><button id="offline-status" class="menu-row">Conferir leitura offline <span>↓</span></button><p id="offline-detail" class="page-hint">Preparando a leitura offline…</p><details><summary>Como usar no iPhone</summary><p>Na primeira abertura, aguarde “Bíblia disponível offline”. Depois você poderá ler os livros, notas, mapas e apêndices sem internet. Áudios e vídeos precisam de conexão.</p><p>Para instalar A Sentinela, toque em Compartilhar no Safari e em Adicionar à Tela de Início.</p><p>Toque nos números azuis para ver notas de estudo. Símbolos e letras pequenas abrem notas e referências.</p></details></section>
 </main>
 <input id="file-input" type="file" accept=".jwpub,application/octet-stream,application/zip" hidden>
