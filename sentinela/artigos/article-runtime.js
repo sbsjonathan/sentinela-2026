@@ -48,15 +48,20 @@
 
   function prepareHTML(html, { date, rootURL }) {
     if (!isArticle(html)) throw new Error('O conteúdo recebido não é um estudo.');
-    if (/\bid\s*=\s*["']sentinela-reading-position["']/i.test(html)) return html;
     const root = new URL('./', rootURL).href;
     const scriptURL = new URL('sentinela/artigos/reading-position.js', root).href;
-    const script = `<script id="sentinela-reading-position" src="${escapeAttribute(scriptURL)}" data-study-date="${escapeAttribute(date)}" data-project-root="${escapeAttribute(root)}"></script>`;
+    const script = /\bid\s*=\s*["']sentinela-reading-position["']/i.test(html) ? '' : `<script id="sentinela-reading-position" src="${escapeAttribute(scriptURL)}" data-study-date="${escapeAttribute(date)}" data-project-root="${escapeAttribute(root)}"></script>`;
+    const typography = (/\bid\s*=\s*["']sentinela-typography-script["']/i.test(html) ? '' : `<script id="sentinela-typography-script" src="${escapeAttribute(new URL('shared/typography.js', root).href)}"></script>`) +
+      (/\bid\s*=\s*["']sentinela-typography-style["']/i.test(html) ? '' : `<link id="sentinela-typography-style" rel="stylesheet" href="${escapeAttribute(new URL('shared/typography.css', root).href)}">`);
     // Run before styles, external scripts and article content. The document URL
     // stays estudo.html, preserving every existing relative asset and link.
-    if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b[^>]*>/i, match => match + '\n' + script);
-    if (/<html\b[^>]*>/i.test(html)) return html.replace(/<html\b[^>]*>/i, match => match + '<head>' + script + '</head>');
-    return html.replace(/<!doctype[^>]*>/i, match => match + '<head>' + script + '</head>');
+    if (/<head\b[^>]*>/i.test(html)) {
+      const prepared = html.replace(/<head\b[^>]*>/i, match => match + '\n' + script);
+      // Run after legacy font bootstraps/styles, before the article can paint.
+      return /<\/head\s*>/i.test(prepared) ? prepared.replace(/<\/head\s*>/i, typography + '\n</head>') : prepared.replace(/<head\b[^>]*>/i, match => match + typography);
+    }
+    if (/<html\b[^>]*>/i.test(html)) return html.replace(/<html\b[^>]*>/i, match => match + '<head>' + script + typography + '</head>');
+    return html.replace(/<!doctype[^>]*>/i, match => match + '<head>' + script + typography + '</head>');
   }
 
   scope.SentinelaArticleRuntime = Object.freeze({ CACHE_NAME, PROXY_URL, resolveDate, cacheKey, isArticle, prepareHTML });

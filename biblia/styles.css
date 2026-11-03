@@ -49,3 +49,15 @@ body.audio-open{padding-bottom:calc(var(--bottom) + env(safe-area-inset-bottom) 
 #verses:not(.has-text-selection) .audio-current.verse-number,#verses:not(.has-text-selection) .audio-current .verse-number,#verses:not(.has-text-selection):not(.audio-following) .highlight.verse-number,#verses:not(.has-text-selection):not(.audio-following) .highlight .verse-number{color:var(--purple)}
 #audio-follow{position:fixed;z-index:39;right:max(16px,env(safe-area-inset-right));bottom:calc(var(--bottom) + env(safe-area-inset-bottom) + 122px);border:1px solid #d5cbe2;border-radius:22px;min-height:42px;padding:8px 16px;color:var(--purple);background:#fff;box-shadow:0 2px 12px #0002;font-size:13px}
 .note-marker{font-synthesis:style}
+
+/* Native dialogs retain focus and safe-area geometry while their sheets animate. */
+.bible-modal-motion.is-opening::backdrop{animation:bible-backdrop-in .26s ease-out both}
+.bible-modal-motion.is-closing::backdrop{animation:bible-backdrop-out .18s ease-in both}
+.bible-modal-motion.dialog-css-motion.is-opening{animation:bible-sheet-in .26s cubic-bezier(.22,1,.36,1) both}
+.bible-modal-motion.dialog-css-motion.is-closing{animation:bible-sheet-out .18s ease-in both}
+.bible-modal-motion h2:focus{outline:none}
+@keyframes bible-sheet-in{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bible-sheet-out{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(20px)}}
+@keyframes bible-backdrop-in{from{opacity:0}to{opacity:1}}
+@keyframes bible-backdrop-out{from{opacity:1}to{opacity:0}}
+@media(prefers-reduced-motion:reduce){.bible-modal-motion,.bible-modal-motion::backdrop{animation:none!important}}

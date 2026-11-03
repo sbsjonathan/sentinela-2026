@@ -360,6 +360,8 @@ $("btn2").onclick = () => {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css">
     <link rel="stylesheet" href="../imagem/swiper-zoom.css">
     <link rel="stylesheet" href="../../navbar/navbar-unified.css">
+    <script id="sentinela-typography-script" src="../../shared/typography.js"></script>
+    <link id="sentinela-typography-style" rel="stylesheet" href="../../shared/typography.css">
 </head>
 <body data-estudo="X" style="--cor-principal-estudo: X;" class="with-bottom-navbar">
 <script>

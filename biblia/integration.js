@@ -79,7 +79,7 @@
       } catch (_) {
         if (revision !== workerRevision) return;
         // Failure to inspect storage says nothing about already saved Bible text.
-        // Keep a truthful retry action in Options; never interrupt the reader.
+        // Keep a truthful retry action in Library; never interrupt the reader.
         if (!ready) showState(textReady
           ? 'O texto da Bíblia está salvo neste iPhone. A disponibilidade dos mapas e imagens pode ser conferida novamente aqui.'
           : 'A disponibilidade offline pode ser conferida novamente aqui.', 'Conferir leitura offline');
@@ -103,5 +103,5 @@
   window.prepareSentinelaBibleOffline = prepare;
   window.addEventListener('online', () => { if(!ready){autoAttempted=false;prepare();} });
   window.addEventListener('pageshow', event => { if(event.persisted) prepare(); });
-  showState('A disponibilidade offline é conferida em segundo plano, sem interromper a leitura.', 'Opções offline');
+  showState('A disponibilidade offline é conferida em segundo plano, sem interromper a leitura.', 'Conferir leitura offline');
 })();

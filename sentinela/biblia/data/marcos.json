@@ -1317,7 +1317,7 @@
         {
           "verso": 9,
           "texto": "Ele lhes disse ainda: “Vocês sabem muito bem como pôr de lado o mandamento de Deus, a fim de manter a sua tradição.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 10,
@@ -1346,7 +1346,117 @@
         },
         {
           "verso": 15,
-          "texto": "Não há nada fora de um homem que, entrando nele, possa torná-lo impuro; mas as coisas que saem do homem são as que o tornam impuro.” 16—— 17 Então, depois de ele se afastar da multidão e entrar numa casa, seus discípulos lhe perguntaram sobre a ilustração. 18 De modo que lhes perguntou: “Vocês também estão sem entendimento, como eles? Não percebem que nada de fora que entre num homem pode torná-lo impuro, 19 visto que entra, não no seu coração, mas no seu estômago, e sai para o esgoto?” Assim ele declarou puros todos os alimentos. 20 Além disso, ele disse: “O que sai do homem é o que o torna impuro. 21 Pois, de dentro, do coração dos homens, saem raciocínios prejudiciais: imoralidade sexual, roubos, assassinatos, 22 adultérios, ganância, maldades, engano, conduta insolente, olho invejoso, blasfêmia, arrogância e insensatez. 23 Todas essas coisas más saem de dentro e tornam o homem impuro.” 24 Ele se levantou e foi para a região de Tiro e Sídon. Ali, entrou numa casa e não quis que ninguém soubesse, mas não pôde passar despercebido. 25 Logo uma mulher cuja filhinha tinha um espírito impuro ouviu falar dele e foi até lá, e se prostrou aos seus pés. 26 A mulher era grega, de nacionalidade siro-fenícia, e ela lhe pedia com insistência que expulsasse da sua filha o demônio. 27 Mas ele lhe disse: “Deixe primeiro os filhos ficarem satisfeitos, pois não é certo tirar o pão dos filhos e jogá-lo aos cachorrinhos.” 28 Ela, porém, lhe respondeu: “Sim, senhor; no entanto, até os cachorrinhos debaixo da mesa comem as migalhas que as criancinhas deixam cair.” 29 Com isso, ele lhe disse: “Por causa da sua resposta, vá; o demônio saiu da sua filha.” 30 Assim, ela foi para casa e encontrou a criancinha deitada na cama, e o demônio a tinha deixado. 31 Quando Jesus voltou da região de Tiro, passou por Sídon e foi para o mar da Galileia, atravessando a região de Decápolis. 32 Ali, levaram-lhe um surdo que tinha um impedimento na fala e suplicaram-lhe que pusesse a mão sobre ele. 33 E ele o levou à parte, longe da multidão. Então pôs os dedos nos ouvidos do homem e, depois de cuspir, tocou na língua dele. 34 Olhando para o céu, suspirou profundamente e lhe disse: “Efatá”, isto é: “Abra-se.” 35 Com isso, seus ouvidos se abriram e seu impedimento na fala foi removido, e ele começou a falar normalmente. 36 Então lhes ordenou que não contassem isso a ninguém, mas, quanto mais ordenava, mais proclamavam o acontecido. 37 De fato, estavam extremamente admirados e diziam: “Ele faz bem todas as coisas. Faz até os surdos ouvir e os mudos falar.”",
+          "texto": "Não há nada fora de um homem que, entrando nele, possa torná-lo impuro; mas as coisas que saem do homem são as que o tornam impuro.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 16,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 17,
+          "texto": "Então, depois de ele se afastar da multidão e entrar numa casa, seus discípulos lhe perguntaram sobre a ilustração.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 18,
+          "texto": "De modo que lhes perguntou: “Vocês também estão sem entendimento, como eles? Não percebem que nada de fora que entre num homem pode torná-lo impuro,",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 19,
+          "texto": "visto que entra, não no seu coração, mas no seu estômago, e sai para o esgoto?” Assim ele declarou puros todos os alimentos.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 20,
+          "texto": "Além disso, ele disse: “O que sai do homem é o que o torna impuro.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 21,
+          "texto": "Pois, de dentro, do coração dos homens, saem raciocínios prejudiciais: imoralidade sexual, roubos, assassinatos,",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 22,
+          "texto": "adultérios, ganância, maldades, engano, conduta insolente, olho invejoso, blasfêmia, arrogância e insensatez.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 23,
+          "texto": "Todas essas coisas más saem de dentro e tornam o homem impuro.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 24,
+          "texto": "Ele se levantou e foi para a região de Tiro e Sídon. Ali, entrou numa casa e não quis que ninguém soubesse, mas não pôde passar despercebido.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 25,
+          "texto": "Logo uma mulher cuja filhinha tinha um espírito impuro ouviu falar dele e foi até lá, e se prostrou aos seus pés.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 26,
+          "texto": "A mulher era grega, de nacionalidade siro-fenícia, e ela lhe pedia com insistência que expulsasse da sua filha o demônio.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 27,
+          "texto": "Mas ele lhe disse: “Deixe primeiro os filhos ficarem satisfeitos, pois não é certo tirar o pão dos filhos e jogá-lo aos cachorrinhos.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 28,
+          "texto": "Ela, porém, lhe respondeu: “Sim, senhor; no entanto, até os cachorrinhos debaixo da mesa comem as migalhas que as criancinhas deixam cair.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 29,
+          "texto": "Com isso, ele lhe disse: “Por causa da sua resposta, vá; o demônio saiu da sua filha.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 30,
+          "texto": "Assim, ela foi para casa e encontrou a criancinha deitada na cama, e o demônio a tinha deixado.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 31,
+          "texto": "Quando Jesus voltou da região de Tiro, passou por Sídon e foi para o mar da Galileia, atravessando a região de Decápolis.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 32,
+          "texto": "Ali, levaram-lhe um surdo que tinha um impedimento na fala e suplicaram-lhe que pusesse a mão sobre ele.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 33,
+          "texto": "E ele o levou à parte, longe da multidão. Então pôs os dedos nos ouvidos do homem e, depois de cuspir, tocou na língua dele.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 34,
+          "texto": "Olhando para o céu, suspirou profundamente e lhe disse: “Efatá”, isto é: “Abra-se.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 35,
+          "texto": "Com isso, seus ouvidos se abriram e seu impedimento na fala foi removido, e ele começou a falar normalmente.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 36,
+          "texto": "Então lhes ordenou que não contassem isso a ninguém, mas, quanto mais ordenava, mais proclamavam o acontecido.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 37,
+          "texto": "De fato, estavam extremamente admirados e diziam: “Ele faz bem todas as coisas. Faz até os surdos ouvir e os mudos falar.”",
           "novo_paragrafo": false
         }
       ]
@@ -1592,7 +1702,7 @@
         {
           "verso": 9,
           "texto": "Enquanto desciam do monte, Jesus lhes ordenou com firmeza que não contassem a ninguém o que tinham visto, até que o Filho do Homem fosse levantado dentre os mortos.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 10,
@@ -1617,7 +1727,7 @@
         {
           "verso": 14,
           "texto": "Ao chegarem onde estavam os outros discípulos, notaram uma grande multidão em volta deles, e havia escribas discutindo com eles.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 15,
@@ -1672,7 +1782,7 @@
         {
           "verso": 25,
           "texto": "Observando então que uma multidão estava rapidamente se aproximando deles, Jesus censurou o espírito impuro, dizendo-lhe: “Espírito mudo e surdo, eu lhe ordeno que saia dele e não entre nele novamente!”",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 26,
@@ -1697,7 +1807,7 @@
         {
           "verso": 30,
           "texto": "Partiram dali e atravessaram a Galileia, mas ele não quis que ninguém soubesse disso,",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 31,
@@ -1712,7 +1822,7 @@
         {
           "verso": 33,
           "texto": "E entraram em Cafarnaum. Então, quando estava dentro da casa, ele lhes perguntou: “Sobre o que vocês estavam discutindo na estrada?”",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 34,
@@ -1737,7 +1847,7 @@
         {
           "verso": 38,
           "texto": "João lhe disse: “Instrutor, vimos alguém expulsar demônios usando o seu nome e tentamos impedi-lo, porque ele não estava nos acompanhando.”",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 39,
@@ -1761,7 +1871,42 @@
         },
         {
           "verso": 43,
-          "texto": "“Se a sua mão faz você tropeçar, corte-a. É melhor para você entrar na vida aleijado do que ir com as duas mãos para a Geena, para o fogo que não pode ser apagado. 44—— 45 E, se o seu pé o faz tropeçar, corte-o. É melhor para você entrar na vida manco do que ser lançado com os dois pés na Geena. 46—— 47 E, se o seu olho o faz tropeçar, lance-o para longe. É melhor para você entrar no Reino de Deus com um olho só do que ser lançado com os dois olhos na Geena, 48 onde os vermes não morrem e o fogo não é apagado. 49 “Pois todos têm de ser salgados com fogo. 50 O sal é bom, mas, se o sal perder a sua salinidade, o que farão para recuperar o seu sabor? Tenham sal em vocês mesmos e mantenham a paz uns com os outros.”",
+          "texto": "“Se a sua mão faz você tropeçar, corte-a. É melhor para você entrar na vida aleijado do que ir com as duas mãos para a Geena, para o fogo que não pode ser apagado.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 44,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 45,
+          "texto": "E, se o seu pé o faz tropeçar, corte-o. É melhor para você entrar na vida manco do que ser lançado com os dois pés na Geena.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 46,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 47,
+          "texto": "E, se o seu olho o faz tropeçar, lance-o para longe. É melhor para você entrar no Reino de Deus com um olho só do que ser lançado com os dois olhos na Geena,",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 48,
+          "texto": "onde os vermes não morrem e o fogo não é apagado.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 49,
+          "texto": "“Pois todos têm de ser salgados com fogo.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 50,
+          "texto": "O sal é bom, mas, se o sal perder a sua salinidade, o que farão para recuperar o seu sabor? Tenham sal em vocês mesmos e mantenham a paz uns com os outros.”",
           "novo_paragrafo": false
         }
       ]
@@ -2067,7 +2212,7 @@
         {
           "verso": 7,
           "texto": "Trouxeram então a Jesus o jumentinho e colocaram sobre este suas capas, e ele se sentou nele.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 8,
@@ -2092,7 +2237,7 @@
         {
           "verso": 12,
           "texto": "No dia seguinte, quando estavam saindo de Betânia, ele sentiu fome.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 13,
@@ -2107,7 +2252,7 @@
         {
           "verso": 15,
           "texto": "Chegaram então a Jerusalém. Ali ele entrou no templo e começou a expulsar os que vendiam e compravam no templo, e derrubou as mesas dos cambistas e as cadeiras dos que vendiam pombas;",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 16,
@@ -2127,7 +2272,7 @@
         {
           "verso": 19,
           "texto": "Quando ficou tarde no dia, saíram da cidade.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 20,
@@ -2156,7 +2301,47 @@
         },
         {
           "verso": 25,
-          "texto": "E, quando vocês estiverem em pé, orando, perdoem o que tiverem contra alguém, para que o seu Pai, que está nos céus, também perdoe as falhas de vocês.” 26—— 27 Chegaram novamente a Jerusalém. E enquanto ele andava pelo templo, os principais sacerdotes, os escribas e os anciãos vieram 28 e lhe perguntaram: “Com que autoridade você faz essas coisas? E quem lhe deu autoridade para fazer essas coisas?” 29 Jesus lhes disse: “Eu lhes farei uma pergunta. Respondam-me, e eu lhes direi com que autoridade faço essas coisas. 30 O batismo de João era do céu ou dos homens? Respondam-me.” 31 Então eles começaram a raciocinar entre si, dizendo: “Se dissermos: ‘Do céu’, ele dirá: ‘Então, por que vocês não acreditaram nele?’ 32 Mas nos atrevemos a dizer: ‘Dos homens’?” Eles tinham medo da multidão, pois todos achavam que João realmente tinha sido um profeta. 33 Assim, responderam a Jesus: “Não sabemos.” Jesus lhes disse: “Então eu também não lhes digo com que autoridade faço essas coisas.”",
+          "texto": "E, quando vocês estiverem em pé, orando, perdoem o que tiverem contra alguém, para que o seu Pai, que está nos céus, também perdoe as falhas de vocês.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 26,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 27,
+          "texto": "Chegaram novamente a Jerusalém. E enquanto ele andava pelo templo, os principais sacerdotes, os escribas e os anciãos vieram",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 28,
+          "texto": "e lhe perguntaram: “Com que autoridade você faz essas coisas? E quem lhe deu autoridade para fazer essas coisas?”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 29,
+          "texto": "Jesus lhes disse: “Eu lhes farei uma pergunta. Respondam-me, e eu lhes direi com que autoridade faço essas coisas.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 30,
+          "texto": "O batismo de João era do céu ou dos homens? Respondam-me.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 31,
+          "texto": "Então eles começaram a raciocinar entre si, dizendo: “Se dissermos: ‘Do céu’, ele dirá: ‘Então, por que vocês não acreditaram nele?’",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 32,
+          "texto": "Mas nos atrevemos a dizer: ‘Dos homens’?” Eles tinham medo da multidão, pois todos achavam que João realmente tinha sido um profeta.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 33,
+          "texto": "Assim, responderam a Jesus: “Não sabemos.” Jesus lhes disse: “Então eu também não lhes digo com que autoridade faço essas coisas.”",
           "novo_paragrafo": false
         }
       ]
@@ -2972,7 +3157,7 @@
         {
           "verso": 6,
           "texto": "Pois bem, por ocasião da festividade, ele costumava soltar um preso, aquele que pedissem.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 7,
@@ -3022,7 +3207,7 @@
         {
           "verso": 16,
           "texto": "Os soldados o levaram então para o pátio da residência do governador, e convocaram todo o grupo de soldados.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 17,
@@ -3052,7 +3237,7 @@
         {
           "verso": 22,
           "texto": "Assim, levaram-no ao lugar chamado Gólgota, que traduzido significa “lugar da caveira”.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 23,
@@ -3076,7 +3261,107 @@
         },
         {
           "verso": 27,
-          "texto": "Além disso, penduraram dois ladrões em estacas ao lado dele, um à sua direita e outro à sua esquerda. 28—— 29 E os que passavam o insultavam, balançando a cabeça e dizendo: “Ah! você que ia derrubar o templo e construí-lo em três dias, 30 salve a si mesmo, descendo da estaca.” 31 Do mesmo modo, também os principais sacerdotes junto com os escribas zombavam dele entre si, dizendo: “A outros ele salvou; a si mesmo não pode salvar! 32 Que o Cristo, o Rei de Israel, desça agora da estaca, para que vejamos e possamos crer.” Até os que estavam em estacas ao lado dele o insultavam. 33 Quando chegou a sexta hora, caiu uma escuridão sobre toda aquela terra, até a nona hora. 34 E à nona hora, Jesus clamou em alta voz: “Eli, Eli, lama sabactâni?”, que traduzido significa: “Deus meu, Deus meu, por que me abandonaste?” 35 E, ouvindo isso, alguns dos que estavam por perto disseram: “Vejam! Ele está chamando Elias.” 36 Então alguém correu, ensopou uma esponja em vinho acre, colocou-a numa cana e deu a ele para beber, dizendo: “Deixem-no! Vamos ver se Elias vem tirá-lo dali.” 37 Mas Jesus deu um alto grito e morreu. 38 E a cortina do santuário se rasgou em duas, de alto a baixo. 39 Então, quando o oficial do exército que estava ali diante dele viu que ele tinha morrido nessas circunstâncias, disse: “Certamente este homem era o Filho de Deus.” 40 Havia também mulheres observando de certa distância; entre elas estavam Maria Madalena, Maria, mãe de Tiago, o Menor, e de Josés, e Salomé. 41 Essas mulheres o acompanhavam e serviam quando ele estava na Galileia. Também estavam ali muitas outras mulheres que tinham ido com ele a Jerusalém. 42 Então, visto que a tarde já estava avançada e era o dia da Preparação, isto é, o dia antes do sábado, 43 chegou José de Arimateia, membro bem-conceituado do Conselho, que também aguardava o Reino de Deus. Ele tomou coragem, compareceu perante Pilatos e pediu o corpo de Jesus. 44 Mas Pilatos quis saber se ele já estava morto e, convocando o oficial do exército, lhe perguntou se Jesus já tinha morrido. 45 Assim, depois de se certificar por meio do oficial do exército, concedeu o corpo a José. 46 José comprou linho fino e tirou o corpo da estaca; depois o enrolou no linho fino e o colocou num túmulo que tinha sido aberto na rocha. Então rolou uma pedra até a entrada do túmulo. 47 Mas Maria Madalena e Maria, a mãe de Josés, ficaram olhando para onde ele tinha sido colocado.",
+          "texto": "Além disso, penduraram dois ladrões em estacas ao lado dele, um à sua direita e outro à sua esquerda.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 28,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 29,
+          "texto": "E os que passavam o insultavam, balançando a cabeça e dizendo: “Ah! você que ia derrubar o templo e construí-lo em três dias,",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 30,
+          "texto": "salve a si mesmo, descendo da estaca.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 31,
+          "texto": "Do mesmo modo, também os principais sacerdotes junto com os escribas zombavam dele entre si, dizendo: “A outros ele salvou; a si mesmo não pode salvar!",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 32,
+          "texto": "Que o Cristo, o Rei de Israel, desça agora da estaca, para que vejamos e possamos crer.” Até os que estavam em estacas ao lado dele o insultavam.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 33,
+          "texto": "Quando chegou a sexta hora, caiu uma escuridão sobre toda aquela terra, até a nona hora.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 34,
+          "texto": "E à nona hora, Jesus clamou em alta voz: “Eli, Eli, lama sabactâni?”, que traduzido significa: “Deus meu, Deus meu, por que me abandonaste?”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 35,
+          "texto": "E, ouvindo isso, alguns dos que estavam por perto disseram: “Vejam! Ele está chamando Elias.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 36,
+          "texto": "Então alguém correu, ensopou uma esponja em vinho acre, colocou-a numa cana e deu a ele para beber, dizendo: “Deixem-no! Vamos ver se Elias vem tirá-lo dali.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 37,
+          "texto": "Mas Jesus deu um alto grito e morreu.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 38,
+          "texto": "E a cortina do santuário se rasgou em duas, de alto a baixo.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 39,
+          "texto": "Então, quando o oficial do exército que estava ali diante dele viu que ele tinha morrido nessas circunstâncias, disse: “Certamente este homem era o Filho de Deus.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 40,
+          "texto": "Havia também mulheres observando de certa distância; entre elas estavam Maria Madalena, Maria, mãe de Tiago, o Menor, e de Josés, e Salomé.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 41,
+          "texto": "Essas mulheres o acompanhavam e serviam quando ele estava na Galileia. Também estavam ali muitas outras mulheres que tinham ido com ele a Jerusalém.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 42,
+          "texto": "Então, visto que a tarde já estava avançada e era o dia da Preparação, isto é, o dia antes do sábado,",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 43,
+          "texto": "chegou José de Arimateia, membro bem-conceituado do Conselho, que também aguardava o Reino de Deus. Ele tomou coragem, compareceu perante Pilatos e pediu o corpo de Jesus.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 44,
+          "texto": "Mas Pilatos quis saber se ele já estava morto e, convocando o oficial do exército, lhe perguntou se Jesus já tinha morrido.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 45,
+          "texto": "Assim, depois de se certificar por meio do oficial do exército, concedeu o corpo a José.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 46,
+          "texto": "José comprou linho fino e tirou o corpo da estaca; depois o enrolou no linho fino e o colocou num túmulo que tinha sido aberto na rocha. Então rolou uma pedra até a entrada do túmulo.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 47,
+          "texto": "Mas Maria Madalena e Maria, a mãe de Josés, ficaram olhando para onde ele tinha sido colocado.",
           "novo_paragrafo": false
         }
       ]

@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const PERF_LOW = !!(window.EditorPerfProfile?.isLow?.() || document.documentElement.classList.contains('perf-low'));
 
-  let isReadOnly = false, processedNodes = new WeakSet(), multiRefAuraEnabled = false;
+  let isReadOnly = false, processedNodes = new WeakSet(), multiRefAuraEnabled = false, modeVersion = 0;
+  const aliases = typeof ABREVIACOES === 'object' ? ABREVIACOES : (window.ABREVIACOES || {});
 
   const bindTapIntent = (el, handler, { delay = 240, slop = 10, preventFocus = true } = {}) => {
     if (!el || typeof handler !== 'function') return;
@@ -42,15 +43,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const escapeRegex = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   const buildBibleRegex = () => {
-    if (!window.ABREVIACOES) return /(^|[^A-Za-zÀ-ÖØ-öø-ÿ0-9])([1-3]?\s?[A-Za-zÀ-ÖØ-öø-ÿ.]+)\s*(\d{1,3})\s*([:;])\s*([\d,\s\-–—]+(?:\s*;\s*[\d,\s\-–—]+)*)/gi;
-    const rawKeys = Array.from(new Set(Object.keys(window.ABREVIACOES))).filter(Boolean).sort((a, b) => b.length - a.length);
-    const bookPattern = rawKeys.map(key => escapeRegex(key).replace(/\s+/g, '\\s*')).join('|');
-    return new RegExp(`(^|[^A-Za-zÀ-ÖØ-öø-ÿ0-9])(${bookPattern})\\s*(\\d{1,3})\\s*([:;])\\s*([\\d,\\s\\-–—]+(?:\\s*;\\s*[\\d,\\s\\-–—]+)*)`, 'gi');
+    const rawKeys = Array.from(new Set(Object.keys(aliases))).filter(Boolean).sort((a, b) => b.length - a.length);
+    const bookPattern = rawKeys.length ? rawKeys.map(key => escapeRegex(key).replace(/\s+/g, '\\s*')).join('|') : '[1-3]?\\s?[A-Za-zÀ-ÖØ-öø-ÿ.]+';
+    const end = '(?:\\d{1,3}\\s*:\\s*)?\\d{1,3}';
+    const range = `(?:\\s*[-–—]\\s*${end})?`;
+    const verses = `\\d{1,3}${range}(?:\\s*[,;]\\s*${end}${range})*`;
+    return new RegExp(`(^|[^A-Za-zÀ-ÖØ-öø-ÿ0-9])(${bookPattern})\\s*(\\d{1,3})\\s*([:;])\\s*(${verses})(?!\\d)`, 'gi');
   };
 
   const REGEX_BBL = buildBibleRegex();
-  const ABREV_NORMALIZED_KEYS = window.ABREVIACOES ? new Set(Object.keys(window.ABREVIACOES).map(normalizeBookKey)) : new Set();
-  const waitForBible = cb => { const check = () => window.setupBblLinkListeners ? cb() : setTimeout(check, 150); check(); };
+  const ABREV_NORMALIZED_KEYS = new Set(Object.keys(aliases).map(normalizeBookKey));
+  const waitForBible = (cb, version) => {
+    const check = () => {
+      if (!isReadOnly || version !== modeVersion) return;
+      if (window.setupBblLinkListeners) cb(); else setTimeout(check, 150);
+    };
+    check();
+  };
   const allEditables = () => Array.from(editor.querySelectorAll('.paragraph-content, .toggle-title, .text-content'));
   const getToolbarControls = () => Array.from(toolbar.querySelectorAll('button, input, select, textarea')).filter(el => el !== leitorBtn);
 
@@ -332,54 +341,38 @@ document.addEventListener('DOMContentLoaded', () => {
     resize(); return { setEnabled, forceOff, destroy };
   }
 
-  const leitorFx = PERF_LOW ? null : createLeitorBorderFx(leitorBtn);
+  const leitorFx = PERF_LOW || matchMedia('(prefers-reduced-motion: reduce)').matches ? null : createLeitorBorderFx(leitorBtn);
 
   const enableReadOnly = ({ toastMessage = null, autoOpenRef = null, enableAura = false } = {}) => {
+    const version = ++modeVersion;
     editor.setAttribute('contenteditable', 'false'); editor.classList.add('is-read-only');
     document.body.classList.add('leitor-keep-toolbar'); document.body.classList.add('editor-has-focus');
     window.M4_Caret?.updateFocus?.();
     if (window.M12_History) window.M12_History._leitorPaused = true;
     leitorBtn.classList.add('is-active'); leitorBtn.setAttribute('aria-pressed', 'true');
     setToolbarLocked(true); if (!PERF_LOW) leitorFx?.setEnabled(true); multiRefAuraEnabled = !PERF_LOW && !!enableAura;
-
-    waitForBible(() => {
-      processAllContent();
-      if (autoOpenRef && typeof window.abrirModalBibl === 'function') {
-        if (PERF_LOW) {
-          setTimeout(() => {
-            const targetSpan = editor.querySelector(`.bbl[data-ref="${autoOpenRef}"]`);
-            window.abrirModalBibl(autoOpenRef, targetSpan); 
-          }, 80);
-        } else {
-          setTimeout(() => {
-            const targetSpan = editor.querySelector(`.bbl[data-ref="${autoOpenRef}"]`);
-            if (targetSpan) {
-              targetSpan.classList.add('pressionando');
-              setTimeout(() => {
-                targetSpan.classList.remove('pressionando');
-                targetSpan.classList.add('ref-aberta');
-                setTimeout(() => { window.abrirModalBibl(autoOpenRef, targetSpan); }, 150); 
-                setTimeout(() => targetSpan.classList.remove('ref-aberta'), 300);
-              }, 250);
-            } else {
-              window.abrirModalBibl(autoOpenRef);
-            }
-          }, 600);
-        }
-      }
-    });
-
+    waitForBible(async () => {
+      await processAllContent(version);
+      if (!isReadOnly || version !== modeVersion || !autoOpenRef?.editable?.isConnected) return;
+      const targetSpan = Array.from(autoOpenRef.editable.querySelectorAll('.bbl')).find(span => {
+        const range = document.createRange(); range.selectNodeContents(autoOpenRef.editable); range.setEndBefore(span);
+        return range.toString().length === autoOpenRef.index;
+      });
+      if (targetSpan) window.abrirModalBibl?.(targetSpan.dataset.ref, targetSpan);
+    }, version);
     if (toastMessage) showToast(toastMessage);
   };
 
-  const disableReadOnly = () => {
-    removeAllLinks(); leitorFx?.setEnabled(false);
+  const disableReadOnly = ({ reference = null } = {}) => {
+    ++modeVersion; isReadOnly = false;
+    const replacement = removeAllLinks(reference); leitorFx?.setEnabled(false);
     editor.setAttribute('contenteditable', 'true'); editor.classList.remove('is-read-only');
     document.body.classList.remove('leitor-keep-toolbar');
     if (window.M12_History) window.M12_History._leitorPaused = false;
     leitorBtn.classList.remove('is-active'); leitorBtn.setAttribute('aria-pressed', 'false');
     setToolbarLocked(false); setTimeout(() => window.M4_Caret?.updateFocus?.(), 0);
     processedNodes = new WeakSet(); multiRefAuraEnabled = false;
+    return replacement;
   };
 
   const scanTextForRefs = text => {
@@ -387,37 +380,45 @@ document.addEventListener('DOMContentLoaded', () => {
     while ((match = REGEX_BBL.exec(source)) !== null) {
       const prefix = match[1] || '', book = match[2] || '', chapter = match[3] || '', sep = match[4] || ':', verses = match[5] || '', refText = `${book} ${chapter}${sep}${verses}`.replace(/\s+/g, ' ').trim();
       if (!book || !chapter || !verses) continue;
-      if (window.ABREVIACOES) { const bookKey = normalizeBookKey(book); if (!ABREV_NORMALIZED_KEYS.has(bookKey)) continue; }
+      if (ABREV_NORMALIZED_KEYS.size) { const bookKey = normalizeBookKey(book); if (!ABREV_NORMALIZED_KEYS.has(bookKey)) continue; }
       refs.push({ index: match.index + prefix.length, length: match[0].length - prefix.length, text: refText });
     }
     return refs;
   };
 
-  const scanEditorReferences = () => { const refs = []; allEditables().forEach(el => { refs.push(...scanTextForRefs(el.textContent || '')); }); return refs; };
+  const scanEditorReferences = () => allEditables().flatMap(editable =>
+    scanTextForRefs(editable.textContent || '').map(ref => ({...ref, editable})));
 
+  const referenceAtCaret = refs => {
+    const live = M2_Query.curRange();
+    const range = live && editor.contains(live.startContainer) ? live : M1_Config.state.lastR;
+    if (!range || !editor.contains(range.startContainer)) return refs.length === 1 ? refs[0] : null;
+    const editable = M2_Query.closest(range.startContainer, '.editable');
+    if (!editable) return null;
+    const before = range.cloneRange(); before.selectNodeContents(editable); before.setEnd(range.startContainer, range.startOffset);
+    const offset = before.toString().length;
+    const editables = allEditables(), index = editables.indexOf(editable);
+    return refs.filter(ref => ref.editable === editable ? ref.index <= offset : editables.indexOf(ref.editable) < index).at(-1) || null;
+  };
   const toggle = () => {
-    if (isReadOnly) { isReadOnly = false; disableReadOnly(); return; }
+    if (isReadOnly) { disableReadOnly(); return; }
     const refs = scanEditorReferences();
     if (!refs.length) { showToast('Não há versículos bíblicos'); return; }
+    const target = referenceAtCaret(refs);
     isReadOnly = true;
-    if (refs.length === 1) { enableReadOnly({ autoOpenRef: refs[0].text, enableAura: !PERF_LOW }); return; }
-    enableReadOnly({ toastMessage: 'Modo Bíblia', enableAura: !PERF_LOW });
+    enableReadOnly({autoOpenRef: target, toastMessage: target ? null : 'Modo Bíblia', enableAura: !PERF_LOW});
   };
 
-  const processAllContent = () => {
-    const editables = allEditables();
-    if (!PERF_LOW) {
-      editables.forEach(el => processEditable(el));
-      return;
-    }
-    let index = 0;
+  const processAllContent = version => new Promise(resolve => {
+    const editables = allEditables(); let index = 0;
     const pump = () => {
-      const end = Math.min(index + 4, editables.length);
+      if (!isReadOnly || version !== modeVersion) { resolve(); return; }
+      const end = Math.min(index + (PERF_LOW ? 4 : 20), editables.length);
       for (; index < end; index++) processEditable(editables[index]);
-      if (index < editables.length) setTimeout(pump, 0);
+      if (index < editables.length) setTimeout(pump, 0); else resolve();
     };
     pump();
-  };
+  });
 
   const processEditable = el => {
     if (!el || processedNodes.has(el)) return;
@@ -432,7 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
     matches.forEach(({ index, length, text: ref }) => {
       if (index > last) frag.appendChild(document.createTextNode(text.slice(last, index)));
       const span = document.createElement('span'); span.className = 'bbl'; if (multiRefAuraEnabled) span.classList.add('bbl--aura');
-      span.textContent = ref; span.setAttribute('data-ref', ref);
+      span.textContent = text.slice(index, index + length); span.setAttribute('data-ref', ref);
       if (window.setupBblLinkListeners) window.setupBblLinkListeners(span);
       frag.appendChild(span); last = index + length;
     });
@@ -440,7 +441,19 @@ document.addEventListener('DOMContentLoaded', () => {
     textNode.parentNode.replaceChild(frag, textNode);
   };
 
-  const removeAllLinks = () => { editor.querySelectorAll('.bbl').forEach(span => { span.replaceWith(document.createTextNode(span.textContent)); }); allEditables().forEach(el => el.normalize()); };
+  const removeAllLinks = reference => {
+    let replacement = reference;
+    const targetEditable = reference?.closest?.('.editable');
+    editor.querySelectorAll('.bbl').forEach(span => {
+      const text = document.createTextNode(span.textContent);
+      if (span === reference) replacement = text;
+      span.replaceWith(text);
+    });
+    // Preserve this exact text node until the transcription wraps it in a
+    // persistent source. Normalizing it now could merge it with another ref.
+    allEditables().filter(el => el !== targetEditable).forEach(el => el.normalize());
+    return replacement;
+  };
 
   const showToast = msg => {
     let toast = document.getElementById('leitor-toast');
@@ -464,7 +477,9 @@ document.addEventListener('DOMContentLoaded', () => {
     processedNodes = new WeakSet(); multiRefAuraEnabled = false;
   };
 
-  const forceEdit = () => { if (!isReadOnly) return; isReadOnly = false; disableReadOnly(); };
+  const forceEdit = () => { if (isReadOnly) disableReadOnly(); };
+  window.LeitorMode = {ativar: () => { if (!isReadOnly) toggle(); }, desativar: disableReadOnly, isActive: () => isReadOnly};
+  window.addEventListener('notes:restored', () => { if (isReadOnly) disableReadOnly(); });
 
   window.addEventListener('pagehide', forceEdit); window.addEventListener('beforeunload', forceEdit); window.addEventListener('pageshow', () => { if (!isReadOnly) resetArtifacts(); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !isReadOnly) resetArtifacts(); });

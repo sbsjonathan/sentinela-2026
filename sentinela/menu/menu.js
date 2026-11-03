@@ -5,9 +5,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!barraEstudo || !mainContent) return;
 
     const FONTE_STORAGE_KEY = 'tamanho-fonte-global';
-    const FONTE_PADRAO = 16;
-    const FONTE_MIN = FONTE_PADRAO;
-    const FONTE_MAX = FONTE_PADRAO + 10;
+    const FONTE_PADRAO = window.GlobalFontScale?.defaultSize || 16;
+    const FONTE_MIN = window.GlobalFontScale?.minSize || 16;
+    const FONTE_MAX = window.GlobalFontScale?.maxSize || 30;
     const urlParams = new URLSearchParams(window.location.search);
     const semanaAtual = window.semanaAtual || urlParams.get('semana') || 'Atual';
     const estudoId = window.estudoId || document.body.dataset.estudo || '';
@@ -80,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <div class="range-shell">
                 <span class="range-linha" aria-hidden="true"></span>
                 <span class="range-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                <input type="range" id="range-tamanho-fonte" min="16" max="26" step="1" value="16">
+                <input type="range" id="range-tamanho-fonte" min="${FONTE_MIN}" max="${FONTE_MAX}" step="1" value="16">
               </div>
             </div>
           </div>
@@ -689,7 +689,7 @@ document.addEventListener("DOMContentLoaded", () => {
           document.documentElement.style.setProperty('--tamanho-fonte', `${tamanhoSeguro}px`);
           document.documentElement.style.setProperty('--font-base-global', `${tamanhoSeguro}px`);
           document.documentElement.style.setProperty('--font-scale-global', String(tamanhoSeguro / FONTE_PADRAO));
-          localStorage.setItem(FONTE_STORAGE_KEY, tamanhoSeguro);
+          try { localStorage.setItem(FONTE_STORAGE_KEY, tamanhoSeguro); } catch (error) {}
       }
       rangeTamanhoFonte.value = String(tamanhoSeguro);
       atualizarRangeVisual(tamanhoSeguro);
@@ -715,7 +715,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     initTheme();
     updatePerfIcon();
-    const tamanhoFonteSalvo = Math.min(FONTE_MAX, Math.max(FONTE_MIN, parseInt(localStorage.getItem(FONTE_STORAGE_KEY) || FONTE_PADRAO, 10) || FONTE_PADRAO));
+    const tamanhoFonteSalvo = window.GlobalFontScale?.getSize() || FONTE_PADRAO;
     if (rangeTamanhoFonte) {
       rangeTamanhoFonte.value = String(tamanhoFonteSalvo);
       atualizarRangeVisual(tamanhoFonteSalvo);

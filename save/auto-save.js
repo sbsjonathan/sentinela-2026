@@ -1,427 +1,137 @@
+// Local persistence is synchronous and independent of network latency. Only the
+// newest pending revision is queued behind an active cloud request.
 class AutoSaveManager {
     constructor() {
-        this.editor = null;
-        this.currentSemana = null;
-        this.isLoggedIn = false;
-        this.autoSaveTimeout = null;
-        this.lastSavedContent = '';
-        this.saveInProgress = false;
-        this.isPaused = false;
-        this.SAVE_DELAY = 350;
-        this.MIN_CONTENT_LENGTH = 0;
-        this.observer = null;
-        this.isApplyingRemote = false;
-        this.init();
+        this.editor = null; this.currentSemana = null; this.isLoggedIn = false;
+        this.lastSavedContent = ''; this.lastCloudKey = null;
+        this.saveInProgress = false; this.isPaused = false; this.SAVE_DELAY = 350;
+        this.pending = null; this.sending = null;
+        this.ready = this.setup();
     }
-
-    init() {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.setup());
-        } else {
-            setTimeout(() => this.setup(), 0);
-        }
-    }
-
     async setup() {
-        await this.waitForEditor();
-        this.detectSemana();
+        if (!window.cacheRichText) return;
+        this.store = window.cacheRichText;
+        await this.store.ready;
+        this.editor = document.getElementById('editor');
+        this.currentSemana = this.store.semanaAtual();
         this.checkLoginStatus();
-        this.setupAutoSave();
-        this.setupStructureObserver();
-        this.monitorLoginChanges();
-        this.restoreLocalContent();
-        this.lastSavedContent = this.serializeForRemote();
+        const initial = this.store.snapshot();
+        if (!this.store.hasPending(initial)) this.lastCloudKey = initial.key;
+        this.lastSavedContent = JSON.stringify(initial.payload);
+        window.addEventListener('notes:stored', event => this.acceptSnapshot(event.detail));
+        window.addEventListener('notes:save-error', () => this.showErrorFeedback());
+        const retry = () => { this.checkLoginStatus(); this.executeAutoSave('resume'); };
+        window.addEventListener('online', retry);
+        window.addEventListener('pageshow', retry);
+        window.addEventListener('storage', event => { if (event.key === 'supabase_user') retry(); });
+        for (const name of ['pagehide', 'beforeunload', 'blur']) window.addEventListener(name, () => this.onPageUnload());
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') this.onPageUnload(); });
+        if (this.store.hasPending(initial)) this.acceptSnapshot(initial);
     }
-
-    waitForEditor() {
-        return new Promise((resolve) => {
-            const tryFind = () => {
-                const el = document.getElementById('editor');
-                const ready =
-                    el &&
-                    typeof M6_Tree !== 'undefined' &&
-                    typeof M5_Factory !== 'undefined' &&
-                    typeof M3_TextModel !== 'undefined';
-
-                if (ready) {
-                    this.editor = el;
-                    resolve();
-                } else {
-                    setTimeout(tryFind, 100);
-                }
-            };
-            tryFind();
-        });
-    }
-
-    detectSemana() {
-        try {
-            if (window.semanaAtual) {
-                this.currentSemana = window.semanaAtual;
-                return;
-            }
-            const urlParams = new URLSearchParams(window.location.search);
-            const semanaURL = urlParams.get('semana');
-            if (semanaURL) {
-                this.currentSemana = semanaURL;
-                window.semanaAtual = semanaURL;
-                return;
-            }
-            this.currentSemana = this.getFallbackWeek();
-            window.semanaAtual = this.currentSemana;
-        } catch (e) {
-            this.currentSemana = this.getFallbackWeek();
-        }
-    }
-
-    getFallbackWeek() {
-        const d = new Date();
-        const diaDaSemana = d.getDay();
-        const diasParaSegunda = diaDaSemana === 0 ? -6 : 1 - diaDaSemana;
-        const segundaFeira = new Date(d);
-        segundaFeira.setDate(d.getDate() + diasParaSegunda);
-        const day = String(segundaFeira.getDate()).padStart(2, '0');
-        const month = String(segundaFeira.getMonth() + 1).padStart(2, '0');
-        return `${day}-${month}`;
-    }
-
     checkLoginStatus() {
-        try {
-            if (window.SupabaseSync && typeof window.SupabaseSync.isLoggedIn === 'function') {
-                this.isLoggedIn = window.SupabaseSync.isLoggedIn();
-            } else {
-                this.isLoggedIn = !!localStorage.getItem('supabase_user');
-            }
-        } catch (e) {
-            this.isLoggedIn = false;
+        try { this.isLoggedIn = typeof window.SupabaseSync?.isLoggedIn === 'function' ? window.SupabaseSync.isLoggedIn() : !!localStorage.getItem('supabase_user'); }
+        catch (_) { this.isLoggedIn = false; }
+        return this.isLoggedIn;
+    }
+    obterRaizesEditor() { return Array.from(this.editor?.children || []).filter(node => node.matches('.node-paragraph,.node-text,.node-toggle')); }
+    exportTree() { return this.store?.snapshot()?.payload.tree || []; }
+    exportHTML() { return this.store?.snapshot()?.payload.html || ''; }
+    serializePayload() { return this.store?.snapshot()?.payload || null; }
+    serializeForRemote() { return JSON.stringify(this.serializePayload()); }
+    parseSavedContent(raw) { return this.store?.parse(raw); }
+    applySavedContent(raw) { return this.store?.applyContent(raw, { remote: true }); }
+    acknowledgeRemote(snapshot) {
+        if (!snapshot) return;
+        this.lastCloudKey = snapshot.key;
+        this.lastSavedContent = JSON.stringify(snapshot.payload);
+        this.store.acknowledge(snapshot);
+        if (this.pending?.key === snapshot.key) this.pending = null;
+    }
+    uploadCurrent() {
+        // A legacy local document has no revision token. If the server has no
+        // document yet, still preserve the old behavior of uploading that copy.
+        const snapshot = this.store?.flush();
+        if (!snapshot) return;
+        this.lastCloudKey = null;
+        this.pending = snapshot;
+        return this.drain();
+    }
+    acceptSnapshot(snapshot) {
+        if (!snapshot) return;
+        this.lastSavedContent = JSON.stringify(snapshot.payload);
+        if (!this.store.hasPending(snapshot)) {
+            this.lastCloudKey = snapshot.key;
+            return;
         }
+        this.pending = snapshot;
+        this.showLocalSaveFeedback();
+        return this.drain();
     }
-
-    monitorLoginChanges() {
-        setInterval(() => this.checkLoginStatus(), 2000);
-    }
-
-    obterRaizesEditor() {
-        if (!this.editor) return [];
-        return Array.from(this.editor.children).filter((node) =>
-            node.classList?.contains('node-paragraph') ||
-            node.classList?.contains('node-text') ||
-            node.classList?.contains('node-toggle')
-        );
-    }
-
-    exportTree() {
-        if (!this.editor || typeof M6_Tree === 'undefined') return [];
-        return this.obterRaizesEditor().map((node) => M6_Tree.toTree(node)).filter(Boolean);
-    }
-
-    exportHTML() {
-        return this.editor ? this.editor.innerHTML : '';
-    }
-
-    serializePayload() {
-        return {
-            formato: 'v23-tree',
-            versao: '2.0',
-            semana: this.currentSemana,
-            timestamp: Date.now(),
-            tree: this.exportTree(),
-            html: this.exportHTML()
-        };
-    }
-
-    serializeForRemote() {
-        try {
-            return JSON.stringify(this.serializePayload());
-        } catch (e) {
-            return this.exportHTML().trim();
-        }
-    }
-
-    parseSavedContent(raw) {
-        if (!raw || typeof raw !== 'string') return null;
-
-        const trimmed = raw.trim();
-        if (!trimmed) return null;
-
-        try {
-            const parsed = JSON.parse(trimmed);
-            if (parsed && typeof parsed === 'object') {
-                return parsed;
-            }
-        } catch (e) {}
-
-        return { html: trimmed, formato: 'legacy-html' };
-    }
-
-    looksLikeV23Markup(html) {
-        return /class\s*=\s*["'][^"']*(node-paragraph|node-toggle|node-text)/i.test(html || '');
-    }
-
-    ensureRoot() {
-        if (!this.editor) return;
-        if (this.editor.children.length) return;
-        const bloco = typeof M5_Factory !== 'undefined' ? M5_Factory.para('') : null;
-        if (bloco) this.editor.appendChild(bloco);
-        if (typeof M3_TextModel !== 'undefined') M3_TextModel.syncAll();
-        if (typeof M11_Layout !== 'undefined') M11_Layout.schedule(2);
-    }
-
-    applyTree(tree) {
-        if (!Array.isArray(tree) || !this.editor || typeof M6_Tree === 'undefined') return false;
-
-        this.editor.innerHTML = '';
-        tree.forEach((item) => {
-            const bloco = M6_Tree.fromTree(item, null, false);
-            if (bloco) this.editor.appendChild(bloco);
-        });
-
-        this.ensureRoot();
-        if (typeof M3_TextModel !== 'undefined') M3_TextModel.syncAll();
-        if (typeof M11_Layout !== 'undefined') M11_Layout.schedule(2);
-        return true;
-    }
-
-    applyHTML(html) {
-        if (typeof html !== 'string' || !this.editor) return false;
-
-        const trimmed = html.trim();
-        this.editor.innerHTML = '';
-
-        if (!trimmed) {
-            this.ensureRoot();
-            return true;
-        }
-
-        if (this.looksLikeV23Markup(trimmed)) {
-            this.editor.innerHTML = trimmed;
-        } else if (typeof M5_Factory !== 'undefined' && typeof M2_Query !== 'undefined') {
-            const bloco = M5_Factory.para('');
-            const editable = M2_Query.getParC(bloco);
-            if (editable) editable.innerHTML = trimmed;
-            this.editor.appendChild(bloco);
-        } else {
-            this.editor.innerHTML = trimmed;
-        }
-
-        this.ensureRoot();
-        if (typeof M3_TextModel !== 'undefined') M3_TextModel.syncAll();
-        if (typeof M11_Layout !== 'undefined') M11_Layout.schedule(2);
-        return true;
-    }
-
-    applySavedContent(raw) {
-        const parsed = typeof raw === 'string' ? this.parseSavedContent(raw) : raw;
-        if (!parsed) return false;
-
-        this.isApplyingRemote = true;
-        try {
-            if (Array.isArray(parsed.tree) && parsed.tree.length) {
-                return this.applyTree(parsed.tree);
-            }
-            if (typeof parsed.html === 'string') {
-                return this.applyHTML(parsed.html);
-            }
-            return false;
-        } finally {
-            this.isApplyingRemote = false;
-        }
-    }
-
-    setupAutoSave() {
-        if (!this.editor) return;
-        const onChange = () => this.onContentChange();
-        const onBlur = () => this.onFocusLost();
-
-        this.editor.addEventListener('input', onChange);
-        this.editor.addEventListener('keyup', onChange);
-        this.editor.addEventListener('paste', onChange);
-        this.editor.addEventListener('cut', onChange);
-        this.editor.addEventListener('blur', onBlur, true);
-
-        window.addEventListener('beforeunload', () => this.onPageUnload());
-        window.addEventListener('blur', () => this.onPageUnload());
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') this.onPageUnload();
-        });
-    }
-
-    setupStructureObserver() {
-        if (!this.editor || this.observer) return;
-
-        this.observer = new MutationObserver(() => {
-            if (this.isPaused || this.isApplyingRemote) return;
-            this.onContentChange();
-        });
-
-        this.observer.observe(this.editor, {
-            childList: true,
-            subtree: true,
-            characterData: true,
-            attributes: true,
-            attributeFilter: ['data-open', 'class', 'hidden', 'aria-expanded']
-        });
-    }
-
-    restoreLocalContent() {
-        try {
-            if (!this.editor) return;
-            const key = `richtext_cache_${this.currentSemana || 'semana'}`;
-            const local = localStorage.getItem(key);
-            if (!local) return;
-
-            const currentPayload = this.serializePayload();
-            const currentHasContent =
-                (Array.isArray(currentPayload.tree) && currentPayload.tree.length > 1) ||
-                ((currentPayload.html || '').replace(/<br\s*\/?>/gi, '').replace(/&nbsp;/gi, '').trim().length > 0);
-
-            if (currentHasContent) return;
-
-            if (this.applySavedContent(local)) {
-                this.lastSavedContent = this.serializeForRemote();
-                this.showLocalSaveFeedback();
-            }
-        } catch (e) {}
-    }
-
-    onContentChange() {
-        if (this.isPaused || this.isApplyingRemote) return;
-        clearTimeout(this.autoSaveTimeout);
-        this.autoSaveTimeout = setTimeout(() => {
-            this.executeAutoSave('input');
-        }, this.SAVE_DELAY);
-    }
-
-    onFocusLost() {
-        if (this.isPaused || this.isApplyingRemote) return;
-        clearTimeout(this.autoSaveTimeout);
-        setTimeout(() => {
-            this.executeAutoSave('blur');
-        }, 500);
-    }
-
-    onPageUnload() {
-        if (this.isPaused || this.isApplyingRemote) return;
-        this.executeAutoSave('unload', true);
-    }
-
-    async executeAutoSave(trigger = 'auto', isSync = false) {
-        if (this.saveInProgress) return;
-        if (!this.editor || !this.currentSemana) return;
-
-        const payload = this.serializePayload();
-        const remoteContent = JSON.stringify(payload);
-        const meaningfulHTML = (payload.html || '').replace(/<br\s*\/?>/gi, '').replace(/&nbsp;/gi, '').trim();
-        const hasTree = Array.isArray(payload.tree) && payload.tree.length > 0;
-
-        if (!hasTree && meaningfulHTML.length < this.MIN_CONTENT_LENGTH) return;
-        if (remoteContent === this.lastSavedContent && trigger !== 'unload') return;
-
+    async drain() {
+        if (this.sending || this.isPaused || navigator.onLine === false || !this.checkLoginStatus()) return this.sending;
+        if (!this.pending || typeof window.SupabaseSync?.salvarRichtextAnotacoes !== 'function') return;
         this.saveInProgress = true;
-        try {
-            this.saveToLocal(payload);
-
-            if (this.isLoggedIn) {
+        let failed = false;
+        this.sending = (async () => {
+            while (this.pending && !this.isPaused && navigator.onLine !== false && this.checkLoginStatus()) {
+                const next = this.pending; this.pending = null;
+                if (next.key === this.lastCloudKey && !this.store.hasPending(next)) continue;
                 this.showSavingFeedback();
-                await this.saveToSupabase(remoteContent, trigger, isSync);
-                this.lastSavedContent = remoteContent;
-                this.showSavedFeedback();
-            } else {
-                this.lastSavedContent = remoteContent;
-                this.showLocalSaveFeedback();
+                try {
+                    const result = await window.SupabaseSync.salvarRichtextAnotacoes(this.currentSemana, JSON.stringify(next.payload));
+                    if (result?.success === false) throw new Error(result.error || 'Falha na sincronização.');
+                    this.lastCloudKey = next.key;
+                    this.store.acknowledge(next);
+                    this.showSavedFeedback();
+                } catch (_) {
+                    // A newer edit wins the queue. The full local document remains
+                    // saved even when this request fails or the app is suspended.
+                    if (!this.pending) this.pending = next;
+                    failed = true;
+                    this.showErrorFeedback(); break;
+                }
             }
-        } catch (e) {
-            this.showErrorFeedback();
-        } finally {
-            this.saveInProgress = false;
+        })();
+        try { await this.sending; }
+        finally {
+            this.sending = null; this.saveInProgress = false;
+            // Include an edit queued in the microtask that finishes the request.
+            // A failed request waits for an explicit retry/reconnection.
+            if (this.pending && !failed) this.drain();
         }
     }
-
-    saveToLocal(payload) {
-        try {
-            const key = `richtext_cache_${this.currentSemana || 'semana'}`;
-            localStorage.setItem(key, JSON.stringify(payload));
-            if (typeof window.cacheRichText !== 'undefined' && typeof window.cacheRichText.salvarCache === 'function') {
-                window.cacheRichText.salvarCache(payload.html || '');
-            }
-        } catch (e) {}
+    executeAutoSave() {
+        if (!this.store || !this.editor) return Promise.resolve();
+        const snapshot = this.store.flush();
+        if (snapshot && this.store.hasPending(snapshot)) this.pending = snapshot;
+        return this.drain();
     }
-
-    async saveToSupabase(content, trigger, isSync) {
-        if (typeof window.SupabaseSync === 'undefined' || !window.SupabaseSync) return;
-        if (typeof window.SupabaseSync.salvarRichtextAnotacoes !== 'function') return;
-        await window.SupabaseSync.salvarRichtextAnotacoes(this.currentSemana, content);
+    onContentChange() { return this.executeAutoSave('input'); }
+    onFocusLost() { return this.executeAutoSave('blur'); }
+    onPageUnload() { return this.executeAutoSave('unload'); }
+    saveToLocal() { return this.store?.flush(); }
+    async saveToSupabase(content) {
+        const result = await window.SupabaseSync?.salvarRichtextAnotacoes(this.currentSemana, content);
+        if (result?.success === false) throw new Error(result.error || 'Falha na sincronização.');
+        return result;
     }
-
     triggerFeedbackEvent(message, type, duration = null) {
-        const event = new CustomEvent('editor:save-status', {
-            detail: { message, type, duration }
-        });
-        window.dispatchEvent(event);
+        window.dispatchEvent(new CustomEvent('editor:save-status', { detail: { message, type, duration } }));
     }
-
-    showSavingFeedback() {
-        this.triggerFeedbackEvent('☁️ Salvando...', 'saving');
-    }
-
-    showSavedFeedback() {
-        this.triggerFeedbackEvent('✅ Salvo na nuvem', 'success', 3000);
-    }
-
-    showLocalSaveFeedback() {
-        this.triggerFeedbackEvent('💾 Salvo localmente', 'local', 2000);
-    }
-
-    showErrorFeedback() {
-        this.triggerFeedbackEvent('❌ Erro ao salvar', 'error', 4000);
-    }
-
-    forceAutoSave() {
-        clearTimeout(this.autoSaveTimeout);
-        return this.executeAutoSave('force');
-    }
-
-    pauseAutoSave() {
-        this.isPaused = true;
-        clearTimeout(this.autoSaveTimeout);
-        this.triggerFeedbackEvent('⏸️ Auto-save pausado', 'local', 2000);
-    }
-
-    resumeAutoSave() {
-        this.isPaused = false;
-        this.triggerFeedbackEvent('▶️ Auto-save ativo', 'success', 1500);
-    }
-
+    showSavingFeedback() { this.triggerFeedbackEvent('☁️ Salvando...', 'saving'); }
+    showSavedFeedback() { this.triggerFeedbackEvent('✅ Salvo na nuvem', 'success', 3000); }
+    showLocalSaveFeedback() { this.triggerFeedbackEvent('💾 Salvo localmente', 'local', 2000); }
+    showErrorFeedback() { this.triggerFeedbackEvent('❌ Não foi possível concluir o salvamento', 'error', 4000); }
+    forceAutoSave() { return this.executeAutoSave('force'); }
+    pauseAutoSave() { this.isPaused = true; this.triggerFeedbackEvent('⏸️ Sincronização pausada', 'local', 2000); }
+    resumeAutoSave() { this.isPaused = false; return this.executeAutoSave('resume'); }
     setDelay(ms) {
-        const n = Number(ms);
-        if (!Number.isFinite(n) || n < 0) return;
-        this.SAVE_DELAY = Math.floor(n);
+        const value = Number(ms); if (!Number.isFinite(value) || value < 0) return;
+        this.SAVE_DELAY = Math.floor(value); this.store?.setDelay(this.SAVE_DELAY);
     }
-
-    getStatus() {
-        return {
-            semana: this.currentSemana,
-            loggedIn: this.isLoggedIn,
-            paused: this.isPaused,
-            saveInProgress: this.saveInProgress,
-            delay: this.SAVE_DELAY
-        };
-    }
-
-    debug() {
-        return {
-            editorFound: !!this.editor,
-            semana: this.currentSemana,
-            loggedIn: this.isLoggedIn,
-            paused: this.isPaused,
-            lastSavedLength: (this.lastSavedContent || '').length,
-            saveInProgress: this.saveInProgress,
-            delay: this.SAVE_DELAY,
-            roots: this.obterRaizesEditor().length
-        };
-    }
+    getStatus() { return { semana: this.currentSemana, loggedIn: this.isLoggedIn, paused: this.isPaused, saveInProgress: this.saveInProgress, delay: this.SAVE_DELAY }; }
+    debug() { return { ...this.getStatus(), editorFound: !!this.editor, lastSavedLength: this.lastSavedContent.length, roots: this.obterRaizesEditor().length, local: this.store?.stats() }; }
 }
-
 window.AutoSaveManager = new AutoSaveManager();
 window.forceAutoSave = () => window.AutoSaveManager.forceAutoSave();
 window.pauseAutoSave = () => window.AutoSaveManager.pauseAutoSave();

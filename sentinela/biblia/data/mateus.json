@@ -2912,7 +2912,7 @@
         {
           "verso": 10,
           "texto": "No entanto, os discípulos lhe perguntaram: “Por que então os escribas dizem que Elias tem de vir primeiro?”",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 11,
@@ -2932,7 +2932,7 @@
         {
           "verso": 14,
           "texto": "Quando eles chegaram onde estava a multidão, um homem se aproximou dele, se ajoelhou diante dele e disse:",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 15,
@@ -2961,7 +2961,42 @@
         },
         {
           "verso": 20,
-          "texto": "Ele lhes respondeu: “Por terem pouca fé. Pois, eu lhes digo a verdade: Se tiverem fé do tamanho de um grão de mostarda, vocês dirão a este monte: ‘Mova-se daqui para lá’, e ele se moverá, e nada lhes será impossível.” 21—— 22 Foi quando estavam reunidos na Galileia que Jesus lhes disse: “O Filho do Homem será entregue às mãos dos homens, 23 e eles o matarão, e no terceiro dia ele será levantado.” E eles ficaram muito tristes. 24 Depois de eles chegarem a Cafarnaum, os homens que cobravam o imposto de duas dracmas se aproximaram de Pedro e perguntaram: “O seu instrutor não paga as duas dracmas de imposto?” 25 Pedro disse: “Sim, ele paga.” No entanto, quando ele entrou na casa, Jesus falou primeiro que ele: “O que acha, Simão? De quem os reis da terra recebem tributos ou imposto por cabeça? Dos seus filhos ou dos estranhos?” 26 Quando ele disse: “Dos estranhos”, Jesus lhe disse: “Realmente, então, os filhos estão isentos de impostos. 27 Mas, para que não os façamos tropeçar, vá ao mar, lance o anzol e pegue o primeiro peixe que você pescar; quando abrir a boca dele, você achará uma moeda de prata. Pegue-a e entregue-a a eles por mim e por você.”",
+          "texto": "Ele lhes respondeu: “Por terem pouca fé. Pois, eu lhes digo a verdade: Se tiverem fé do tamanho de um grão de mostarda, vocês dirão a este monte: ‘Mova-se daqui para lá’, e ele se moverá, e nada lhes será impossível.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 21,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 22,
+          "texto": "Foi quando estavam reunidos na Galileia que Jesus lhes disse: “O Filho do Homem será entregue às mãos dos homens,",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 23,
+          "texto": "e eles o matarão, e no terceiro dia ele será levantado.” E eles ficaram muito tristes.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 24,
+          "texto": "Depois de eles chegarem a Cafarnaum, os homens que cobravam o imposto de duas dracmas se aproximaram de Pedro e perguntaram: “O seu instrutor não paga as duas dracmas de imposto?”",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 25,
+          "texto": "Pedro disse: “Sim, ele paga.” No entanto, quando ele entrou na casa, Jesus falou primeiro que ele: “O que acha, Simão? De quem os reis da terra recebem tributos ou imposto por cabeça? Dos seus filhos ou dos estranhos?”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 26,
+          "texto": "Quando ele disse: “Dos estranhos”, Jesus lhe disse: “Realmente, então, os filhos estão isentos de impostos.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 27,
+          "texto": "Mas, para que não os façamos tropeçar, vá ao mar, lance o anzol e pegue o primeiro peixe que você pescar; quando abrir a boca dele, você achará uma moeda de prata. Pegue-a e entregue-a a eles por mim e por você.”",
           "novo_paragrafo": false
         }
       ]
@@ -3002,7 +3037,7 @@
         {
           "verso": 7,
           "texto": "“Ai do mundo por causa das suas pedras de tropeço! Claro, é inevitável que venham as pedras de tropeço, mas ai do homem por meio de quem vem a pedra de tropeço!",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 8,
@@ -3016,7 +3051,132 @@
         },
         {
           "verso": 10,
-          "texto": "Tomem cuidado para não desprezar um destes pequenos, pois eu lhes digo que os anjos deles no céu estão sempre vendo a face do meu Pai, que está no céu. 11—— 12 “O que vocês acham? Se um homem tem 100 ovelhas e uma delas se perde, não deixará ele as 99 nos montes e irá à procura daquela que se perdeu? 13 E, se a encontrar, certamente lhes digo que se alegrará mais com ela do que com as 99 que não se perderam. 14 Do mesmo modo, não é o desejo do meu Pai, que está no céu, que se perca nem mesmo um destes pequenos. 15 “Além disso, se o seu irmão cometer um pecado, vá mostrar-lhe o seu erro, somente você e ele. Se ele o escutar, você ganhou o seu irmão. 16 Mas, se não o escutar, leve com você mais um ou dois, para que, com base no depoimento de duas ou três testemunhas, toda questão seja estabelecida. 17 Se ele não os escutar, fale à congregação. Se não escutar nem mesmo a congregação, seja ele para você apenas como homem das nações e como cobrador de impostos. 18 “Digo-lhes a verdade: Tudo o que vocês amarrarem na terra já terá sido amarrado no céu, e tudo o que soltarem na terra já terá sido solto no céu. 19 Também lhes digo esta verdade: Se dois de vocês, na terra, concordarem em qualquer coisa importante que pedirem, ela lhes será concedida pelo meu Pai, que está no céu. 20 Pois, onde há dois ou três reunidos em meu nome, ali estou eu no meio deles.”\n2Primeira Pedro se aproximou então e lhe perguntou: “Senhor, quantas vezes devo perdoar o meu irmão se ele pecar contra mim? Até sete vezes?” 22 Jesus respondeu: “Eu não lhe digo até sete vezes, mas até 77 vezes. 23 “É por isso que o Reino dos céus pode ser comparado a um rei que queria ajustar contas com os seus escravos. 24 Quando começou a ajustá-las, trouxeram-lhe um homem que lhe devia 10. 000 talentos. 25 Mas, visto que este não tinha meios para pagar, seu senhor mandou que ele, a esposa dele, os filhos dele e tudo o que tivesse fossem vendidos e fosse feito o pagamento. 26 Então o escravo se prostrou e lhe prestou homenagem, dizendo: ‘Tenha paciência comigo, e eu lhe pagarei tudo.’ 27 Com pena dele, o senhor daquele escravo o deixou ir e cancelou a sua dívida. 28 Mas aquele escravo saiu e encontrou um dos seus coescravos, que lhe devia 100 denários. Ele o agarrou e começou a estrangulá-lo, dizendo: ‘Pague o que você deve.’ 29 Então seu coescravo se prostrou e lhe suplicou: ‘Tenha paciência comigo, e eu lhe pagarei.’ 30 No entanto, ele não quis. Em vez disso, mandou lançá-lo na prisão, até que pagasse o que devia. 31 Quando seus coescravos viram o que tinha acontecido, ficaram muito tristes e foram contar ao seu senhor tudo o que tinha acontecido. 32 O senhor dele o convocou então e lhe disse: ‘Escravo mau, eu lhe cancelei toda aquela dívida quando você me suplicou. 33 Não devia você também ter tido misericórdia do seu coescravo, como eu tive misericórdia de você?’ 34 Com isso, seu senhor, furioso, entregou-o aos carcereiros, até que pagasse tudo o que devia. 35 Meu Pai celestial tratará vocês da mesma forma, se cada um de vocês não perdoar de coração ao seu irmão.”",
+          "texto": "Tomem cuidado para não desprezar um destes pequenos, pois eu lhes digo que os anjos deles no céu estão sempre vendo a face do meu Pai, que está no céu.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 11,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 12,
+          "texto": "“O que vocês acham? Se um homem tem 100 ovelhas e uma delas se perde, não deixará ele as 99 nos montes e irá à procura daquela que se perdeu?",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 13,
+          "texto": "E, se a encontrar, certamente lhes digo que se alegrará mais com ela do que com as 99 que não se perderam.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 14,
+          "texto": "Do mesmo modo, não é o desejo do meu Pai, que está no céu, que se perca nem mesmo um destes pequenos.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 15,
+          "texto": "“Além disso, se o seu irmão cometer um pecado, vá mostrar-lhe o seu erro, somente você e ele. Se ele o escutar, você ganhou o seu irmão.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 16,
+          "texto": "Mas, se não o escutar, leve com você mais um ou dois, para que, com base no depoimento de duas ou três testemunhas, toda questão seja estabelecida.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 17,
+          "texto": "Se ele não os escutar, fale à congregação. Se não escutar nem mesmo a congregação, seja ele para você apenas como homem das nações e como cobrador de impostos.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 18,
+          "texto": "“Digo-lhes a verdade: Tudo o que vocês amarrarem na terra já terá sido amarrado no céu, e tudo o que soltarem na terra já terá sido solto no céu.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 19,
+          "texto": "Também lhes digo esta verdade: Se dois de vocês, na terra, concordarem em qualquer coisa importante que pedirem, ela lhes será concedida pelo meu Pai, que está no céu.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 20,
+          "texto": "Pois, onde há dois ou três reunidos em meu nome, ali estou eu no meio deles.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 21,
+          "texto": "Pedro se aproximou então e lhe perguntou: “Senhor, quantas vezes devo perdoar o meu irmão se ele pecar contra mim? Até sete vezes?”",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 22,
+          "texto": "Jesus respondeu: “Eu não lhe digo até sete vezes, mas até 77 vezes.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 23,
+          "texto": "“É por isso que o Reino dos céus pode ser comparado a um rei que queria ajustar contas com os seus escravos.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 24,
+          "texto": "Quando começou a ajustá-las, trouxeram-lhe um homem que lhe devia 10.000 talentos.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 25,
+          "texto": "Mas, visto que este não tinha meios para pagar, seu senhor mandou que ele, a esposa dele, os filhos dele e tudo o que tivesse fossem vendidos e fosse feito o pagamento.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 26,
+          "texto": "Então o escravo se prostrou e lhe prestou homenagem, dizendo: ‘Tenha paciência comigo, e eu lhe pagarei tudo.’",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 27,
+          "texto": "Com pena dele, o senhor daquele escravo o deixou ir e cancelou a sua dívida.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 28,
+          "texto": "Mas aquele escravo saiu e encontrou um dos seus coescravos, que lhe devia 100 denários. Ele o agarrou e começou a estrangulá-lo, dizendo: ‘Pague o que você deve.’",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 29,
+          "texto": "Então seu coescravo se prostrou e lhe suplicou: ‘Tenha paciência comigo, e eu lhe pagarei.’",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 30,
+          "texto": "No entanto, ele não quis. Em vez disso, mandou lançá-lo na prisão, até que pagasse o que devia.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 31,
+          "texto": "Quando seus coescravos viram o que tinha acontecido, ficaram muito tristes e foram contar ao seu senhor tudo o que tinha acontecido.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 32,
+          "texto": "O senhor dele o convocou então e lhe disse: ‘Escravo mau, eu lhe cancelei toda aquela dívida quando você me suplicou.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 33,
+          "texto": "Não devia você também ter tido misericórdia do seu coescravo, como eu tive misericórdia de você?’",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 34,
+          "texto": "Com isso, seu senhor, furioso, entregou-o aos carcereiros, até que pagasse tudo o que devia.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 35,
+          "texto": "Meu Pai celestial tratará vocês da mesma forma, se cada um de vocês não perdoar de coração ao seu irmão.”",
           "novo_paragrafo": false
         }
       ]
@@ -3886,7 +4046,137 @@
         },
         {
           "verso": 13,
-          "texto": "“Ai de vocês, escribas e fariseus, hipócritas! Porque fecham o Reino dos céus diante dos homens; pois vocês mesmos não entram, nem deixam entrar os que estão a caminho para entrar. 14—— 15 “Ai de vocês, escribas e fariseus, hipócritas! Porque percorrem o mar e a terra para fazer um prosélito e, quando conseguem, fazem dele merecedor da Geena duas vezes mais do que vocês. 16 “Ai de vocês, guias cegos, que dizem: ‘Se alguém jurar pelo templo, isso não é nada; mas, se alguém jurar pelo ouro do templo, ele está sob obrigação.’ 17 Tolos e cegos! Na verdade, o que é maior: o ouro ou o templo que santifica o ouro? 18 Além disso, vocês dizem: ‘Se alguém jurar pelo altar, isso não é nada; mas, se alguém jurar pela dádiva nele, ele está sob obrigação.’ 19 Cegos! Na verdade, o que é maior: a dádiva ou o altar que santifica a dádiva? 20 Portanto, quem jura pelo altar está jurando por ele e por todas as coisas sobre ele; 21 e quem jura pelo templo está jurando por ele e por Aquele que habita nele; 22 e quem jura pelo céu está jurando pelo trono de Deus e por Aquele que está sentado nele. 23 “Ai de vocês, escribas e fariseus, hipócritas! Porque dão o décimo da hortelã, do endro e do cominho, mas desconsideram as questões mais importantes da Lei, isto é, a justiça, a misericórdia e a fidelidade. Essas eram as coisas que precisavam ser feitas, mas sem desconsiderar as outras. 24 Guias cegos, que coam o mosquito, mas engolem o camelo! 25 “Ai de vocês, escribas e fariseus, hipócritas! Porque limpam por fora o copo e o prato, mas por dentro eles estão cheios de ganância e de imoderação. 26 Fariseu cego, limpe primeiro a parte de dentro do copo e do prato, para que a parte de fora também fique limpa. 27 “Ai de vocês, escribas e fariseus, hipócritas! Porque são como sepulcros caiados, que por fora realmente parecem belos, mas por dentro estão cheios de ossos de mortos e de todo tipo de impureza. 28 Do mesmo modo, por fora vocês parecem justos aos homens, mas por dentro estão cheios de hipocrisia e do que é contra a lei. 29 “Ai de vocês, escribas e fariseus, hipócritas! Porque constroem os sepulcros dos profetas e decoram os túmulos dos justos, 30 e dizem: ‘Se nós tivéssemos vivido nos dias dos nossos antepassados, não teríamos participado com eles em derramar o sangue dos profetas.’ 31 Portanto, vocês dão testemunho contra si mesmos de que são filhos daqueles que assassinaram os profetas. 32 Pois bem, completem a medida dos seus antepassados. 33 “Serpentes, descendência de víboras, como fugirão do julgamento da Geena? 34 É por essa razão que eu estou lhes enviando profetas, sábios e instrutores públicos. A alguns deles vocês matarão e pregarão em estacas, e a outros açoitarão nas suas sinagogas e perseguirão de cidade em cidade, 35 para que venha sobre vocês todo o sangue justo derramado na terra, desde o sangue do justo Abel até o sangue de Zacarias, filho de Baraquias, a quem vocês assassinaram entre o santuário e o altar. 36 Eu garanto a vocês: Todas essas coisas virão sobre esta geração. 37 “Jerusalém, Jerusalém, que mata os profetas e apedreja os que lhe são enviados ... Quantas vezes eu quis ajuntar seus filhos, assim como a galinha ajunta seus pintinhos debaixo das asas! Mas vocês não quiseram. 38 Agora a sua casa ficará abandonada. 39 Pois eu lhes digo: De agora em diante, vocês de modo algum me verão, até que digam: ‘Bendito é aquele que vem em nome de Jeová!’”",
+          "texto": "“Ai de vocês, escribas e fariseus, hipócritas! Porque fecham o Reino dos céus diante dos homens; pois vocês mesmos não entram, nem deixam entrar os que estão a caminho para entrar.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 14,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 15,
+          "texto": "“Ai de vocês, escribas e fariseus, hipócritas! Porque percorrem o mar e a terra para fazer um prosélito e, quando conseguem, fazem dele merecedor da Geena duas vezes mais do que vocês.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 16,
+          "texto": "“Ai de vocês, guias cegos, que dizem: ‘Se alguém jurar pelo templo, isso não é nada; mas, se alguém jurar pelo ouro do templo, ele está sob obrigação.’",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 17,
+          "texto": "Tolos e cegos! Na verdade, o que é maior: o ouro ou o templo que santifica o ouro?",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 18,
+          "texto": "Além disso, vocês dizem: ‘Se alguém jurar pelo altar, isso não é nada; mas, se alguém jurar pela dádiva nele, ele está sob obrigação.’",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 19,
+          "texto": "Cegos! Na verdade, o que é maior: a dádiva ou o altar que santifica a dádiva?",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 20,
+          "texto": "Portanto, quem jura pelo altar está jurando por ele e por todas as coisas sobre ele;",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 21,
+          "texto": "e quem jura pelo templo está jurando por ele e por Aquele que habita nele;",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 22,
+          "texto": "e quem jura pelo céu está jurando pelo trono de Deus e por Aquele que está sentado nele.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 23,
+          "texto": "“Ai de vocês, escribas e fariseus, hipócritas! Porque dão o décimo da hortelã, do endro e do cominho, mas desconsideram as questões mais importantes da Lei, isto é, a justiça, a misericórdia e a fidelidade. Essas eram as coisas que precisavam ser feitas, mas sem desconsiderar as outras.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 24,
+          "texto": "Guias cegos, que coam o mosquito, mas engolem o camelo!",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 25,
+          "texto": "“Ai de vocês, escribas e fariseus, hipócritas! Porque limpam por fora o copo e o prato, mas por dentro eles estão cheios de ganância e de imoderação.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 26,
+          "texto": "Fariseu cego, limpe primeiro a parte de dentro do copo e do prato, para que a parte de fora também fique limpa.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 27,
+          "texto": "“Ai de vocês, escribas e fariseus, hipócritas! Porque são como sepulcros caiados, que por fora realmente parecem belos, mas por dentro estão cheios de ossos de mortos e de todo tipo de impureza.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 28,
+          "texto": "Do mesmo modo, por fora vocês parecem justos aos homens, mas por dentro estão cheios de hipocrisia e do que é contra a lei.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 29,
+          "texto": "“Ai de vocês, escribas e fariseus, hipócritas! Porque constroem os sepulcros dos profetas e decoram os túmulos dos justos,",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 30,
+          "texto": "e dizem: ‘Se nós tivéssemos vivido nos dias dos nossos antepassados, não teríamos participado com eles em derramar o sangue dos profetas.’",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 31,
+          "texto": "Portanto, vocês dão testemunho contra si mesmos de que são filhos daqueles que assassinaram os profetas.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 32,
+          "texto": "Pois bem, completem a medida dos seus antepassados.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 33,
+          "texto": "“Serpentes, descendência de víboras, como fugirão do julgamento da Geena?",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 34,
+          "texto": "É por essa razão que eu estou lhes enviando profetas, sábios e instrutores públicos. A alguns deles vocês matarão e pregarão em estacas, e a outros açoitarão nas suas sinagogas e perseguirão de cidade em cidade,",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 35,
+          "texto": "para que venha sobre vocês todo o sangue justo derramado na terra, desde o sangue do justo Abel até o sangue de Zacarias, filho de Baraquias, a quem vocês assassinaram entre o santuário e o altar.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 36,
+          "texto": "Eu garanto a vocês: Todas essas coisas virão sobre esta geração.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 37,
+          "texto": "“Jerusalém, Jerusalém, que mata os profetas e apedreja os que lhe são enviados . . . Quantas vezes eu quis ajuntar seus filhos, assim como a galinha ajunta seus pintinhos debaixo das asas! Mas vocês não quiseram.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 38,
+          "texto": "Agora a sua casa ficará abandonada.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 39,
+          "texto": "Pois eu lhes digo: De agora em diante, vocês de modo algum me verão, até que digam: ‘Bendito é aquele que vem em nome de Jeová!’”",
           "novo_paragrafo": false
         }
       ]

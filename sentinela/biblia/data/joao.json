@@ -1717,6 +1717,251 @@
       ]
     },
     {
+      "capitulo": 8,
+      "versiculos": [
+        {
+          "verso": 12,
+          "texto": "Então Jesus se dirigiu novamente a eles e disse: “Eu sou a luz do mundo. Quem me segue de modo algum andará na escuridão, mas terá a luz da vida.”",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 13,
+          "texto": "Os fariseus lhe disseram então: “Você dá testemunho de si mesmo; seu testemunho não é verdadeiro.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 14,
+          "texto": "Jesus lhes respondeu: “Mesmo que eu dê testemunho de mim mesmo, meu testemunho é verdadeiro, porque eu sei de onde vim e para onde vou. Mas vocês não sabem de onde eu vim nem para onde vou.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 15,
+          "texto": "Vocês julgam segundo a carne; eu não julgo a ninguém.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 16,
+          "texto": "Contudo, mesmo que eu julgue, meu julgamento é verdadeiro, porque não estou sozinho, mas o Pai, que me enviou, está comigo.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 17,
+          "texto": "Também, na própria Lei de vocês está escrito: ‘O testemunho de dois homens é verdadeiro.’",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 18,
+          "texto": "Eu sou um que dá testemunho de mim mesmo, e o Pai, que me enviou, dá testemunho de mim.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 19,
+          "texto": "Então eles lhe perguntaram: “Onde está o seu Pai?” Jesus respondeu: “Vocês não conhecem nem a mim nem ao meu Pai. Se me conhecessem, conheceriam também o meu Pai.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 20,
+          "texto": "Ele disse essas palavras no local onde ficavam os cofres do tesouro, enquanto ensinava no templo. Mas ninguém o prendeu, pois a sua hora ainda não havia chegado.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 21,
+          "texto": "Novamente, ele lhes disse: “Eu vou embora, e vocês me procurarão, contudo morrerão nos seus pecados. Para onde eu vou, vocês não podem ir.”",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 22,
+          "texto": "Então os judeus começaram a dizer: “Será que ele vai se matar? Porque ele diz: ‘Para onde eu vou, vocês não podem ir.’”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 23,
+          "texto": "E ele acrescentou: “Vocês são dos domínios de baixo; eu sou dos domínios de cima. Vocês são deste mundo; eu não sou deste mundo.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 24,
+          "texto": "É por isso que eu lhes disse: Vocês morrerão nos seus pecados. Pois, se vocês não acreditarem em quem eu sou, morrerão nos seus pecados.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 25,
+          "texto": "Perguntaram-lhe então: “Quem é você?” Jesus lhes disse em resposta: “Por que é que estou falando com vocês?",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 26,
+          "texto": "Tenho muitas coisas para falar a respeito de vocês e para julgar. De fato, Aquele que me enviou é verdadeiro, e aquilo que ouvi dele eu digo ao mundo.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 27,
+          "texto": "Eles não compreenderam que lhes falava do Pai.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 28,
+          "texto": "Então Jesus disse: “Depois que vocês tiverem erguido o Filho do Homem, então saberão que eu sou ele e que não faço nada de minha própria iniciativa, mas falo aquilo que o Pai me ensinou.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 29,
+          "texto": "E Aquele que me enviou está comigo; ele não me deixou só, porque faço sempre o que lhe agrada.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 30,
+          "texto": "Quando ele disse essas coisas, muitos depositaram fé nele.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 31,
+          "texto": "Então Jesus disse aos judeus que acreditaram nele: “Se vocês permanecerem nas minhas palavras, são realmente meus discípulos;",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 32,
+          "texto": "vocês conhecerão a verdade, e a verdade os libertará.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 33,
+          "texto": "Responderam-lhe: “Somos descendentes de Abraão e nunca fomos escravos de ninguém. Como é que você diz: ‘Vocês ficarão livres’?”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 34,
+          "texto": "Jesus lhes respondeu: “Digo-lhes com toda a certeza: Todo aquele que peca é escravo do pecado.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 35,
+          "texto": "Além disso, o escravo não permanece na casa para sempre; o filho permanece para sempre.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 36,
+          "texto": "Portanto, se o Filho os libertar, vocês serão realmente livres.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 37,
+          "texto": "Sei que vocês são descendentes de Abraão. Mas vocês procuram me matar, porque não aceitam as minhas palavras.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 38,
+          "texto": "Eu falo do que vi enquanto estava com o meu Pai, mas vocês fazem o que ouviram do seu pai.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 39,
+          "texto": "Em resposta, eles lhe disseram: “Nosso pai é Abraão.” Jesus lhes disse: “Se vocês fossem filhos de Abraão, fariam as obras de Abraão.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 40,
+          "texto": "Mas o fato é que vocês procuram matar a mim, um homem que lhes disse a verdade que ouviu de Deus. Abraão não agiu assim.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 41,
+          "texto": "Vocês fazem as obras do seu pai.” Eles lhe disseram: “Não nascemos de imoralidade. Temos um só Pai, Deus.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 42,
+          "texto": "Jesus lhes disse: “Se Deus fosse o seu Pai, vocês me amariam, pois vim de Deus e estou aqui. Eu não vim de minha própria iniciativa, mas foi ele que me enviou.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 43,
+          "texto": "Por que vocês não entendem o que estou dizendo? Porque são incapazes de ouvir as minhas palavras.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 44,
+          "texto": "Vocês são filhos do seu pai, o Diabo, e querem satisfazer os desejos do seu pai. Ele foi um assassino quando começou, e não permaneceu na verdade, porque nele não há verdade. Quando ele fala a mentira, está fazendo o que lhe é próprio, porque é um mentiroso e o pai da mentira.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 45,
+          "texto": "Por outro lado, visto que eu lhes digo a verdade, vocês não acreditam em mim.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 46,
+          "texto": "Quem de vocês me declara culpado de pecado? Se eu falo a verdade, por que é que não acreditam em mim?",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 47,
+          "texto": "Quem é de Deus escuta as declarações de Deus. É por isso que vocês não escutam, porque não são de Deus.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 48,
+          "texto": "Em resposta, os judeus lhe disseram: “Não estamos certos em dizer que você é samaritano e tem demônio?”",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 49,
+          "texto": "Jesus respondeu: “Eu não tenho demônio, mas honro o meu Pai, e vocês me desonram.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 50,
+          "texto": "Mas não procuro glória para mim mesmo; há Alguém que procura, e ele julga.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 51,
+          "texto": "Digo-lhes com toda a certeza: Se alguém obedecer às minhas palavras, nunca jamais verá a morte.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 52,
+          "texto": "Os judeus lhe disseram: “Agora sabemos que você tem demônio. Abraão morreu, os profetas também, mas você diz: ‘Se alguém obedecer às minhas palavras, nunca jamais provará a morte.’",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 53,
+          "texto": "Será que você é maior do que nosso pai Abraão, que morreu? Os profetas também morreram. Quem você pensa que é?”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 54,
+          "texto": "Jesus respondeu: “Se eu glorificar a mim mesmo, a minha glória não é nada. É o meu Pai quem me glorifica, aquele que vocês dizem ser o seu Deus.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 55,
+          "texto": "No entanto, vocês não o conhecem, mas eu o conheço. E, se eu dissesse que não o conheço, seria um mentiroso, como vocês. Mas eu o conheço e obedeço à sua palavra.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 56,
+          "texto": "Abraão, o pai de vocês, alegrou-se muito com a perspectiva de ver o meu dia, e ele o viu e se alegrou.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 57,
+          "texto": "Então os judeus lhe disseram: “Você não tem nem 50 anos, e ainda assim viu Abraão?”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 58,
+          "texto": "Jesus lhes disse: “Digo-lhes com toda a certeza: Antes de Abraão vir à existência, eu já existia.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 59,
+          "texto": "Assim, apanharam pedras para atirar nele, mas Jesus se escondeu e saiu do templo.",
+          "novo_paragrafo": false
+        }
+      ]
+    },
+    {
       "capitulo": 9,
       "versiculos": [
         {

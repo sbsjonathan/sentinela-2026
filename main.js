@@ -3,6 +3,9 @@ const CONTEUDO_CACHE_KEY = "sentinela-conteudo";
 const TITULO_PADRAO = "Estudo de A Sentinela";
 const COR_PADRAO = "#6c5ce7";
 const OFFLINE_CACHE = "artigo-offline-v1";
+const SEMANAS_POR_LADO = 6;
+const INDICE_CENTRAL = SEMANAS_POR_LADO;
+const TOTAL_SEMANAS = SEMANAS_POR_LADO * 2 + 1;
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const MES_ABREV = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -14,8 +17,9 @@ const ICONE_RING = '<svg class="ring" viewBox="0 0 24 24"><circle cx="12" cy="12
 
 class CarouselManager {
     constructor() {
-        this.currentSlide = 3;
-        this.totalSlides = 7;
+        this.currentSlide = INDICE_CENTRAL;
+        this.indiceCentral = INDICE_CENTRAL;
+        this.totalSlides = TOTAL_SEMANAS;
         this.semanas = [];
         this.cards = [];
         this.chips = [];
@@ -76,7 +80,7 @@ class CarouselManager {
         seg.setHours(0, 0, 0, 0);
 
         this.semanas = [];
-        for (let i = -3; i <= 3; i++) {
+        for (let i = -SEMANAS_POR_LADO; i <= SEMANAS_POR_LADO; i++) {
             const ini = new Date(seg);
             ini.setDate(seg.getDate() + i * 7);
             const fim = new Date(ini);
@@ -92,7 +96,7 @@ class CarouselManager {
             });
         }
 
-        this.semanaAtual = this.semanas[3].parametro;
+        this.semanaAtual = this.semanas[INDICE_CENTRAL].parametro;
         window.semanaAtual = this.semanaAtual;
     }
 

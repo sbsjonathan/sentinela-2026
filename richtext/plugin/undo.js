@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return {
         roots,
         selection: this.captureSelection(),
-        contentKey: PERF_LOW ? null : JSON.stringify(roots)
+        contentKey: JSON.stringify(roots)
       };
     },
 

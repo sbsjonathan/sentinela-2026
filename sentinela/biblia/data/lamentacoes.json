@@ -451,27 +451,27 @@
         },
         {
           "verso": 44,
-          "texto": "Com uma nuvem, impediste a aproximação a ti, para que a nossa oração não passe. Fazes de nós escória e refugo entre os povos.”",
+          "texto": "Com uma nuvem, impediste a aproximação a ti, para que a nossa oração não passe.",
           "novo_paragrafo": true
         },
         {
           "verso": 45,
-          "texto": "Todos os nossos inimigos abrem a boca contra nós.",
+          "texto": "Fazes de nós escória e refugo entre os povos.”",
           "novo_paragrafo": true
         },
         {
           "verso": 46,
-          "texto": "Pavor e armadilhas é o que recebemos, desolação e ruína.",
+          "texto": "Todos os nossos inimigos abrem a boca contra nós.",
           "novo_paragrafo": true
         },
         {
           "verso": 47,
-          "texto": "Correntes de água descem dos meus olhos por causa da ruína da filha do meu povo.",
+          "texto": "Pavor e armadilhas é o que recebemos, desolação e ruína.",
           "novo_paragrafo": true
         },
         {
           "verso": 48,
-          "texto": "Meus olhos me causam pesar quando vejo todas as filhas da minha cidade.",
+          "texto": "Correntes de água descem dos meus olhos por causa da ruína da filha do meu povo.",
           "novo_paragrafo": true
         },
         {
@@ -531,31 +531,36 @@
         },
         {
           "verso": 60,
-          "texto": "Vistes como se vingaram de mim, todas as suas tramas contra mim.",
+          "texto": "Viste como se vingaram de mim, todas as suas tramas contra mim.",
           "novo_paragrafo": true
         },
         {
           "verso": 61,
-          "texto": "Ouviste os insultos deles, ó Jeová, todas as suas tramas contra mim, As palavras dos meus opositores e seus cochichos contra mim, o dia inteiro.",
+          "texto": "Ouviste os insultos deles, ó Jeová, todas as suas tramas contra mim,",
           "novo_paragrafo": true
         },
         {
           "verso": 62,
-          "texto": "Olha para eles; sentados ou de pé, zombam de mim nas suas canções!",
+          "texto": "As palavras dos meus opositores e seus cochichos contra mim, o dia inteiro.",
           "novo_paragrafo": true
         },
         {
           "verso": 63,
-          "texto": "Ó Jeová, tu lhes retribuirás segundo as suas ações.",
+          "texto": "Olha para eles; sentados ou de pé, zombam de mim nas suas canções!",
           "novo_paragrafo": true
         },
         {
           "verso": 64,
-          "texto": "Farás o coração deles ficar endurecido; essa será a tua maldição sobre eles.",
+          "texto": "Ó Jeová, tu lhes retribuirás segundo as suas ações.",
           "novo_paragrafo": true
         },
         {
           "verso": 65,
+          "texto": "Farás o coração deles ficar endurecido; essa será a tua maldição sobre eles.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 66,
           "texto": "Tu os perseguirás na tua ira e os exterminarás de debaixo dos céus de Jeová.",
           "novo_paragrafo": true
         }

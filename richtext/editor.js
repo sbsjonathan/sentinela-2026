@@ -398,16 +398,20 @@ const M7_Actions = {
     if (lvl > M1_Config.MAX_LVL) return;
 
     const rawTxt = M3_TextModel.read(M2_Query.getTxtC(txtNode));
+    const rawHTML = M3_TextModel.readHTML(M2_Query.getTxtC(txtNode));
     const filledLines = rawTxt.split(/\r?\n/).filter(l => l.trim().length > 0);
 
     if (filledLines.length >= 2) return this.shake(txtNode);
 
-    const txt = filledLines.length === 1 ? filledLines[0].trim() : "";
-    const t = M5_Factory.toggle(txt, lvl, false);
+    const t = M5_Factory.toggle('', lvl, false);
 
     txtNode.replaceWith(t);
 
     const title = M2_Query.getTit(t);
+    if (title) {
+      title.innerHTML = filledLines.length === 1 ? rawHTML : '';
+      M3_TextModel.sync(title);
+    }
     t.classList.add('is-focused');
     M4_Caret.place(title, false);
     M3_TextModel.syncAll();
@@ -962,8 +966,9 @@ const M10_EditorEvents = {
 
         const shouldResetForFreshParagraph = targetEditable => !!(
           targetEditable &&
-          targetEditable.classList.contains('paragraph-content') &&
-          (sourceIsHeadingParagraph || sourceIsToggleContext)
+          ((targetEditable.classList.contains('paragraph-content') &&
+            (sourceIsHeadingParagraph || sourceIsToggleContext)) ||
+           targetEditable.classList.contains('toggle-title'))
         );
 
         const safeQueryState = cmd => {
@@ -1000,8 +1005,8 @@ const M10_EditorEvents = {
 
         const restoreFormat = targetEditable => {
           if (shouldResetForFreshParagraph(targetEditable)) return;
-          if (formatState.b) document.execCommand('bold', false, null);
-          if (formatState.i) document.execCommand('italic', false, null);
+          if (safeQueryState('bold')) document.execCommand('bold', false, null);
+          if (safeQueryState('italic')) document.execCommand('italic', false, null);
           if (formatState.u) document.execCommand('underline', false, null);
           if (formatState.fore && formatState.fore !== 'transparent' && formatState.fore !== 'rgba(0, 0, 0, 0)') {
             document.execCommand('foreColor', false, formatState.fore);
@@ -1011,6 +1016,8 @@ const M10_EditorEvents = {
               document.execCommand('backColor', false, formatState.back);
             }
           }
+          window.M13_Negrita?.clearTypingState?.();
+          requestAnimationFrame(() => window.M13_Negrita?.syncButtons?.());
         };
 
         const resetFormatForFreshParagraph = targetEditable => {
@@ -1027,7 +1034,9 @@ const M10_EditorEvents = {
             document.execCommand('backColor', false, 'transparent');
           }
 
-          clearInlineCarryover(targetEditable);
+          // Reset future typing without stripping formatting from text moved
+          // after the caret into this new block.
+          if (M3_TextModel.isEmpty(targetEditable)) clearInlineCarryover(targetEditable);
           window.M13_Negrita?.clearTypingState?.();
           requestAnimationFrame(() => window.M13_Negrita?.syncButtons?.());
         };
@@ -1066,12 +1075,22 @@ const M10_EditorEvents = {
             M4_Caret.place(targetEditable);
             finalizeParagraphTransition(targetEditable);
           } else {
+            const range = M2_Query.curRange();
+            let tail = null;
+            if (range && ed.contains(range.startContainer)) {
+              if (!range.collapsed && ed.contains(range.endContainer)) range.deleteContents();
+              const rest = document.createRange();
+              rest.setStart(range.startContainer, range.startOffset);
+              rest.setEnd(ed, ed.childNodes.length);
+              tail = rest.extractContents();
+            }
             const n = M5_Factory.toggle('', M2_Query.getLvl(t));
             M7_Actions.insAfter(t, n);
             M7_Actions.anim(n);
-            M3_TextModel.syncAll();
             const targetEditable = M2_Query.getTit(n);
-            M4_Caret.place(targetEditable);
+            if (tail) targetEditable.replaceChildren(tail);
+            M3_TextModel.syncAll();
+            M4_Caret.place(targetEditable, true);
             finalizeParagraphTransition(targetEditable);
           }
         } else if (ed.classList.contains('text-content') || ed.classList.contains('paragraph-content')) {
@@ -1113,12 +1132,22 @@ const M10_EditorEvents = {
               M11_Layout.run();
             } else {
               const cur = M2_Query.curNode();
+              const range = M2_Query.curRange();
+              let tail = null;
+              if (range && ed.contains(range.startContainer)) {
+                if (!range.collapsed && ed.contains(range.endContainer)) range.deleteContents();
+                const rest = document.createRange();
+                rest.setStart(range.startContainer, range.startOffset);
+                rest.setEnd(ed, ed.childNodes.length);
+                tail = rest.extractContents();
+              }
               const p = M5_Factory.para();
               M7_Actions.insAfter(cur, p);
               M7_Actions.anim(p);
-              M3_TextModel.syncAll();
               const targetEditable = M2_Query.getParC(p);
-              M4_Caret.place(targetEditable);
+              if (tail) targetEditable.replaceChildren(tail);
+              M3_TextModel.syncAll();
+              M4_Caret.place(targetEditable, true);
               finalizeParagraphTransition(targetEditable);
             }
           }

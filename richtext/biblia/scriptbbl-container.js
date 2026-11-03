@@ -1,456 +1,285 @@
 (function() {
-  const readerRoutes = import(new URL('../../biblia/legacy-routes.js', document.currentScript.src).href).catch(() => null);
+  'use strict';
   if (window.bibleSystemInitialized) return;
   window.bibleSystemInitialized = true;
-
-  let isModalOpen = false;
-  let lastClickedBbl = null; // Memória de qual span abriu o modal
-
-  function blockTextSelection() {
-    document.body.classList.add('no-select-global');
-  }
-
-  function unblockTextSelection() {
-    document.body.classList.remove('no-select-global');
-  }
+  const scriptURL = document.currentScript.src;
+  const readerRoutes = import(new URL('../../biblia/legacy-routes.js', scriptURL).href).catch(() => null);
+  const aliases = typeof ABREVIACOES === 'object' ? ABREVIACOES : {};
+  const references = new window.NotesBibleReferenceModel({
+    baseURL: new URL('../../sentinela/biblia/data/', scriptURL), aliases
+  });
+  let current = null, session = 0, previewVersion = 0, closeTimer = 0;
+  let bodyOverflow = null, returnFocus = null, sequence = 0;
+  const bindings = new WeakSet();
+  const byId = id => document.getElementById(id);
+  const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const editableOf = node => (node?.nodeType === 1 ? node : node?.parentElement)?.closest('.editable');
+  const sourceId = () => window.crypto?.randomUUID?.() || `bbl-${Date.now().toString(36)}-${++sequence}-${Math.random().toString(36).slice(2)}`;
 
   function ensureModalExists() {
-    if (document.getElementById('modal-biblia')) return;
-    
-    const modalHTML = `
-      <div id="modal-biblia" style="display: none;">
-        <div class="modal-biblia-content">
-          <span id="modal-biblia-transcrever" title="Transcrever versículo">T</span>
-          <span id="modal-biblia-fechar">&times;</span>
-          <div id="modal-biblia-corpo"></div>
-        </div>
+    if (byId('modal-biblia')) return;
+    const modal = document.createElement('div');
+    modal.id = 'modal-biblia'; modal.hidden = true;
+    modal.innerHTML = `<section class="modal-biblia-content" role="dialog" aria-modal="true" aria-labelledby="modal-biblia-heading" tabindex="-1">
+      <header class="modal-biblia-toolbar"><span id="modal-biblia-heading">Texto bíblico</span><div>
+        <button id="modal-biblia-expandir" type="button" aria-label="Ajustar versículos" aria-controls="modal-biblia-ajustes" aria-expanded="false">+</button>
+        <button id="modal-biblia-transcrever" type="button" title="Transcrever a prévia" aria-label="Transcrever a prévia">T</button>
+        <button id="modal-biblia-fechar" type="button" aria-label="Fechar prévia">×</button>
+      </div></header>
+      <div id="modal-biblia-ajustes" hidden>
+        <div class="modal-biblia-stepper"><button id="modal-biblia-menos" type="button" aria-label="Remover último versículo">−</button><span>Versículos na prévia</span><button id="modal-biblia-mais" type="button" aria-label="Acrescentar próximo versículo">+</button></div>
+        <form id="modal-biblia-form"><label for="modal-biblia-campo">Acrescentar versículos</label><div><input id="modal-biblia-campo" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Ex.: 2-5, 8 ou 2:1-3"><button id="modal-biblia-aplicar" type="submit" aria-label="Aplicar versículos à prévia">✓</button></div></form>
       </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    setupModalListeners();
-  }
-
-  function setupModalListeners() {
-    const modal = document.getElementById('modal-biblia');
-    const btnFechar = document.getElementById('modal-biblia-fechar');
-    const btnTranscrever = document.getElementById('modal-biblia-transcrever');
-    const content = modal.querySelector('.modal-biblia-content');
-
-    if (btnFechar) btnFechar.addEventListener('click', fecharModal);
-    if (btnTranscrever) btnTranscrever.addEventListener('click', transcreverVersiculo);
-    if (modal) modal.addEventListener('click', fecharModal);
-    if (content) {
-        content.addEventListener('click', e => e.stopPropagation());
-        content.addEventListener('touchstart', e => e.stopPropagation());
-    }
-    window.addEventListener('keydown', e => { if (e.key === 'Escape' && isModalOpen) fecharModal(); });
-  }
-
-  function fecharModal() {
-    const modal = document.getElementById('modal-biblia');
-    if (modal) modal.style.display = 'none';
-    
-    document.body.style.overflow = "";
-    isModalOpen = false;
-    setTimeout(unblockTextSelection, 100);
-  }
-  
-  async function abrirModalBibl(referencia, triggerElement = null) {
-    if (typeof ABREVIACOES === 'undefined') return;
-    
-    lastClickedBbl = triggerElement; // Guarda a referência do elemento clicado
-    isModalOpen = true;
-    blockTextSelection();
-    
-    ensureModalExists();
-    const modal = document.getElementById('modal-biblia');
-    const corpo = document.getElementById('modal-biblia-corpo');
-    const btnTranscrever = document.getElementById('modal-biblia-transcrever');
-    
-    // Mostra o botão "T" apenas se estivermos num ambiente de edição (RichText / Fullsc)
-    if (btnTranscrever) {
-      if (typeof M5_Factory !== 'undefined' && typeof M2_Query !== 'undefined') {
-        btnTranscrever.style.display = 'flex';
-      } else {
-        btnTranscrever.style.display = 'none';
-      }
-    }
-    
-    modal.style.display = 'flex';
-    document.body.style.overflow = "hidden";
-    corpo.innerHTML = '<h3>Carregando...</h3>';
-    
-    try {
-      const resultado = await buscarVersiculo(referencia);
-      corpo.innerHTML = `<h3>${resultado.titulo}</h3><div>${resultado.texto}</div>`;
-      corpo.dataset.reference = referencia;
-      readerRoutes.then(routes => {
-        if (routes && corpo.dataset.reference === referencia) routes.appendBibleChapterLink(corpo, referencia, ABREVIACOES);
-      });
-    } catch (error) {
-      corpo.innerHTML = '<h3>Erro</h3><div>Não foi possível carregar a referência.</div>';
-    }
-  }
-
-  // --- LÓGICA DE TRANSCRIÇÃO PARA O EDITOR ---
-  function transcreverVersiculo() {
-    if (!lastClickedBbl || typeof M3_TextModel === 'undefined' || typeof M2_Query === 'undefined') return;
-
-    const corpo = document.getElementById('modal-biblia-corpo');
-    const paragrafos = corpo.querySelectorAll('p');
-
-    if (paragrafos.length === 0) return;
-
-    // 1. Coleta o HTML dos parágrafos, removendo as tags <br> para fluir naturalmente com o texto.
-    let versosHtml = [];
-    paragrafos.forEach(p => versosHtml.push(p.innerHTML.trim()));
-    let textoLimpo = versosHtml.join(' ').replace(/<br\s*\/?>/gi, ' ');
-
-    // 2. Monta o texto no formato desejado: "— texto_em_itálico"
-    let htmlToInject = ` <i>— ${textoLimpo}</i>`;
-
-    // 3. Acha a caixa de texto onde o link clicado está
-    const editable = lastClickedBbl.closest('.editable');
-    if (!editable) return;
-
-    // 4. Salva o estado no histórico para o botão Desfazer funcionar
-    if (window.M12_History && window.M12_History.beforeChange) window.M12_History.beforeChange();
-
-    // 5. Injeta o texto LOGO APÓS o link clicado (na mesma estrutura/parágrafo)
-    lastClickedBbl.insertAdjacentHTML('afterend', htmlToInject);
-
-    // 6. Sincroniza o modelo de texto com a nova inserção
-    if (typeof M3_TextModel !== 'undefined') {
-        M3_TextModel.sync(editable);
-        M3_TextModel.syncAll();
-    }
-    
-    // 7. Atualiza o histórico
-    if (window.M12_History && window.M12_History.afterChange) window.M12_History.afterChange(2);
-
-    // 8. Dispara o evento de 'input' para forçar o Auto-Save
-    const editor = document.getElementById('editor');
-    if (editor) {
-        editor.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-
-    // 9. Fecha o modal para o usuário continuar a leitura/edição
-    fecharModal();
-  }
-
-  function setupBblLinkListeners(linkEl) {
-    linkEl.style.cursor = 'pointer';
-
-    const FEEDBACK_DELAY = 75;
-    const LONG_PRESS_MS = 150;
-    const SLOP_FEEDBACK = 6;
-    const SLOP_OPEN = 12;
-
-    let pressTimer = null;
-    let feedbackTimer = null;
-    let moveTooMuch = false;
-    let startX = 0, startY = 0;
-
-    const clearTimers = () => {
-      if (pressTimer) clearTimeout(pressTimer);
-      if (feedbackTimer) clearTimeout(feedbackTimer);
-      pressTimer = null;
-      feedbackTimer = null;
+      <p id="modal-biblia-erro" role="status" hidden></p>
+      <div id="modal-biblia-corpo" aria-live="polite"></div>
+    </section>`;
+    document.body.append(modal);
+    byId('modal-biblia-fechar').onclick = () => fecharModal();
+    byId('modal-biblia-transcrever').onclick = transcreverVersiculo;
+    byId('modal-biblia-expandir').onclick = () => {
+      const panel = byId('modal-biblia-ajustes'); panel.hidden = !panel.hidden;
+      byId('modal-biblia-expandir').setAttribute('aria-expanded', String(!panel.hidden));
+      if (panel.hidden) { byId('modal-biblia-campo').value = ''; setError(''); }
+      syncViewport();
     };
-
-    const cancelGesture = () => {
-      moveTooMuch = true;
-      clearTimers();
-      linkEl.classList.remove('pressionando', 'ref-aberta');
-    };
-
-    const touchStartHandler = (e) => {
-      if (e.touches.length > 1) return;
-      moveTooMuch = false;
-      blockTextSelection();
-
-      const touch = e.touches[0];
-      startX = touch.clientX;
-      startY = touch.clientY;
-
-      feedbackTimer = setTimeout(() => {
-        if (!moveTooMuch) linkEl.classList.add('pressionando');
-      }, FEEDBACK_DELAY);
-
-      pressTimer = setTimeout(() => {
-        if (!moveTooMuch) {
-          linkEl.classList.remove('pressionando');
-          linkEl.classList.add('ref-aberta');
-
-          if (navigator.vibrate) navigator.vibrate(50);
-          
-          // Passamos o próprio elemento linkEl como segundo parâmetro
-          abrirModalBibl(linkEl.textContent.trim(), linkEl);
-          
-          setTimeout(() => linkEl.classList.remove('ref-aberta'), 200);
-        }
-      }, LONG_PRESS_MS);
-    };
-
-    const touchMoveHandler = (e) => {
-      const touch = e.touches[0];
-      const dx = touch.clientX - startX;
-      const dy = touch.clientY - startY;
-      const ax = Math.abs(dx);
-      const ay = Math.abs(dy);
-
-      if (ay > ax && ay > SLOP_FEEDBACK) {
-        cancelGesture();
-        return;
-      }
-
-      if (ax > SLOP_OPEN || ay > SLOP_OPEN) {
-        cancelGesture();
-        return;
-      }
-
-      if (ax > SLOP_FEEDBACK || ay > SLOP_FEEDBACK) {
-        clearTimeout(feedbackTimer);
-        feedbackTimer = null;
-        linkEl.classList.remove('pressionando');
-      }
-    };
-
-    const touchEndHandler = () => {
-      clearTimers();
-      linkEl.classList.remove('pressionando', 'ref-aberta');
-
-      if (!isModalOpen) {
-        setTimeout(unblockTextSelection, 50);
-      }
-    };
-
-    linkEl.addEventListener('touchstart', touchStartHandler, { passive: true });
-    linkEl.addEventListener('touchmove', touchMoveHandler, { passive: true });
-    linkEl.addEventListener('touchend', touchEndHandler);
-    linkEl.addEventListener('touchcancel', touchEndHandler);
-    linkEl.addEventListener('contextmenu', e => e.preventDefault());
-  }
-
-  async function processarMultiplasReferencias(refString) {
-    const referencias = refString.split(';').map(ref => ref.trim()).filter(ref => ref.length > 0);
-    
-    let resultadosCompletos =[];
-    let nomeLivroBase = '';
-    let titulosParaMostrar =[];
-    
-    let ultimoLivro = '';
-    let ultimoCapitulo = '';
-
-    for (let i = 0; i < referencias.length; i++) {
-        let refAtual = referencias[i].trim();
-        
-        let matchCompleto = refAtual.match(/^([1-3]?\s?[A-Za-zêÊãÃíÍóÓâÂéÉôÔúÚçÇáÁ.]+)\s+(\d{1,3}):/);
-        if (matchCompleto) {
-            ultimoLivro = matchCompleto[1].trim();
-            const capMatches =[...refAtual.matchAll(/(\d{1,3}):/g)];
-            if (capMatches.length > 0) {
-                ultimoCapitulo = capMatches[capMatches.length - 1][1];
-            }
-        } else {
-            if (/^(\d{1,3}):/.test(refAtual)) {
-                refAtual = ultimoLivro + ' ' + refAtual;
-                const capMatches =[...refAtual.matchAll(/(\d{1,3}):/g)];
-                if (capMatches.length > 0) {
-                    ultimoCapitulo = capMatches[capMatches.length - 1][1];
-                }
-            } else if (/^[\d,\s-–—]+$/.test(refAtual)) {
-                refAtual = ultimoLivro + ' ' + ultimoCapitulo + ':' + refAtual;
-            }
-        }
-
-        const resultado = await buscarVersiculoCore(refAtual);
-        
-        if (resultado.titulo !== "Referência Inválida" && resultado.titulo !== "Não Encontrado" && resultado.titulo !== "Livro não encontrado") {
-            resultadosCompletos.push(resultado);
-            if (nomeLivroBase === '') {
-                const livroMatch = resultado.titulo.match(/^([^0-9]+)/);
-                if (livroMatch) nomeLivroBase = livroMatch[1].trim();
-            }
-            titulosParaMostrar.push(resultado.titulo.replace(nomeLivroBase, '').trim());
-        }
-    }
-
-    if (resultadosCompletos.length === 0) {
-      return { titulo: "Referências Inválidas", texto: "Nenhuma das referências pôde ser encontrada." };
-    }
-    
-    const capitulosUnicos = new Set(resultadosCompletos.map(r => r.titulo.match(/(\d+):/)?.[1]).filter(Boolean));
-    const temMultiplosCapitulos = capitulosUnicos.size > 1;
-
-    const tituloFinal = nomeLivroBase + ' ' + titulosParaMostrar.join('; ');
-    let textoFinal = '';
-    let capitulosJaMostrados = new Set();
-    
-    resultadosCompletos.forEach((resultado, index) => {
-        const numeroCapitulo = resultado.titulo.match(/(\d+):/)?.[1];
-        
-        if (temMultiplosCapitulos && numeroCapitulo && !capitulosJaMostrados.has(numeroCapitulo)) {
-            if (index > 0) {
-                textoFinal += '<div style="margin: 20px 0 15px 0; border-top: 2px solid #ddd; padding-top: 15px;"></div>';
-            }
-            textoFinal += `<div style="margin-bottom: 12px;"><strong style="font-style: italic; color: #666; font-size: 1.1em;">Capítulo ${numeroCapitulo}</strong></div>`;
-            capitulosJaMostrados.add(numeroCapitulo);
-        } else if (index > 0) {
-            textoFinal += '<div style="margin-top: 15px;"></div>';
-        }
-        
-        textoFinal += resultado.texto;
-    });
-
-    return { titulo: tituloFinal, texto: textoFinal };
-  }
-
-  async function buscarVersiculoCore(refString) {
-    let multiCapMatch = refString.match(/^([1-3]?\s?[A-Za-zêÊãÃíÍóÓâÂéÉôÔúÚçÇáÁ.]+)\s?(\d{1,3}):(\d{1,3})\s*[-–—]\s*(\d{1,3}):(\d{1,3})$/);
-    let singleCapMatch = refString.match(/^([1-3]?\s?[A-Za-zêÊãÃíÍóÓâÂéÉôÔúÚçÇáÁ.]+)\s?(\d{1,3}):([\d,\s-–—]+)/);
-
-    if (!multiCapMatch && !singleCapMatch) {
-      return { titulo: "Referência Inválida", texto: "Formato não reconhecido." };
-    }
-    
-    const isMultiCap = !!multiCapMatch;
-    const match = isMultiCap ? multiCapMatch : singleCapMatch;
-    let nomeAbreviado = match[1].replace(/[\.\s]/g, '').trim();
-    
-    const mapeamentosEspeciais = {
-      'Deut': 'deuteronomio',
-      'Gál': 'galatas'
-    };
-    
-    const nomeLivro = mapeamentosEspeciais[nomeAbreviado] || ABREVIACOES[nomeAbreviado] || nomeAbreviado.toLowerCase().replace(/\s/g, '');
-
-    let dados;
-    try {
-      dados = await fetchBookData(nomeLivro);
-    } catch (e) {
-      return { titulo: "Livro não encontrado", texto: `O livro "${nomeLivro}" não foi encontrado.` };
-    }
-
-    let textoHtml = "";
-    let versosColetados =[];
-
-    if (isMultiCap) {
-      let capIni = parseInt(match[2]), versIni = parseInt(match[3]);
-      let capFim = parseInt(match[4]), versFim = parseInt(match[5]);
-
-      for (let c = capIni; c <= capFim; c++) {
-        const capObj = dados.capitulos.find(chap => chap.capitulo === c);
-        if (!capObj) continue;
-
-        let versiculosDoCapitulo =[];
-        if (c === capIni && c === capFim) versiculosDoCapitulo = capObj.versiculos.filter(v => v.verso >= versIni && v.verso <= versFim);
-        else if (c === capIni) versiculosDoCapitulo = capObj.versiculos.filter(v => v.verso >= versIni);
-        else if (c === capFim) versiculosDoCapitulo = capObj.versiculos.filter(v => v.verso <= versFim);
-        else versiculosDoCapitulo = capObj.versiculos;
-        
-        versosColetados.push(...versiculosDoCapitulo.map(v => ({...v, capitulo: c}) ));
-      }
-    } else {
-      const capituloNum = parseInt(match[2]);
-      const capObj = dados.capitulos.find(c => c.capitulo === capituloNum);
-      if (!capObj) return { titulo: "Não Encontrado", texto: `Capítulo ${capituloNum} não encontrado.` };
-      
-      match[3].split(',').forEach(item => {
-        if (item.includes('-') || item.includes('–') || item.includes('—')) {
-          const limites = item.split(/[-–—]/).map(Number);
-          const ini = limites[0];
-          const fim = limites[1];
-          versosColetados.push(...capObj.versiculos.filter(v => v.verso >= ini && v.verso <= fim));
-        } else {
-          const numStr = item.replace(/\D/g, '');
-          if (numStr) {
-            const verso = capObj.versiculos.find(v => v.verso === Number(numStr));
-            if (verso) versosColetados.push(verso);
-          }
-        }
-      });
-    }
-
-    if (versosColetados.length > 0) {
-      const temMultiplosCapitulos = new Set(versosColetados.map(v => v.capitulo)).size > 1;
-      
-      textoHtml = "";
-      let capituloAtual = null;
-      let paragrafoAtual = "";
-      
-      versosColetados.forEach((verso) => {
-        const numeroCapitulo = verso.capitulo || parseInt(match[2]);
-        
-        if (temMultiplosCapitulos && numeroCapitulo !== capituloAtual) {
-          if (paragrafoAtual) textoHtml += `<p>${paragrafoAtual}</p>`;
-          paragrafoAtual = "";
-          if (capituloAtual !== null) textoHtml += '<div style="margin: 20px 0 15px 0; border-top: 2px solid #ddd; padding-top: 15px;"></div>';
-          textoHtml += `<div style="margin-bottom: 12px;"><strong style="font-style: italic; color: #666; font-size: 1.1em;">Capítulo ${numeroCapitulo}</strong></div>`;
-          capituloAtual = numeroCapitulo;
-        }
-        
-        if (verso.novo_paragrafo && paragrafoAtual) {
-          textoHtml += `<p>${paragrafoAtual}</p>`;
-          paragrafoAtual = `<strong>${verso.verso}</strong> ${verso.texto}`;
-        } else {
-          paragrafoAtual += (paragrafoAtual ? ` <strong>${verso.verso}</strong> ` : `<strong>${verso.verso}</strong> `) + verso.texto;
-        }
-      });
-      if (paragrafoAtual) textoHtml += `<p>${paragrafoAtual}</p>`;
-    }
-
-    const nomeLivroFormatado = dados.nome_do_livro || nomeLivro.charAt(0).toUpperCase() + nomeLivro.slice(1);
-    const tituloRef = isMultiCap ? `${nomeLivroFormatado} ${multiCapMatch[2]}:${multiCapMatch[3]}-${multiCapMatch[4]}:${multiCapMatch[5]}` : `${nomeLivroFormatado} ${singleCapMatch[2]}:${singleCapMatch[3]}`;
-    
-    return {
-      titulo: tituloRef,
-      texto: textoHtml || "Versículo(s) não encontrado(s)."
-    };
-  }
-
-  async function buscarVersiculo(refString) {
-    if (refString.includes(';')) {
-      return await processarMultiplasReferencias(refString);
-    }
-    return await buscarVersiculoCore(refString);
-  }
-
-  async function fetchBookData(nomeArquivo) {
-    // CORREÇÃO: Caminhos expandidos para alcançar a pasta correta partindo de qualquer arquivo
-    const paths =[
-      `../../../sentinela/biblia/data/${nomeArquivo}.json`, // Para fullsc.html
-      `../../sentinela/biblia/data/${nomeArquivo}.json`,     
-      `../sentinela/biblia/data/${nomeArquivo}.json`,        // Para container.html
-      `./sentinela/biblia/data/${nomeArquivo}.json`,
-      `sentinela/biblia/data/${nomeArquivo}.json`
-    ];
-    let lastError = null;
-    for (const path of paths) {
+    byId('modal-biblia-mais').onclick = () => adjust(1);
+    byId('modal-biblia-menos').onclick = () => adjust(-1);
+    byId('modal-biblia-form').onsubmit = event => {
+      event.preventDefault();
+      if (!current?.model) return;
       try {
-        const response = await fetch(path);
-        if (!response.ok) throw new Error(`Status: ${response.status}`);
-        return await response.json();
-      } catch (e) { lastError = e; }
-    }
-    throw lastError || new Error('Arquivo bíblico não encontrado');
-  }
-
-  function normalizeBblLinks(root = document) {
-    root.querySelectorAll('.bbl').forEach((link) => {
-      if (link.dataset.bblBound === 'true') return;
-      link.dataset.bblBound = 'true';
-      setupBblLinkListeners(link);
+        const next = references.parseSelection(current.model, byId('modal-biblia-campo').value);
+        current.model = next; byId('modal-biblia-campo').value = ''; byId('modal-biblia-campo').blur(); renderPreview();
+      } catch (error) { setError(error.message); }
+    };
+    modal.onclick = event => { if (event.target === modal) fecharModal(); };
+    modal.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); fecharModal(); return; }
+      if (event.key !== 'Tab') return;
+      const nodes = Array.from(modal.querySelectorAll('button:not(:disabled),input:not(:disabled),a[href]')).filter(el => el.getClientRects().length);
+      const first = nodes[0], last = nodes[nodes.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     });
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    ensureModalExists();
-    normalizeBblLinks(document);
-  });
-  
+  function syncViewport() {
+    const modal = byId('modal-biblia'); if (!current || !modal) return;
+    const view = window.visualViewport;
+    modal.classList.toggle('is-compact', (view?.height || innerHeight) < 420);
+    modal.style.setProperty('--notes-bible-viewport-height', (view?.height || innerHeight) + 'px');
+    modal.style.setProperty('--notes-bible-viewport-top', (view?.offsetTop || 0) + 'px');
+  }
+  function setError(message) {
+    if (!current) return;
+    current.invalid = !!message;
+    const error = byId('modal-biblia-erro'); error.textContent = message; error.hidden = !message;
+    updateControls();
+  }
+  function updateControls() {
+    const model = current?.model;
+    const writable = !!current?.trigger?.isConnected && !!editableOf(current.trigger);
+    byId('modal-biblia-transcrever').hidden = !writable;
+    byId('modal-biblia-transcrever').disabled = !model || current.invalid;
+    byId('modal-biblia-expandir').disabled = !model;
+    byId('modal-biblia-menos').disabled = !model || !references.canRemove(model);
+    byId('modal-biblia-mais').disabled = !model || !references.canAdd(model);
+    byId('modal-biblia-aplicar').disabled = !model;
+  }
+  function adjust(delta) {
+    if (!current?.model) return;
+    try { current.model = references.adjust(current.model, delta); renderPreview(); }
+    catch (error) { setError(error.message); }
+  }
+  function verseContent(model) {
+    const fragment = document.createDocumentFragment();
+    let paragraph, chapter = null;
+    const severalChapters = new Set(model.verses.map(v => v.chapter)).size > 1;
+    for (const verse of model.verses) {
+      if (!paragraph || chapter !== verse.chapter || verse.newParagraph) {
+        paragraph = document.createElement('p'); fragment.append(paragraph);
+      } else paragraph.append(' ');
+      const number = document.createElement('strong');
+      number.textContent = severalChapters ? `${verse.chapter}:${verse.verse}` : String(verse.verse);
+      paragraph.append(number, ' ' + verse.text); chapter = verse.chapter;
+    }
+    return fragment;
+  }
+  function renderPreview() {
+    if (!current?.model) return;
+    const model = current.model, version = ++previewVersion, openSession = session;
+    const body = byId('modal-biblia-corpo'), heading = document.createElement('h3');
+    heading.textContent = model.title;
+    body.replaceChildren(heading, verseContent(model)); body.scrollTop = 0;
+    body.dataset.reference = model.title; setError('');
+    readerRoutes.then(routes => {
+      if (routes && current && session === openSession && previewVersion === version)
+        routes.appendBibleChapterLink(body, model.title, aliases);
+    });
+  }
+  async function abrirModalBibl(reference, triggerElement = null) {
+    ensureModalExists(); clearTimeout(closeTimer);
+    const wasOpen = !!current, openSession = ++session;
+    current = { trigger: triggerElement, model: null, invalid: false };
+    if (!wasOpen) {
+      returnFocus = document.activeElement;
+      bodyOverflow = { value: document.body.style.getPropertyValue('overflow'), priority: document.body.style.getPropertyPriority('overflow') };
+      document.body.style.setProperty('overflow', 'hidden');
+    }
+    const modal = byId('modal-biblia'); modal.hidden = false; modal.classList.remove('is-closing');
+    byId('modal-biblia-ajustes').hidden = true; byId('modal-biblia-expandir').setAttribute('aria-expanded', 'false');
+    byId('modal-biblia-campo').value = ''; byId('modal-biblia-erro').hidden = true;
+    byId('modal-biblia-corpo').textContent = 'Carregando o texto…'; updateControls(); syncViewport();
+    requestAnimationFrame(() => { if (current && session === openSession) modal.classList.add('is-open'); });
+    modal.querySelector('.modal-biblia-content').focus({ preventScroll: true });
+    try {
+      const model = await references.parse(reference);
+      if (!current || session !== openSession) return;
+      if (triggerElement && !triggerElement.isConnected) { fecharModal({ restoreFocus: false }); return; }
+      current.model = model; renderPreview();
+    } catch (error) {
+      if (!current || session !== openSession) return;
+      byId('modal-biblia-corpo').textContent = '';
+      setError(error.message || 'Não foi possível carregar esta referência.');
+    }
+  }
+  function fecharModal({ restoreFocus = true } = {}) {
+    if (!current) return;
+    ++session; current = null;
+    const modal = byId('modal-biblia'); modal.classList.remove('is-open'); modal.classList.add('is-closing');
+    if (bodyOverflow?.value) document.body.style.setProperty('overflow', bodyOverflow.value, bodyOverflow.priority);
+    else document.body.style.removeProperty('overflow');
+    bodyOverflow = null;
+    const active = document.activeElement;
+    if (active && modal.contains(active)) active.blur();
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => {
+      if (current) return;
+      modal.hidden = true; modal.classList.remove('is-closing');
+    }, reducedMotion() ? 0 : 220);
+    if (restoreFocus && returnFocus?.isConnected && !returnFocus.closest?.('#editor')) returnFocus.focus?.({ preventScroll: true });
+    returnFocus = null;
+  }
+
+  function persistentSource(node, title) {
+    const element = node.nodeType === 1 ? node : node.parentElement;
+    let wrapper = element?.closest('.versiculo-ref-toggle,.versiculo-ref');
+    // A user may have typed another reference or comment inside an old bold
+    // source. Never replace that surrounding text as part of this selection.
+    if (wrapper && wrapper.textContent.trim() !== node.textContent.trim()) {
+      wrapper.classList.remove('versiculo-ref-toggle', 'versiculo-ref');
+      delete wrapper.dataset.bblSourceId; wrapper = null;
+    }
+    if (!wrapper) {
+      wrapper = document.createElement('b'); wrapper.className = title ? 'versiculo-ref-toggle' : 'versiculo-ref';
+      node.replaceWith(wrapper); wrapper.append(node);
+    }
+    wrapper.className = title ? 'versiculo-ref-toggle' : 'versiculo-ref';
+    return wrapper;
+  }
+  function identityFor(source, scope) {
+    let id = source.dataset.bblSourceId;
+    if (id) {
+      const same = Array.from(scope.querySelectorAll('.versiculo-ref-toggle[data-bbl-source-id],.versiculo-ref[data-bbl-source-id]')).filter(el => el.dataset.bblSourceId === id);
+      if (same[0] !== source) id = null;
+    }
+    id ||= sourceId(); source.dataset.bblSourceId = id; return id;
+  }
+  function directGenerated(toggle) {
+    return M2_Query.childs(M2_Query.getChil(toggle)).filter(n => n.classList.contains('node-text'))
+      .flatMap(n => Array.from(M2_Query.getTxtC(n).querySelectorAll('.versiculo-filho')));
+  }
+  function transcriptionMarkup() {
+    const fragment = document.createDocumentFragment();
+    Array.from(byId('modal-biblia-corpo').querySelectorAll('p')).forEach((p, index) => {
+      if (index) fragment.append(' ');
+      Array.from(p.childNodes).forEach(child => fragment.append(child.cloneNode(true)));
+    });
+    return fragment;
+  }
+  function transcreverVersiculo() {
+    if (!current?.model || current.invalid || !current.trigger?.isConnected) return;
+    if (typeof M5_Factory === 'undefined' || typeof M2_Query === 'undefined') return;
+    const model = current.model, trigger = current.trigger, editable = editableOf(trigger);
+    if (!editable) return;
+    const title = editable.classList.contains('toggle-title'), toggle = title ? editable.closest('.node-toggle') : null;
+    const referenceCount = title ? editable.querySelectorAll('.bbl').length : 0;
+    const markup = transcriptionMarkup(); if (!markup.childNodes.length) return;
+    // Remove the temporary read-mode links before history captures the edit.
+    const anchor = window.LeitorMode?.desativar?.({ reference: trigger }) || trigger;
+    if (!anchor.isConnected) return;
+    const history = window.M12_History; history?.beforeChange?.();
+    const source = persistentSource(anchor, title);
+    const alreadyIdentified = !!source.dataset.bblSourceId;
+    const id = identityFor(source, editable);
+    source.textContent = model.title;
+    let cursorNode, cursorAfter = false;
+    if (toggle) {
+      const children = directGenerated(toggle);
+      let generated = children.find(el => el.dataset.bblSourceId === id);
+      if (!generated && !alreadyIdentified && referenceCount === 1) {
+        const legacy = children.filter(el => !el.dataset.bblSourceId);
+        if (legacy.length === 1) generated = legacy[0];
+      }
+      if (!generated) {
+        const node = M5_Factory.text('', M2_Query.getLvl(toggle) + 1);
+        generated = document.createElement('span'); generated.className = 'versiculo-filho';
+        M2_Query.getTxtC(node).append(generated); M2_Query.getChil(toggle).append(node);
+      }
+      generated.dataset.bblSourceId = id;
+      const italic = document.createElement('i'); italic.className = 'versiculo-transc'; italic.append(markup);
+      generated.replaceChildren(italic); M6_Tree.setOpen(toggle, true, false);
+      cursorNode = generated;
+    } else {
+      let block = source.closest('.versiculo-bloco');
+      if (!block) {
+        block = document.createElement('span'); block.className = 'versiculo-bloco';
+        source.replaceWith(block); block.append(source, ' — ');
+      }
+      let generated = Array.from(block.querySelectorAll('.versiculo-transc')).find(el => el.dataset.bblSourceId === id);
+      if (!generated && block.querySelectorAll('.versiculo-ref').length === 1) {
+        const legacy = Array.from(block.querySelectorAll('.versiculo-transc')).filter(el => !el.dataset.bblSourceId);
+        if (legacy.length === 1) generated = legacy[0];
+      }
+      if (!generated) { generated = document.createElement('i'); generated.className = 'versiculo-transc'; block.append(generated); }
+      generated.dataset.bblSourceId = id; generated.replaceChildren(markup);
+      cursorNode = block; cursorAfter = true;
+    }
+    fecharModal({ restoreFocus: false });
+    M3_TextModel.syncAll();
+    const editor = byId('editor'); editor.setAttribute('contenteditable', 'true'); editor.focus({ preventScroll: true });
+    const range = document.createRange();
+    if (cursorAfter) range.setStartAfter(cursorNode);
+    else { range.selectNodeContents(cursorNode); range.collapse(false); }
+    range.collapse(true); const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    M4_Caret.saveR(); window.M13_Negrita?.clearTypingState?.(); M4_Caret.updateFocus(true); M11_Layout.schedule(2);
+    history?.afterChange?.(2); editor.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function setupBblLinkListeners(link) {
+    if (bindings.has(link)) return; bindings.add(link);
+    link.dataset.bblBound = 'true'; link.setAttribute('role', 'button'); link.tabIndex = 0;
+    link.setAttribute('aria-label', `Abrir ${link.textContent.trim()}`);
+    let point = null, opened = false, moved = false, hold = 0;
+    const reset = () => { clearTimeout(hold); point = null; link.classList.remove('pressionando'); };
+    link.addEventListener('pointerdown', event => {
+      if (event.isPrimary === false || event.button > 0) return;
+      point = {x:event.clientX,y:event.clientY}; opened = false; moved = false;
+      hold = setTimeout(() => { if (point) { opened = true; abrirModalBibl(link.textContent.trim(),link); } }, 300);
+    }, {passive:true});
+    link.addEventListener('pointermove', event => { if (point && Math.hypot(event.clientX-point.x,event.clientY-point.y)>10) { moved = true; reset(); } }, {passive:true});
+    link.addEventListener('pointercancel', () => { moved = true; reset(); }, {passive:true});
+    link.addEventListener('pointerup', reset, {passive:true});
+    link.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); if (!opened && !moved) abrirModalBibl(link.textContent.trim(),link); opened = false; moved = false; });
+    link.addEventListener('keydown', event => { if (['Enter',' '].includes(event.key)) { event.preventDefault(); abrirModalBibl(link.textContent.trim(),link); } });
+  }
+  function normalizeBblLinks(root = document) { root.querySelectorAll('.bbl').forEach(setupBblLinkListeners); }
+  window.addEventListener('resize', syncViewport, {passive:true});
+  window.visualViewport?.addEventListener('resize', syncViewport, {passive:true});
+  window.visualViewport?.addEventListener('scroll', syncViewport, {passive:true});
+  window.addEventListener('notes:restored', () => { if (current?.trigger && !current.trigger.isConnected) fecharModal({restoreFocus:false}); });
+  document.addEventListener('DOMContentLoaded', () => { ensureModalExists(); normalizeBblLinks(); });
   window.abrirModalBibl = abrirModalBibl;
   window.setupBblLinkListeners = setupBblLinkListeners;
   window.normalizeBblLinks = normalizeBblLinks;
-
 })();

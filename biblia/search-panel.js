@@ -111,7 +111,7 @@
       moreButton.disabled = busy; moreButton.textContent = busy ? 'Buscando…' : 'Mostrar mais resultados';
     }
     async function selectResult(item) {
-      close({restoreScroll:false, restoreFocus:false});
+      if(!await close({restoreScroll:false, restoreFocus:false}))return;
       try { await onOpen?.(item); }
       catch (error) { open(state.trigger, {focus:false}); showMessage(error?.message || 'Não foi possível abrir este resultado.', true); }
     }
@@ -200,12 +200,12 @@
     function open(trigger, {focus = true} = {}) {
       const publication = getPublication?.();
       if (state.publication !== publication) { reset(); state.publication = publication; }
-      if (dialog.open) { if (focus) input.focus({preventScroll:true}); return; }
+      if (dialog.open&&!window.BibleDialogs?.isClosing(dialog)) { if (focus) input.focus({preventScroll:true}); return; }
       state.trigger = trigger || document.activeElement; state.savedScroll = window.scrollY;
       state.savedPaddingBottom = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
       state.restoreScroll = true; state.restoreFocus = true;
       state.viewportBase = Math.max(innerHeight, window.visualViewport?.height || 0); state.viewportWidth = window.visualViewport?.width || innerWidth;
-      document.body.classList.add('sheet-open'); dialog.showModal(); measureViewport();
+      document.body.classList.add('sheet-open'); if(window.BibleDialogs)window.BibleDialogs.show(dialog);else dialog.showModal(); measureViewport();
       viewportEvents?.abort(); viewportEvents = new AbortController();
       const options = {passive:true, signal:viewportEvents.signal};
       window.visualViewport?.addEventListener('resize', queueViewport, options);
@@ -219,7 +219,9 @@
       state.restoreScroll = restoreScroll; state.restoreFocus = restoreFocus;
       state.resultScroll = resultsScroll.scrollTop;
       if (dialog.contains(document.activeElement)) document.activeElement.blur();
+      if(window.BibleDialogs)return window.BibleDialogs.close(dialog);
       if (dialog.open) dialog.close();
+      return Promise.resolve(true);
     }
     function restoreReadingPosition() {
       // The shared menu restores its reserved space after focusout and two frames.

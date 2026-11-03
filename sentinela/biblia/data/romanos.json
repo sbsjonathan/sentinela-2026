@@ -2122,7 +2122,7 @@
         {
           "verso": 3,
           "texto": "Transmitam minhas saudações a Prisca e Áquila, meus colaboradores em Cristo Jesus,",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 4,
@@ -2147,7 +2147,7 @@
         {
           "verso": 8,
           "texto": "Transmitam minhas saudações a Amplíato, meu amado no Senhor.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 9,
@@ -2192,7 +2192,7 @@
         {
           "verso": 17,
           "texto": "Eu os exorto agora, irmãos, a ficar atentos àqueles que causam divisões e dão motivos para tropeço contrariando os ensinamentos que vocês aprenderam; afastem-se deles.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 18,
@@ -2206,7 +2206,42 @@
         },
         {
           "verso": 20,
-          "texto": "O Deus que dá paz esmagará em breve a Satanás debaixo dos pés de vocês. Que a bondade imerecida do nosso Senhor Jesus esteja com vocês. 2Primeira Timóteo, meu colaborador, manda-lhes saudações, e também Lúcio, Jasão e Sosípatro, meus parentes. 22 Eu, Tércio, que escrevi esta carta, mando-lhes saudações no Senhor. 23 Gaio, que hospeda a mim e a toda a congregação, envia saudações a vocês. Erasto, o tesoureiro da cidade, envia-lhes saudações, e também Quarto, irmão dele. 24—— 25 Àquele que pode fazê-los firmes, de acordo com as boas novas que eu declaro e com a pregação sobre Jesus Cristo, segundo a revelação do segredo sagrado que foi mantido em silêncio por tempos de longa duração 26 — mas que agora foi revelado e dado a conhecer entre todas as nações por meio das Escrituras proféticas, de acordo com a ordem do Deus eterno, para promover a obediência pela fé —, 27 a Deus, que é o único sábio, seja dada a glória por meio de Jesus Cristo para sempre. Amém.",
+          "texto": "O Deus que dá paz esmagará em breve a Satanás debaixo dos pés de vocês. Que a bondade imerecida do nosso Senhor Jesus esteja com vocês.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 21,
+          "texto": "Timóteo, meu colaborador, manda-lhes saudações, e também Lúcio, Jasão e Sosípatro, meus parentes.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 22,
+          "texto": "Eu, Tércio, que escrevi esta carta, mando-lhes saudações no Senhor.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 23,
+          "texto": "Gaio, que hospeda a mim e a toda a congregação, envia saudações a vocês. Erasto, o tesoureiro da cidade, envia-lhes saudações, e também Quarto, irmão dele.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 24,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 25,
+          "texto": "Àquele que pode fazê-los firmes, de acordo com as boas novas que eu declaro e com a pregação sobre Jesus Cristo, segundo a revelação do segredo sagrado que foi mantido em silêncio por tempos de longa duração",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 26,
+          "texto": "— mas que agora foi revelado e dado a conhecer entre todas as nações por meio das Escrituras proféticas, de acordo com a ordem do Deus eterno, para promover a obediência pela fé —,",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 27,
+          "texto": "a Deus, que é o único sábio, seja dada a glória por meio de Jesus Cristo para sempre. Amém.",
           "novo_paragrafo": false
         }
       ]

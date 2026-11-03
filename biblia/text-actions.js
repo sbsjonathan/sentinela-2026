@@ -1,6 +1,6 @@
 'use strict';
 // Whole-verse actions use publication text, so notes and reference labels never leak into a copy.
-function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,onNotice}) {
+function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,onNotice,onSelect,onDismiss}) {
   if(!root || typeof getChapter!=='function')throw new Error('O menu precisa do texto do capítulo.');
   const icons={
     study:'<path d="M3 4c4-1 6 0 9 1 3-1 5-2 9-1v15c-4-1-6 0-9 1-3-1-5-2-9-1Z"/><path d="M12 5v15M6 9h3M15 9h3M6 13h3M15 13h3"/>',
@@ -19,7 +19,7 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
   }
   document.body.append(toolbar);
   const events=new AbortController(),signal=events.signal;
-  let selected=[],anchorVerse=null,anchorElement=null,chapterKey='',frame=0;
+  let selected=[],anchorElement=null,chapterKey='',frame=0;
   let gesture=null,holdTimer=0,suppressUntil=0;
   const nativeControl='.note-marker,.study-word,a,.inline-reference';
   const tell=(message,error=false)=>{if(typeof onNotice==='function')onNotice(message,error);};
@@ -33,10 +33,14 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
     return false;
   }
   function clear() {
-    selected=[];anchorVerse=null;anchorElement=null;chapterKey='';toolbar.hidden=true;
+    selected=[];anchorElement=null;chapterKey='';toolbar.hidden=true;
     root.classList.remove('has-text-selection');root.removeAttribute('data-selected-reference');
     root.querySelectorAll('.text-selected,.text-unselected').forEach(e=>e.classList.remove('text-selected','text-unselected'));
     root.querySelectorAll('.verse-number[role="button"]').forEach(e=>e.setAttribute('aria-pressed','false'));
+  }
+  function dismiss() {
+    clear();
+    if(typeof onDismiss==='function')onDismiss();
   }
   function refresh() {
     clear();
@@ -110,9 +114,11 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
     const n=numericVerse(el),data=getChapter();if(n==null || !(data?.verses||[]).some(v=>Number(v.number)===n))return;
     event.stopPropagation();
     const key=chapterId(data);if(key!==chapterKey)clear();chapterKey=key;
-    if(selected.length===1&&selected[0]===n){clear();return;}
-    if(anchorVerse==null || selected.length>1&&selected.includes(n)){anchorVerse=n;selected=[n];}
-    else selected=data.verses.map(v=>Number(v.number)).filter(v=>v>0&&v>=Math.min(anchorVerse,n)&&v<=Math.max(anchorVerse,n));
+    if(selected.length===1&&selected[0]===n){dismiss();return;}
+    // A tap chooses one verse. Safari's native range handles remain available
+    // for copying a freely selected passage by pressing and dragging.
+    selected=[n];
+    if(typeof onSelect==='function')onSelect();
     paint();
   }
   function leaveToNative() {
@@ -154,7 +160,7 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
   root.addEventListener('keydown',event=>{if(!['Enter',' '].includes(event.key) || !event.target.matches?.('.verse-number[role="button"]'))return;event.preventDefault();choose(event);},{signal});
   document.addEventListener('selectionchange',()=>{if(hasNativeSelection())leaveToNative();},{signal});
   document.addEventListener('pointerdown',event=>{if(toolbar.hidden)return;const el=event.target instanceof Element?event.target:null;if(el && (toolbar.contains(el)||root.contains(el)&&!el.closest(nativeControl)))return;clear();},{capture:true,signal});
-  document.addEventListener('keydown',event=>{if(event.key==='Escape')clear();},{signal});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!toolbar.hidden)dismiss();},{signal});
   window.addEventListener('scroll',queuePosition,{passive:true,signal});window.addEventListener('resize',queuePosition,{passive:true,signal});
   document.fonts?.addEventListener('loadingdone',queuePosition,{signal});
   window.visualViewport?.addEventListener('resize',queuePosition,{passive:true,signal});window.visualViewport?.addEventListener('scroll',queuePosition,{passive:true,signal});
@@ -168,7 +174,7 @@ function initTextActions({root,getChapter,getName,onListen,onBookmark,onStudy,on
     try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(value.text);else if(!legacyCopy(value.text))throw new Error();clear();tell('Texto copiado.');}
     catch{if(legacyCopy(value.text)){clear();tell('Texto copiado.');}else tell('Não foi possível copiar. Tente novamente no Safari.',true);}
   }
-  buttons.clear.onclick=clear;buttons.copy.onclick=()=>{const value=selection();if(value)copy(value);};
+  buttons.clear.onclick=dismiss;buttons.copy.onclick=()=>{const value=selection();if(value)copy(value);};
   buttons.share.onclick=()=>{const value=selection();if(!value)return;if(!navigator.share){copy(value);return;}navigator.share({title:value.reference,text:value.text}).then(clear).catch(error=>{if(error?.name!=='AbortError')tell('Não foi possível compartilhar esta passagem.',true);});};
   buttons.bookmark.onclick=()=>{const value=selection();if(value&&typeof onBookmark==='function')callback(onBookmark,value);};
   buttons.listen.onclick=()=>{const value=selection();if(value&&typeof onListen==='function')callback(onListen,value);};

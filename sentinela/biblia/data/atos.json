@@ -1322,7 +1322,7 @@
         {
           "verso": 4,
           "texto": "No entanto, os que tinham sido espalhados saíram por aquela região declarando as boas novas da palavra.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 5,
@@ -1347,7 +1347,7 @@
         {
           "verso": 9,
           "texto": "E na cidade havia um homem chamado Simão, que antes disso havia praticado artes mágicas; ele havia deixado admirada a nação de Samaria, dizendo ser alguém grande.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 10,
@@ -1372,7 +1372,7 @@
         {
           "verso": 14,
           "texto": "Quando os apóstolos em Jerusalém ouviram dizer que Samaria havia aceitado a palavra de Deus, enviaram para lá Pedro e João,",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 15,
@@ -1392,7 +1392,7 @@
         {
           "verso": 18,
           "texto": "Quando Simão viu que o espírito era dado pela imposição das mãos dos apóstolos, ofereceu-lhes dinheiro,",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 19,
@@ -1427,12 +1427,12 @@
         {
           "verso": 25,
           "texto": "Portanto, depois de darem testemunho de forma cabal e falarem a palavra de Jeová, partiram de volta para Jerusalém, declarando as boas novas a muitas aldeias dos samaritanos.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 26,
           "texto": "No entanto, o anjo de Jeová disse a Filipe: “Prepare-se e vá para o sul, para a estrada que desce de Jerusalém a Gaza.” (Essa é a estrada do deserto.)",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 27,
@@ -1472,7 +1472,7 @@
         {
           "verso": 34,
           "texto": "O eunuco disse então a Filipe: “Por favor, diga-me: De quem o profeta está falando? De si mesmo ou de outro homem?”",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 35,
@@ -1481,7 +1481,27 @@
         },
         {
           "verso": 36,
-          "texto": "Ao seguirem pela estrada, chegaram a um lugar onde havia água, e o eunuco disse: “Veja! Aqui há água! O que me impede de ser batizado?” 37—— 38 Assim, mandou parar o carro, e tanto Filipe como o eunuco desceram à água; e ele o batizou. 39 Depois de saírem da água, o espírito de Jeová rapidamente levou Filipe embora dali, e o eunuco não voltou a vê-lo, mas seguiu caminho cheio de alegria. 40 Filipe, no entanto, foi parar em Asdode e, ao passar por aquela região, continuou a declarar as boas novas a todas as cidades, até chegar a Cesareia.",
+          "texto": "Ao seguirem pela estrada, chegaram a um lugar onde havia água, e o eunuco disse: “Veja! Aqui há água! O que me impede de ser batizado?”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 37,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 38,
+          "texto": "Assim, mandou parar o carro, e tanto Filipe como o eunuco desceram à água; e ele o batizou.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 39,
+          "texto": "Depois de saírem da água, o espírito de Jeová rapidamente levou Filipe embora dali, e o eunuco não voltou a vê-lo, mas seguiu caminho cheio de alegria.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 40,
+          "texto": "Filipe, no entanto, foi parar em Asdode e, ao passar por aquela região, continuou a declarar as boas novas a todas as cidades, até chegar a Cesareia.",
           "novo_paragrafo": false
         }
       ]
@@ -2662,7 +2682,7 @@
         {
           "verso": 3,
           "texto": "Assim, depois que a congregação os acompanhou parte do caminho, esses homens seguiram viagem através da Fenícia e de Samaria, contando em detalhes a conversão de pessoas das nações e trazendo grande alegria a todos os irmãos.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 4,
@@ -2677,7 +2697,7 @@
         {
           "verso": 6,
           "texto": "Então os apóstolos e os anciãos se reuniram para considerar essa questão.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 7,
@@ -2707,7 +2727,7 @@
         {
           "verso": 12,
           "texto": "Em vista disso, o grupo inteiro ficou calado e começou a escutar Barnabé e Paulo relatar os muitos sinais e milagres que Deus tinha feito por meio deles entre as nações.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 13,
@@ -2757,7 +2777,7 @@
         {
           "verso": 22,
           "texto": "Então os apóstolos e os anciãos, junto com toda a congregação, decidiram enviar a Antioquia homens escolhidos dentre eles, junto com Paulo e Barnabé; enviaram Judas, que era chamado Barsabás, e Silas, homens que tomavam a liderança entre os irmãos.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 23,
@@ -2797,7 +2817,7 @@
         {
           "verso": 30,
           "texto": "Assim, depois de serem dispensados, esses homens desceram para Antioquia, reuniram todo o grupo e lhes entregaram a carta.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 31,
@@ -2811,7 +2831,47 @@
         },
         {
           "verso": 33,
-          "texto": "Depois de passarem algum tempo ali, os irmãos os mandaram de volta em paz para os que os tinham enviado. 34—— 35 Mas Paulo e Barnabé ficaram em Antioquia ensinando e declarando, junto com muitos outros, as boas novas da palavra de Jeová. 36 Depois de alguns dias, Paulo disse a Barnabé: “Agora, vamos voltar e visitar os irmãos em cada uma das cidades em que proclamamos a palavra de Jeová, para ver como estão.” 37 Barnabé estava decidido a levar João, que era chamado Marcos. 38 Paulo, no entanto, não concordava que o levassem junto, visto que ele tinha se separado deles na Panfília, e não os tinha acompanhado no trabalho. 39 Em vista disso, tiveram uma forte discussão, de modo que se separaram um do outro. Então Barnabé levou consigo Marcos e navegou para Chipre. 40 Paulo escolheu Silas e partiu, depois de os irmãos o entregarem à bondade imerecida de Jeová. 41 Ele passou pela Síria e pela Cilícia, fortalecendo as congregações.",
+          "texto": "Depois de passarem algum tempo ali, os irmãos os mandaram de volta em paz para os que os tinham enviado.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 34,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 35,
+          "texto": "Mas Paulo e Barnabé ficaram em Antioquia ensinando e declarando, junto com muitos outros, as boas novas da palavra de Jeová.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 36,
+          "texto": "Depois de alguns dias, Paulo disse a Barnabé: “Agora, vamos voltar e visitar os irmãos em cada uma das cidades em que proclamamos a palavra de Jeová, para ver como estão.”",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 37,
+          "texto": "Barnabé estava decidido a levar João, que era chamado Marcos.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 38,
+          "texto": "Paulo, no entanto, não concordava que o levassem junto, visto que ele tinha se separado deles na Panfília, e não os tinha acompanhado no trabalho.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 39,
+          "texto": "Em vista disso, tiveram uma forte discussão, de modo que se separaram um do outro. Então Barnabé levou consigo Marcos e navegou para Chipre.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 40,
+          "texto": "Paulo escolheu Silas e partiu, depois de os irmãos o entregarem à bondade imerecida de Jeová.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 41,
+          "texto": "Ele passou pela Síria e pela Cilícia, fortalecendo as congregações.",
           "novo_paragrafo": false
         }
       ]
@@ -4316,7 +4376,112 @@
         },
         {
           "verso": 6,
-          "texto": "Ele também tentou profanar o templo; então nós o agarramos. 7—— 8 Vossa Excelência, quando o interrogar, verificará todas essas coisas de que o acusamos.” 9 Então os judeus também apoiaram a acusação, garantindo que essas coisas eram verdade. 10 Quando o governador lhe acenou com a cabeça para que falasse, Paulo respondeu:\n“Sabendo muito bem que esta nação o tem como juiz há muitos anos, falo prontamente em minha defesa. 11 Como Vossa Excelência pode verificar por si mesmo, não faz mais de 12 dias que subi para adorar em Jerusalém. 12 E eles não me encontraram discutindo com ninguém no templo, nem atiçando uma turba nas sinagogas ou em outro lugar da cidade. 13 Nem podem lhe provar as acusações que estão fazendo contra mim agora. 14 Mas eu admito o seguinte: é segundo o caminho que eles chamam de seita que eu presto serviço sagrado ao Deus dos meus antepassados, crendo em tudo que está declarado na Lei e que está escrito nos Profetas. 15 E eu tenho esperança em Deus, esperança que esses homens também têm, de que haverá uma ressurreição tanto de justos como de injustos. 16 Por causa disso, eu sempre me esforço para manter uma consciência limpa diante de Deus e dos homens. 17 Depois de vários anos, vim a Jerusalém para trazer uma contribuição à minha nação e fazer ofertas. 18 Enquanto eu cuidava desses assuntos, eles me encontraram cerimonialmente puro no templo, mas não com uma multidão nem causando tumulto. No entanto, lá havia alguns judeus da província da Ásia 19 que deviam estar presentes diante de Vossa Excelência para me acusar, se realmente tivessem algo contra mim. 20 Ou, que estes homens aqui digam que crime acharam em mim quando eu estava perante o Sinédrio. 21 A não ser que se trate desta única frase que clamei quando estava no meio deles: ‘É por causa da ressurreição dos mortos que hoje estou sendo julgado diante dos senhores!’” 22 No entanto, visto que Félix estava bem informado a respeito desse Caminho, adiou a questão, dizendo: “Quando Lísias, o comandante militar, descer, decidirei essas questões de vocês.” 23 Ele ordenou então ao oficial do exército que o mantivesse preso, mas que lhe desse certa liberdade e permitisse que os do seu povo cuidassem de suas necessidades. 24 Alguns dias depois, Félix veio com Drusila, sua esposa, que era judia; mandou buscar Paulo e o ouviu falar sobre a crença em Cristo Jesus. 25 Mas, quando Paulo começou a falar sobre a justiça, o autodomínio e o julgamento por vir, Félix ficou com medo e disse: “Por enquanto, pode se retirar, mas, quando eu tiver uma oportunidade, mandarei buscá-lo novamente.” 26 Ao mesmo tempo, esperava que Paulo lhe desse dinheiro. Por isso mandava buscá-lo ainda mais frequentemente e conversava com ele. 27 Mas, passados dois anos, Félix foi sucedido por Pórcio Festo; e, visto que desejava ganhar o favor dos judeus, Félix deixou Paulo na prisão.",
+          "texto": "Ele também tentou profanar o templo; então nós o agarramos.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 7,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 8,
+          "texto": "Vossa Excelência, quando o interrogar, verificará todas essas coisas de que o acusamos.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 9,
+          "texto": "Então os judeus também apoiaram a acusação, garantindo que essas coisas eram verdade.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 10,
+          "texto": "Quando o governador lhe acenou com a cabeça para que falasse, Paulo respondeu: “Sabendo muito bem que esta nação o tem como juiz há muitos anos, falo prontamente em minha defesa.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 11,
+          "texto": "Como Vossa Excelência pode verificar por si mesmo, não faz mais de 12 dias que subi para adorar em Jerusalém.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 12,
+          "texto": "E eles não me encontraram discutindo com ninguém no templo, nem atiçando uma turba nas sinagogas ou em outro lugar da cidade.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 13,
+          "texto": "Nem podem lhe provar as acusações que estão fazendo contra mim agora.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 14,
+          "texto": "Mas eu admito o seguinte: é segundo o caminho que eles chamam de seita que eu presto serviço sagrado ao Deus dos meus antepassados, crendo em tudo que está declarado na Lei e que está escrito nos Profetas.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 15,
+          "texto": "E eu tenho esperança em Deus, esperança que esses homens também têm, de que haverá uma ressurreição tanto de justos como de injustos.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 16,
+          "texto": "Por causa disso, eu sempre me esforço para manter uma consciência limpa diante de Deus e dos homens.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 17,
+          "texto": "Depois de vários anos, vim a Jerusalém para trazer uma contribuição à minha nação e fazer ofertas.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 18,
+          "texto": "Enquanto eu cuidava desses assuntos, eles me encontraram cerimonialmente puro no templo, mas não com uma multidão nem causando tumulto. No entanto, lá havia alguns judeus da província da Ásia",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 19,
+          "texto": "que deviam estar presentes diante de Vossa Excelência para me acusar, se realmente tivessem algo contra mim.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 20,
+          "texto": "Ou, que estes homens aqui digam que crime acharam em mim quando eu estava perante o Sinédrio.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 21,
+          "texto": "A não ser que se trate desta única frase que clamei quando estava no meio deles: ‘É por causa da ressurreição dos mortos que hoje estou sendo julgado diante dos senhores!’”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 22,
+          "texto": "No entanto, visto que Félix estava bem informado a respeito desse Caminho, adiou a questão, dizendo: “Quando Lísias, o comandante militar, descer, decidirei essas questões de vocês.”",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 23,
+          "texto": "Ele ordenou então ao oficial do exército que o mantivesse preso, mas que lhe desse certa liberdade e permitisse que os do seu povo cuidassem de suas necessidades.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 24,
+          "texto": "Alguns dias depois, Félix veio com Drusila, sua esposa, que era judia; mandou buscar Paulo e o ouviu falar sobre a crença em Cristo Jesus.",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 25,
+          "texto": "Mas, quando Paulo começou a falar sobre a justiça, o autodomínio e o julgamento por vir, Félix ficou com medo e disse: “Por enquanto, pode se retirar, mas, quando eu tiver uma oportunidade, mandarei buscá-lo novamente.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 26,
+          "texto": "Ao mesmo tempo, esperava que Paulo lhe desse dinheiro. Por isso mandava buscá-lo ainda mais frequentemente e conversava com ele.",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 27,
+          "texto": "Mas, passados dois anos, Félix foi sucedido por Pórcio Festo; e, visto que desejava ganhar o favor dos judeus, Félix deixou Paulo na prisão.",
           "novo_paragrafo": false
         }
       ]
@@ -4887,7 +5052,7 @@
         {
           "verso": 7,
           "texto": "Ali na vizinhança havia terras que pertenciam ao homem principal da ilha, chamado Públio; ele, de modo hospitaleiro, nos recebeu e nos hospedou por três dias.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 8,
@@ -4907,7 +5072,7 @@
         {
           "verso": 11,
           "texto": "Três meses depois, partimos em um navio que tinha como figura de proa os “Filhos de Zeus”. O navio era de Alexandria e havia passado o inverno na ilha.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 12,
@@ -4937,7 +5102,7 @@
         {
           "verso": 17,
           "texto": "Três dias depois, ele convocou os homens mais importantes dos judeus. Quando se reuniram, ele lhes disse: “Homens, irmãos, embora eu não tivesse feito nada contra o povo ou contra os costumes de nossos antepassados, fui preso em Jerusalém e entregue às mãos dos romanos.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 18,
@@ -4967,7 +5132,7 @@
         {
           "verso": 23,
           "texto": "Assim, combinaram um dia para se encontrar com ele e foram num grupo ainda maior ao lugar onde estava morando. E, desde a manhã até a noite, ele lhes deu explicações por meio de um testemunho cabal sobre o Reino de Deus, procurando persuadi-los a respeito de Jesus com base na Lei de Moisés e nos Profetas.",
-          "novo_paragrafo": false
+          "novo_paragrafo": true
         },
         {
           "verso": 24,
@@ -4991,7 +5156,22 @@
         },
         {
           "verso": 28,
-          "texto": "Portanto, saibam que essa salvação por Deus foi enviada às nações, e elas certamente a escutarão.” 29—— 30 Assim, ele permaneceu ali por dois anos inteiros, na casa que alugou, e recebia bondosamente a todos os que iam vê-lo, 31 pregando-lhes o Reino de Deus e ensinando a respeito do Senhor Jesus Cristo com toda a coragem, sem nenhum impedimento.",
+          "texto": "Portanto, saibam que essa salvação por Deus foi enviada às nações, e elas certamente a escutarão.”",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 29,
+          "texto": "——",
+          "novo_paragrafo": false
+        },
+        {
+          "verso": 30,
+          "texto": "Assim, ele permaneceu ali por dois anos inteiros, na casa que alugou, e recebia bondosamente a todos os que iam vê-lo,",
+          "novo_paragrafo": true
+        },
+        {
+          "verso": 31,
+          "texto": "pregando-lhes o Reino de Deus e ensinando a respeito do Senhor Jesus Cristo com toda a coragem, sem nenhum impedimento.",
           "novo_paragrafo": false
         }
       ]

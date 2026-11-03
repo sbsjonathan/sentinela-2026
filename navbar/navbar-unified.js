@@ -1,68 +1,27 @@
-(function initGlobalFontScale() {
-    const STORAGE_KEY = 'tamanho-fonte-global';
-    const DEFAULT_SIZE = 16;
-    const MIN_SIZE = DEFAULT_SIZE;
-    const MAX_SIZE = DEFAULT_SIZE + 10;
-
-    function clampSize(value) {
-        const num = parseFloat(value);
-        if (!Number.isFinite(num)) return DEFAULT_SIZE;
-        return Math.min(MAX_SIZE, Math.max(MIN_SIZE, Math.round(num)));
+/* Cached article documents may predate the shared head include. */
+(function loadSharedTypography() {
+    if (window.GlobalFontScale?.version === 1 && window.GlobalFontScale.documentRoot === document.documentElement) {
+        window.GlobalFontScale.refresh();
+        return;
     }
-
-    function readSavedSize() {
-        try {
-            return clampSize(localStorage.getItem(STORAGE_KEY));
-        } catch (error) {
-            return DEFAULT_SIZE;
-        }
+    const source = document.currentScript?.src || Array.from(document.scripts)
+        .find((script) => /navbar-unified\.js(?:[?#]|$)/.test(script.src))?.src;
+    if (!source) return;
+    const scriptUrl = new URL('../shared/typography.js', source);
+    scriptUrl.search = new URL(source).search;
+    const stylesheetUrl = new URL('typography.css', scriptUrl);
+    stylesheetUrl.search = scriptUrl.search;
+    if (!Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some((link) => new URL(link.href).pathname === stylesheetUrl.pathname)) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = stylesheetUrl.href;
+        document.head.appendChild(link);
     }
-
-    function applySize(size) {
-        const safeSize = clampSize(size);
-        const scale = safeSize / DEFAULT_SIZE;
-        const root = document.documentElement;
-        root.style.setProperty('--tamanho-fonte', `${safeSize}px`);
-        root.style.setProperty('--font-base-default', String(DEFAULT_SIZE));
-        root.style.setProperty('--font-base-global', `${safeSize}px`);
-        root.style.setProperty('--font-scale-global', String(scale));
-        root.dataset.fontSizeGlobal = String(safeSize);
-        return safeSize;
+    if (!Array.from(document.scripts).some((script) => script.src && new URL(script.src).pathname === scriptUrl.pathname)) {
+        const script = document.createElement('script');
+        script.src = scriptUrl.href;
+        document.head.appendChild(script);
     }
-
-    function persistSize(size) {
-        try { localStorage.setItem(STORAGE_KEY, String(size)); } catch (error) {}
-    }
-
-    const api = {
-        storageKey: STORAGE_KEY,
-        defaultSize: DEFAULT_SIZE,
-        minSize: MIN_SIZE,
-        maxSize: MAX_SIZE,
-        getSize() {
-            return clampSize(getComputedStyle(document.documentElement).getPropertyValue('--font-base-global') || readSavedSize());
-        },
-        setSize(nextSize) {
-            const applied = applySize(nextSize);
-            persistSize(applied);
-            window.dispatchEvent(new CustomEvent('globalfont:changed', { detail: { size: applied, scale: applied / DEFAULT_SIZE } }));
-            return applied;
-        },
-        reset() {
-            return this.setSize(DEFAULT_SIZE);
-        },
-        clamp(size) {
-            return clampSize(size);
-        }
-    };
-
-    window.GlobalFontScale = api;
-    applySize(readSavedSize());
-
-    window.addEventListener('storage', (event) => {
-        if (event.key !== STORAGE_KEY) return;
-        applySize(readSavedSize());
-    });
 })();
 
 window.getGlobalWeek = function(paramValue) {
@@ -514,8 +473,9 @@ class UnifiedNavbar {
 async function irParaHome(event) {
     if (event) event.preventDefault();
     if (isIndexPageNavbar()) {
-        if (window.carousel && window.carousel.currentSlide !== 3) {
-            window.carousel.goToSlide(3, true);
+        const central = window.carousel?.indiceCentral ?? 3;
+        if (window.carousel && window.carousel.currentSlide !== central) {
+            window.carousel.goToSlide(central, true);
         }
         return;
     }
@@ -643,7 +603,7 @@ document.addEventListener('touchend', function (event) {
 // Reopening an installed iPhone app may resume the page without another load event.
 (function manageAppUpdates() {
     if (!('serviceWorker' in navigator)) return;
-    const release = '2026.11.02.14';
+    const release = '2026.11.03.1';
     const root = getProjectRootURL();
     let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
     const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);
