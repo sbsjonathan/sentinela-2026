@@ -27,8 +27,8 @@
         <button id="modal-biblia-fechar" type="button" aria-label="Fechar prévia">×</button>
       </div></header>
       <div id="modal-biblia-ajustes" hidden>
-        <div class="modal-biblia-stepper"><button id="modal-biblia-menos" type="button" aria-label="Remover último versículo">−</button><span>Versículos na prévia</span><button id="modal-biblia-mais" type="button" aria-label="Acrescentar próximo versículo">+</button></div>
-        <form id="modal-biblia-form"><label for="modal-biblia-campo">Acrescentar versículos</label><div><input id="modal-biblia-campo" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Ex.: 2-5, 8 ou 2:1-3"><button id="modal-biblia-aplicar" type="submit" aria-label="Aplicar versículos à prévia">✓</button></div></form>
+        <div class="modal-biblia-stepper" role="group" aria-label="Versículos na prévia"><button id="modal-biblia-menos" type="button" aria-label="Remover último versículo">−</button><button id="modal-biblia-mais" type="button" aria-label="Acrescentar próximo versículo">+</button></div>
+        <form id="modal-biblia-form"><label class="modal-biblia-label" for="modal-biblia-campo">Acrescentar versículos, por exemplo: 2-5, 8 ou 2:1-3</label><div><input id="modal-biblia-campo" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Ex.: 2-5, 8"><button id="modal-biblia-aplicar" type="submit" aria-label="Aplicar versículos à prévia">✓</button></div></form>
       </div>
       <p id="modal-biblia-erro" role="status" hidden></p>
       <div id="modal-biblia-corpo" aria-live="polite"></div>
