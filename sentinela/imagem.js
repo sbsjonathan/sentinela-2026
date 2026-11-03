@@ -109,12 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     placeholder.innerHTML = `<div class="figura-erro">Imagem para '${semana}' (img${id}.png) não encontrada.</div>`;
                 };
 
-                img.addEventListener('click', () => {
-                    if (typeof window.abrirZoom === 'function') {
-                        window.abrirZoom(img);
-                    }
-                });
-
                 figure.appendChild(img);
 
                 if (legendaText && legendaText.trim() !== '') {
@@ -131,34 +125,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     });
 
-    (function bindFigureImagesToZoomModal() {
+    (function normalizarFigureClasses() {
+        const boundImages = new WeakSet();
         function isInsideZoomModal(el) {
             return !!el.closest('#zoom-container');
         }
 
-        document.addEventListener('click', (e) => {
-            const img = e.target && e.target.closest ? e.target.closest('figure img') : null;
-            if (!img) return;
-            if (isInsideZoomModal(img)) return;
-
-            if (typeof window.abrirZoom !== 'function') {
-                return;
-            }
-
-            if (!img.alt || !img.alt.trim()) {
-                const fig = img.closest('figure');
-                const cap = fig ? fig.querySelector('figcaption') : null;
-                const txt = cap && cap.textContent ? cap.textContent.trim() : '';
-                if (txt) img.alt = txt;
-            }
-
+        function openFigureImage(event) {
+            const img = event.currentTarget;
+            if (isInsideZoomModal(img) || typeof window.abrirZoom !== 'function') return;
+            event.preventDefault();
+            if (!img.alt.trim()) img.alt = img.closest('figure')?.querySelector('figcaption')?.textContent.trim() || '';
             window.abrirZoom(img);
-        }, true);
-    })();
-
-    (function normalizarFigureClasses() {
-        function isInsideZoomModal(el) {
-            return !!el.closest('#zoom-container');
         }
 
         function aplicarClasses(fig) {
@@ -173,6 +151,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (cap && !cap.classList.contains('figura-legenda')) {
                 cap.classList.add('figura-legenda');
             }
+            // Safari needs a handler on the image itself to turn its touch into
+            // a click. Bind restored/new figures too, without opening twice.
+            for (const img of fig.querySelectorAll('img')) {
+                if (boundImages.has(img)) continue;
+                boundImages.add(img);
+                img.addEventListener('click', openFigureImage);
+            }
         }
 
         document.querySelectorAll('figure').forEach(aplicarClasses);
@@ -182,7 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const node of m.addedNodes) {
                     if (!(node instanceof Element)) continue;
 
-                    if (node.matches && node.matches('figure')) aplicarClasses(node);
+                    const figure = node.closest('figure');
+                    if (figure) aplicarClasses(figure);
                     if (node.querySelectorAll) node.querySelectorAll('figure').forEach(aplicarClasses);
                 }
             }

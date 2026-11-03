@@ -70,6 +70,16 @@
     pointer-events: none !important;
 }
 
+/* Full-screen images cover the dock without translating it or changing the
+   article's reserved bottom space. Its previous position is restored under
+   the opaque image overlay before that overlay fades away. */
+body.zoom-active .bottom-navbar,
+.bottom-navbar.image-viewer-suspended {
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: none !important;
+}
+
 body.leitor-keep-toolbar.with-bottom-navbar,
 body.zombie-toolbar-active.with-bottom-navbar {
     --navbar-occupied-bottom: 0px;

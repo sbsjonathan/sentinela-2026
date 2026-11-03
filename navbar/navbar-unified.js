@@ -149,6 +149,10 @@ class UnifiedNavbar {
         this._metricsRaf = 0;
         this._resizeObserver = null;
         this._metricsListeners = [];
+        this._imageViewerSnapshot = null;
+        this._imageViewerSuspended = false;
+        this._imageViewerReleaseFrame = 0;
+        this._lastToolbarReserved = false;
         
         this.init();
     }
@@ -162,6 +166,7 @@ class UnifiedNavbar {
         this.setupScrollBehavior();
         this.setupKeyboardBehavior();
         this.setupNavigation();
+        this.setupImageViewerBehavior();
         this._referenceContextHandler = () => {
             this.currentPage = this.detectCurrentPage();
             this.updateActiveState();
@@ -243,6 +248,7 @@ class UnifiedNavbar {
     syncBottomMetrics(immediate = false) {
         const apply = () => {
             this._metricsRaf = 0;
+            if (this._imageViewerSuspended) return;
             const root = document.documentElement;
             const navHeight = this.measureElementHeight(this.navbar, this.getFallbackNavbarHeight());
             const toolbar = document.getElementById('kbdToolbar');
@@ -303,8 +309,10 @@ class UnifiedNavbar {
     }
 
     onScroll() {
-        if (this.isKeyboardOpen) return;
+        if (this.isKeyboardOpen || this._imageViewerSnapshot) return;
         const currentScrollY = window.scrollY;
+        // A scroll-lock restoration may dispatch again at the same position.
+        if (Math.abs(currentScrollY - this.lastScrollY) < 1) return;
         if (currentScrollY > this.lastScrollY && currentScrollY > 10) {
             this.hideNavbar('scroll');
         } else {
@@ -314,6 +322,7 @@ class UnifiedNavbar {
     }
 
     hideNavbar(reason = 'scroll') {
+        if (this._imageViewerSnapshot) return;
         if (reason === 'scroll' && document.body.hasAttribute('data-bible-reader')) return;
         if (reason === 'scroll' && !document.documentElement.dataset.programYear && ['home', 'notes', 'save'].includes(this.currentPage)) {
             return;
@@ -325,7 +334,7 @@ class UnifiedNavbar {
     }
 
     showNavbar() {
-        if (this.isKeyboardOpen) return;
+        if (this.isKeyboardOpen || this._imageViewerSnapshot) return;
         if (this.isToolbarReservedMode()) {
             this.syncBottomMetrics();
             return;
@@ -357,13 +366,19 @@ class UnifiedNavbar {
     }
 
     syncBottomUI() {
-        if (this._syncRaf) return;
+        if (this._syncRaf || this._imageViewerSnapshot) return;
         this._syncRaf = requestAnimationFrame(() => {
             this._syncRaf = 0;
+            if (this._imageViewerSnapshot) return;
+            const wasKeyboardOpen = this.isKeyboardOpen;
+            const wasToolbarReserved = this._lastToolbarReserved;
             this.isKeyboardOpen = this.keyboardOpenByViewport();
-            if (this.isKeyboardOpen || this.isToolbarReservedMode()) {
+            this._lastToolbarReserved = this.isToolbarReservedMode();
+            if (this.isKeyboardOpen || this._lastToolbarReserved) {
                 this.hideNavbar('keyboard');
-            } else {
+            } else if (wasKeyboardOpen || wasToolbarReserved) {
+                // Body classes, viewport settling and focus moving between
+                // non-editable controls must not undo a scroll-hidden navbar.
                 this.showNavbar();
             }
             this.syncBottomMetrics();
@@ -407,6 +422,68 @@ class UnifiedNavbar {
             const href = item.getAttribute('href');
             if (href && href !== '#') return;
         });
+    }
+
+    setupImageViewerBehavior() {
+        this._imageViewerHandler = ({ detail }) => {
+            if (detail?.active) {
+                cancelAnimationFrame(this._imageViewerReleaseFrame);
+                this._imageViewerReleaseFrame = 0;
+                // Reopening during the close animation must retain the original
+                // article state, not snapshot the temporarily hidden viewer UI.
+                this._imageViewerSnapshot ||= {
+                    hidden: this.isHidden,
+                    keyboardOpen: this.isKeyboardOpen,
+                    toolbarReserved: this.isToolbarReservedMode()
+                };
+                this._imageViewerSuspended = true;
+                cancelAnimationFrame(this._syncRaf);
+                cancelAnimationFrame(this._metricsRaf);
+                this._syncRaf = this._metricsRaf = 0;
+                this.navbar?.classList.add('image-viewer-suspended');
+                return;
+            }
+            const snapshot = this._imageViewerSnapshot;
+            if (!snapshot) return;
+            cancelAnimationFrame(this._imageViewerReleaseFrame);
+            // The image viewer has already restored the body's scroll lock.
+            // Settle the underlying navbar while its opaque overlay covers it.
+            this.isKeyboardOpen = this.keyboardOpenByViewport();
+            this._lastToolbarReserved = this.isToolbarReservedMode();
+            this.isHidden = this.isKeyboardOpen || this._lastToolbarReserved ||
+                (snapshot.hidden && !snapshot.keyboardOpen && !snapshot.toolbarReserved);
+            this.navbar?.classList.toggle('hidden', this.isHidden);
+            this.lastScrollY = Math.max(0, window.scrollY);
+            this._imageViewerSuspended = false;
+            this.syncBottomMetrics(true);
+            // Body/viewport observers and the restored scroll can arrive in the
+            // next frame. Keep their show/hide actions suspended until drained.
+            this._imageViewerReleaseFrame = requestAnimationFrame(() => {
+                this._imageViewerReleaseFrame = requestAnimationFrame(() => {
+                    this._imageViewerReleaseFrame = 0;
+                    if (this._imageViewerSnapshot !== snapshot || this._imageViewerSuspended) return;
+                    this.lastScrollY = Math.max(0, window.scrollY);
+                    this.navbar?.classList.remove('image-viewer-suspended');
+                });
+            });
+        };
+        document.addEventListener('sentinela:image-viewer-state', this._imageViewerHandler);
+        this._imageViewerClosedHandler = () => {
+            const snapshot = this._imageViewerSnapshot;
+            if (!snapshot || this._imageViewerSuspended) return;
+            cancelAnimationFrame(this._imageViewerReleaseFrame);
+            this._imageViewerReleaseFrame = requestAnimationFrame(() => {
+                this._imageViewerReleaseFrame = requestAnimationFrame(() => {
+                    this._imageViewerReleaseFrame = 0;
+                    if (this._imageViewerSnapshot !== snapshot || this._imageViewerSuspended) return;
+                    this.lastScrollY = Math.max(0, window.scrollY);
+                    this._imageViewerSnapshot = null;
+                    this.navbar?.classList.remove('image-viewer-suspended');
+                    this.syncBottomUI();
+                });
+            });
+        };
+        document.addEventListener('sentinela:image-viewer-closed', this._imageViewerClosedHandler);
     }
 
     updateActiveState() {
@@ -464,6 +541,9 @@ class UnifiedNavbar {
         this._metricsListeners = [];
 
         document.removeEventListener('sentinela:reference-context', this._referenceContextHandler);
+        document.removeEventListener('sentinela:image-viewer-state', this._imageViewerHandler);
+        document.removeEventListener('sentinela:image-viewer-closed', this._imageViewerClosedHandler);
+        cancelAnimationFrame(this._imageViewerReleaseFrame);
 
         if (this.navbar) {
             this.navbar.remove();
@@ -615,7 +695,7 @@ document.addEventListener('touchend', function (event) {
 // Reopening an installed iPhone app may resume the page without another load event.
 (function manageAppUpdates() {
     if (!('serviceWorker' in navigator)) return;
-    const release = '2026.11.03.7';
+    const release = '2026.11.03.8';
     const root = getProjectRootURL();
     let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
     const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);
