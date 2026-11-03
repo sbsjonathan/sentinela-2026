@@ -115,7 +115,7 @@ main {
 }
 
 @media (max-width: 700px) {
-    main { padding: calc(17px * var(--font-scale-global)) calc(28px * var(--font-scale-global)); } 
+    main { padding: calc(17px * var(--font-scale-global)) clamp(20px, 5.6vw, 28px); }
     .container { margin: 0; border-radius: 0; }
     .barra-estudo { padding: var(--safe-top) calc((32px * var(--font-scale-global)) + var(--safe-right)) 0 calc((32px * var(--font-scale-global)) + var(--safe-left)); }
 }
@@ -345,7 +345,7 @@ mark.ia-underline-recap {
   pointer-events: none;
 }
 
-/* Some saved hope3 articles place their final figure after the container. */
+/* Article figures share the same reading column as paragraphs and recap. */
 .figura-container,
 .container main figure,
 .container ~ figure {
@@ -379,15 +379,6 @@ mark.ia-underline-recap {
     overflow-wrap: anywhere;
 }
 
-.figura-legenda::after {
-    content: '';
-    display: block;
-    width: calc(100px * var(--font-scale-global));
-    height: calc(2px * var(--font-scale-global));
-    background-color: var(--cor-principal-estudo);
-    margin-top: calc(14px * var(--font-scale-global));
-}
-
 .figura-erro {
     padding: calc(20px * var(--font-scale-global));
     text-align: center;
@@ -397,7 +388,8 @@ mark.ia-underline-recap {
 }
 
 .secao-recapitulacao {
-    padding-top: calc(13px * var(--font-scale-global));
+    margin-top: 48px;
+    padding-top: 16px;
     margin-bottom: calc(30px * var(--font-scale-global));
 }
 
@@ -431,6 +423,8 @@ mark.ia-underline-recap {
 }
 
 .lista-recapitulacao li::before { content: none; }
+
+.lista-recapitulacao > li > p { margin: 0; }
 
 .lista-recapitulacao li::marker {
     color: var(--text-title);

@@ -71,7 +71,7 @@ document.addEventListener('cacheRestored', () => {
     return null;
   }
 
-  // The same activation rules cover article text, questions, recap and images.
+  // Questions and article paragraphs open on a tap; other contexts keep the hold.
   function bindReference(el) {
     if (boundReferences.has(el)) return;
     boundReferences.add(el);
@@ -80,7 +80,7 @@ document.addEventListener('cacheRestored', () => {
     el.tabIndex = 0;
     el.setAttribute('role', 'button');
     let pressTimer = null, openTimer = null, suppressClickUntil = 0;
-    let moveTooMuch = false, startX = 0, startY = 0;
+    let moveTooMuch = false, tapPending = false, startX = 0, startY = 0;
     cleanupTimers.push(() => {
       clearTimeout(pressTimer); clearTimeout(openTimer);
       el.classList.remove('pressionando', 'ref-aberta');
@@ -93,18 +93,24 @@ document.addEventListener('cacheRestored', () => {
     }
     function cancelPress() {
       moveTooMuch = true;
+      tapPending = false;
       clearTimeout(openTimer);
       resetAppearance();
     }
     listen(el, 'touchstart', e => {
       clearTimeout(pressTimer); clearTimeout(openTimer);
+      tapPending = false;
       suppressClickUntil = performance.now() + 1200;
       if (e.touches.length !== 1) { cancelPress(); return; }
       moveTooMuch = false;
-      blockTextSelection();
       const touch = e.touches[0];
       startX = touch.clientX; startY = touch.clientY;
       el.classList.add('pressionando');
+      if (el.closest('.pergunta, .paragrafo')) {
+        tapPending = true;
+        return;
+      }
+      blockTextSelection();
       pressTimer = setTimeout(() => {
         if (moveTooMuch) return;
         el.classList.remove('pressionando'); el.classList.add('ref-aberta');
@@ -118,15 +124,18 @@ document.addEventListener('cacheRestored', () => {
       const touch = e.touches[0];
       if (!touch || e.touches.length !== 1 || Math.abs(touch.clientX - startX) > 10 || Math.abs(touch.clientY - startY) > 10) cancelPress();
     });
-    listen(el, 'touchend', () => {
+    listen(el, 'touchend', e => {
       suppressClickUntil = performance.now() + 800;
+      const openOnTap = tapPending && !moveTooMuch && e.touches.length === 0;
+      tapPending = false;
       // Once the hold is accepted, releasing during its feedback may still open.
       resetAppearance();
+      if (openOnTap) abrirModalSeForRef(el);
     });
     listen(el, 'touchcancel', cancelPress);
     listen(el, 'click', e => {
       e.preventDefault();
-      // iOS synthesizes a click after a tap; that must not bypass the hold.
+      // Ignore the synthesized click after touch: avoid duplicate opens or bypassing a hold.
       if (performance.now() < suppressClickUntil) return;
       abrirModalSeForRef(el);
     });

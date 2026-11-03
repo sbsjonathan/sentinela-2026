@@ -1,3 +1,77 @@
+// Repair the known truncated hope3 article tail in existing downloads. Move
+// the original nodes so answer fields, highlights, IDs and listeners survive.
+(() => {
+  function repairArticle() {
+    if (document.querySelectorAll('main').length !== 1) return;
+    const main = document.querySelector('.container > main');
+    if (!main) return;
+    for (const end of [main, main.parentElement]) {
+      let node = end.nextElementSibling;
+      while (node?.matches('figure, .secao-recapitulacao, .secao-cantico, hr.linha-divisoria, .nota-rodape')) {
+        const next = node.nextElementSibling;
+        main.appendChild(node);
+        node = next;
+      }
+    }
+
+    // Legacy recaps flattened links to plain text. Recover only an exact Bible
+    // label already linked elsewhere in this article; never rewrite user notes.
+    if (main.closest('[data-hope4-article]')) return;
+    const labels = [...new Set([...main.querySelectorAll('a.bbl')]
+      .filter(link => !link.closest('.secao-recapitulacao, .anotacao, .comentarios, [contenteditable]'))
+      .map(link => link.textContent.trim().replace(/\s+/g, ' '))
+      .filter(label => /\p{L}/u.test(label) && /\d/.test(label)))];
+    if (!labels.length) return;
+    const escaped = labels.sort((a, b) => b.length - a.length)
+      .map(label => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+'));
+    const pattern = new RegExp(escaped.join('|'), 'giu');
+    for (const recap of main.querySelectorAll('.lista-recapitulacao')) {
+      const walker = document.createTreeWalker(recap, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          return node.parentElement.closest('a, button, input, textarea, select, script, style, .anotacao, .comentarios, [contenteditable]')
+            ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      for (const node of nodes) {
+        const text = node.nodeValue, fragment = document.createDocumentFragment();
+        let last = 0, changed = false;
+        for (const match of text.matchAll(pattern)) {
+          const start = match.index, end = start + match[0].length;
+          const item = node.parentElement.closest('li') || recap;
+          const prefix = document.createRange(), suffix = document.createRange();
+          prefix.selectNodeContents(item); prefix.setEnd(node, start);
+          suffix.selectNodeContents(item); suffix.setStart(node, end);
+          const before = prefix.toString(), after = suffix.toString();
+          if (/[\p{L}\p{N}]/u.test(before.slice(-1)) || /^[\p{L}\p{N}:]/u.test(after)) continue;
+          // A shorter linked label must not turn "1 João 3" into João 3, or
+          // "Salmo 91-93" / "Salmo 91 : 2" into a link to just chapter 91,
+          // including a boundary split across a highlight or inline formatting.
+          if (!/^\d/.test(match[0]) && /(?:^|[^\p{L}\p{N}])(?:[1-3]|I{1,3})\s+$/iu.test(before)) continue;
+          if (/^\s*(?::|[-–—,;]\s*\d)|^\s+e\s+\d/u.test(after)) continue;
+          fragment.append(text.slice(last, start));
+          const link = document.createElement('a');
+          link.className = 'bbl';
+          link.textContent = match[0];
+          fragment.append(link);
+          last = end;
+          changed = true;
+        }
+        if (changed) {
+          fragment.append(text.slice(last));
+          node.replaceWith(fragment);
+        }
+      }
+    }
+  }
+  // This script follows the article markup, before its interactive controls
+  // initialize. A cache restore can replace descendants, so repair those too.
+  repairArticle();
+  document.addEventListener('DOMContentLoaded', repairArticle, {once: true});
+  document.addEventListener('cacheRestored', repairArticle, {capture: true});
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
     const semana = window.semanaAtual;
     if (!semana) {
