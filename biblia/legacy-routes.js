@@ -110,6 +110,23 @@ export function bibleStudyURL({href = '', targetVerses = '', reference = ''} = {
   return url;
 }
 
+// Article study notes have their own reference screen and a trusted return path.
+// Keep the route relative to this installation, including GitHub Pages subpaths.
+export function studyReferenceContext(search) {
+  const params = new URLSearchParams(search);
+  if (params.get('studyView') !== 'reference' || params.get('from') !== 'article') return null;
+  const source = params.get('returnTo');
+  if (!source) return null;
+  const articleRoot = new URL('../sentinela/artigos/', import.meta.url);
+  let returnURL;
+  try { returnURL = new URL(source, articleRoot); } catch { return null; }
+  if (returnURL.origin !== articleRoot.origin || returnURL.protocol !== articleRoot.protocol ||
+      returnURL.username || returnURL.password || !returnURL.pathname.startsWith(articleRoot.pathname) ||
+      !/^[^/\\%]+\.html$/i.test(returnURL.pathname.slice(articleRoot.pathname.length))) return null;
+  const returnTitle = (params.get('returnTitle') || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240) || 'Voltar ao artigo';
+  return {returnURL, returnTitle};
+}
+
 export function appendBibleChapterLink(container, reference, abbreviations = {}) {
   const url = bibleReferenceURL(reference, abbreviations);
   if (!url) return;

@@ -304,30 +304,43 @@ function noteLinks(active, html) {
 // Structured text keeps actual anchor placement without returning HTML to the UI.
 function noteParts(active, html) {
   const source = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
-  const raw = [];
+  const raw = [], formatting = [];
   let anchor = null;
-  const append = text => { if (anchor) anchor.text += text; else if (text) raw.push({text}); };
+  const append = (text, blockBreak=false) => {
+    if (!text) return;
+    if (anchor) anchor.text += text;
+    raw.push({text,anchor,
+      strong:!blockBreak && formatting.some(tag => tag==='strong' || tag==='b'),
+      emphasis:!blockBreak && formatting.some(tag => tag==='em' || tag==='i')});
+  };
   const finishAnchor = () => {
     if (!anchor) return;
     const label = anchor.text.trim();
     const bible = bibleLink(anchor.href,label);
     const noteId = !bible && extractTarget(active,anchor.href);
-    const link = bible || (noteId ? {label:label || 'Glossário',noteId} : documentLink(active,anchor.href,label));
-    raw.push({text:anchor.text,...(link ? {link} : {})});
+    anchor.link = bible || (noteId ? {label:label || 'Glossário',noteId} : documentLink(active,anchor.href,label));
     anchor = null;
   };
-  for (const token of source.match(/<[^>]*>|[^<]+|</g) || []) {
+  for (const token of source.match(/<(?:[^>"']|"[^"]*"|'[^']*')*>|[^<]+|</g) || []) {
     if (!token.startsWith('<')) { append(decodeEntities(token)); continue; }
-    if (/^<a\b/i.test(token)) {
+    const tag = token.match(/^<\s*(\/?)\s*([a-z][a-z\d]*)\b/i);
+    if (!tag) continue;
+    const closing = !!tag[1], name = tag[2].toLowerCase();
+    if (['strong','b','em','i'].includes(name)) {
+      if (closing) {
+        const index = formatting.lastIndexOf(name);
+        if (index>=0) formatting.splice(index);
+      } else if (!/\/\s*>$/.test(token)) formatting.push(name);
+    } else if (name==='a' && !closing) {
       finishAnchor();
       const match = token.match(/\bhref\s*=\s*(["'])(.*?)\1/i);
       anchor = {href:match ? decodeEntities(match[2]) : '',text:''};
-    } else if (/^<\/a\s*>/i.test(token)) finishAnchor();
-    else if (/^<br\s*\/?\s*>/i.test(token)) append('\n');
-    else if (/^<\/(?:p|div|li|h[1-6])\s*>/i.test(token)) append('\n\n');
+    } else if (name==='a' && closing) finishAnchor();
+    else if (name==='br' && !closing) append('\n',true);
+    else if (closing && /^(?:p|div|li|h[1-6])$/.test(name)) append('\n\n',true);
   }
   finishAnchor();
-  // Normalize exactly like noteText, retaining link ownership on every character.
+  // Normalize exactly like noteText, retaining inline semantics on every character.
   const chars = [];
   for (const part of raw) {
     for (const char of part.text) {
@@ -335,7 +348,7 @@ function noteParts(active, html) {
         while (chars.length && /[ \t]/.test(chars[chars.length-1].char)) chars.pop();
         if (chars.length >= 2 && chars[chars.length-1].char === '\n' && chars[chars.length-2].char === '\n') continue;
       }
-      chars.push({char,link:part.link});
+      chars.push({char,link:part.anchor?.link,strong:part.strong,emphasis:part.emphasis});
     }
   }
   let first=0,last=chars.length;
@@ -343,9 +356,9 @@ function noteParts(active, html) {
   while (last>first && /\s/u.test(chars[last-1].char)) last--;
   const parts=[];
   for (let i=first;i<last;i++) {
-    const {char,link}=chars[i],previous=parts[parts.length-1];
-    if (previous && previous.link===link) previous.text+=char;
-    else parts.push({text:char,...(link ? {link} : {})});
+    const {char,link,strong,emphasis}=chars[i],previous=parts[parts.length-1];
+    if (previous && previous.link===link && !!previous.strong===strong && !!previous.emphasis===emphasis) previous.text+=char;
+    else parts.push({text:char,...(link ? {link} : {}),...(strong ? {strong:true} : {}),...(emphasis ? {emphasis:true} : {})});
   }
   return parts;
 }

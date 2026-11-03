@@ -71,7 +71,15 @@ document.addEventListener('cacheRestored', () => {
     return null;
   }
 
-  // Questions and article paragraphs open on a tap; other contexts keep the hold.
+  // Paragraph references open on a tap. Elsewhere a completed hold opens the
+  // Bible, while a short tap keeps the question/section's existing IA action.
+  let activeReferencePress = null, suppressMouseUntil = 0;
+  function activateReferenceContext(el) {
+    if (el.closest('.anotacao, .comentarios, .btn-gerar-ia')) return;
+    const trigger = el.closest('p.pergunta, .lista-recapitulacao li, .objetivo, h1.estudo-titulo, h2.subtitulo');
+    trigger?.click();
+  }
+
   function bindReference(el) {
     if (boundReferences.has(el)) return;
     boundReferences.add(el);
@@ -79,73 +87,111 @@ document.addEventListener('cacheRestored', () => {
     el.style.cursor = 'pointer';
     el.tabIndex = 0;
     el.setAttribute('role', 'button');
-    let pressTimer = null, openTimer = null, suppressClickUntil = 0;
-    let moveTooMuch = false, tapPending = false, startX = 0, startY = 0;
-    cleanupTimers.push(() => {
-      clearTimeout(pressTimer); clearTimeout(openTimer);
-      el.classList.remove('pressionando', 'ref-aberta');
-    });
+    let pressTimer = null, openTimer = null, suppressClickUntil = 0, press = null;
 
     function resetAppearance() {
-      clearTimeout(pressTimer);
+      clearTimeout(pressTimer); clearTimeout(openTimer);
       el.classList.remove('pressionando', 'ref-aberta');
       if (!isModalOpen) setTimeout(() => { if (!isModalOpen && !controller.signal.aborted) unblockTextSelection(); }, 50);
     }
     function cancelPress() {
-      moveTooMuch = true;
-      tapPending = false;
-      clearTimeout(openTimer);
+      if (press) suppressClickUntil = performance.now() + 800;
+      if (activeReferencePress?.cancel === cancelPress) activeReferencePress = null;
+      press = null;
       resetAppearance();
     }
-    listen(el, 'touchstart', e => {
-      clearTimeout(pressTimer); clearTimeout(openTimer);
-      tapPending = false;
-      suppressClickUntil = performance.now() + 1200;
-      if (e.touches.length !== 1) { cancelPress(); return; }
-      moveTooMuch = false;
-      const touch = e.touches[0];
-      startX = touch.clientX; startY = touch.clientY;
+    cleanupTimers.push(cancelPress);
+
+    function startPress(kind, x, y) {
+      activeReferencePress?.cancel();
+      press = {kind, x, y, instant:!!el.closest('.paragrafo'), opened:false};
+      activeReferencePress = {cancel:cancelPress};
       el.classList.add('pressionando');
-      if (el.closest('.pergunta, .paragrafo')) {
-        tapPending = true;
-        return;
-      }
+      if (press.instant) return;
       blockTextSelection();
+      const current = press;
       pressTimer = setTimeout(() => {
-        if (moveTooMuch) return;
+        if (press !== current) return;
         el.classList.remove('pressionando'); el.classList.add('ref-aberta');
         openTimer = setTimeout(() => {
+          if (press !== current) return;
+          current.opened = true;
           abrirModalSeForRef(el);
           el.classList.remove('ref-aberta');
         }, BIBLE_OPEN_DELAY_MS);
       }, BIBLE_HOLD_MS);
+    }
+    function movePress(x, y) {
+      if (press && (Math.abs(x - press.x) > 10 || Math.abs(y - press.y) > 10)) cancelPress();
+    }
+    function finishPress() {
+      const finished = press;
+      // Releasing during the hold feedback cancels the pending Bible opening.
+      cancelPress();
+      if (!finished || finished.opened) return;
+      if (finished.instant) abrirModalSeForRef(el);
+      else activateReferenceContext(el);
+    }
+
+    listen(el, 'touchstart', e => {
+      suppressMouseUntil = suppressClickUntil = performance.now() + 1200;
+      if (e.touches.length !== 1) { cancelPress(); return; }
+      const touch = e.touches[0];
+      startPress('touch', touch.clientX, touch.clientY);
     });
     listen(el, 'touchmove', e => {
       const touch = e.touches[0];
-      if (!touch || e.touches.length !== 1 || Math.abs(touch.clientX - startX) > 10 || Math.abs(touch.clientY - startY) > 10) cancelPress();
+      if (!touch || e.touches.length !== 1) cancelPress();
+      else movePress(touch.clientX, touch.clientY);
     });
     listen(el, 'touchend', e => {
-      suppressClickUntil = performance.now() + 800;
-      const openOnTap = tapPending && !moveTooMuch && e.touches.length === 0;
-      tapPending = false;
-      // Once the hold is accepted, releasing during its feedback may still open.
-      resetAppearance();
-      if (openOnTap) abrirModalSeForRef(el);
+      suppressMouseUntil = suppressClickUntil = performance.now() + 800;
+      if (e.touches.length || press?.kind !== 'touch') { cancelPress(); return; }
+      const touch = e.changedTouches[0];
+      if (touch) movePress(touch.clientX, touch.clientY);
+      finishPress();
     });
-    listen(el, 'touchcancel', cancelPress);
+    listen(el, 'touchcancel', () => {
+      suppressMouseUntil = suppressClickUntil = performance.now() + 800;
+      cancelPress();
+    });
+
+    // Mouse users get the same short-click/hold distinction. Ignore compatibility
+    // mouse events generated by touch so one gesture cannot toggle IA twice.
+    listen(el, 'mousedown', e => {
+      if (e.button !== 0 || performance.now() < suppressMouseUntil) return;
+      e.preventDefault();
+      startPress('mouse', e.clientX, e.clientY);
+    });
+    listen(window, 'mousemove', e => { if (press?.kind === 'mouse') movePress(e.clientX, e.clientY); });
+    listen(window, 'mouseup', e => {
+      if (e.button !== 0 || press?.kind !== 'mouse') return;
+      suppressClickUntil = performance.now() + 800;
+      movePress(e.clientX, e.clientY);
+      if (!el.contains(e.target)) cancelPress();
+      finishPress();
+    });
+    listen(el, 'dragstart', e => { e.preventDefault(); cancelPress(); });
     listen(el, 'click', e => {
       e.preventDefault();
-      // Ignore the synthesized click after touch: avoid duplicate opens or bypassing a hold.
+      e.stopPropagation();
+      // Touch/mouse releases already handled this gesture; keep accessible
+      // keyboard and assistive-technology activation available without holding.
       if (performance.now() < suppressClickUntil) return;
-      abrirModalSeForRef(el);
+      if (e.detail === 0 || el.closest('.paragrafo')) abrirModalSeForRef(el);
+      else activateReferenceContext(el);
     });
     listen(el, 'keydown', e => {
       if (!['Enter', ' '].includes(e.key) || e.repeat) return;
       e.preventDefault();
+      suppressClickUntil = performance.now() + 800;
+      cancelPress();
       abrirModalSeForRef(el);
     });
     listen(el, 'contextmenu', e => e.preventDefault());
   }
+  listen(document, 'touchstart', e => { if (e.touches.length > 1) activeReferencePress?.cancel(); });
+  listen(window, 'blur', () => activeReferencePress?.cancel());
   bindReferences(document);
 
   async function abrirModalBibl(referencia, references) {
@@ -173,7 +219,14 @@ document.addEventListener('cacheRestored', () => {
     if (controller.signal.aborted) return;
     if (routes && isStudyLabel(el)) {
       const url = resolveStudyLink(el, routes);
-      if (url) location.assign(url.href);
+      if (url) {
+        url.searchParams.set('studyView', 'reference');
+        url.searchParams.set('from', 'article');
+        url.searchParams.set('returnTo', location.href);
+        url.searchParams.set('returnTitle', document.querySelector('h1.estudo-titulo, main h1')?.textContent.trim() || 'Voltar ao artigo');
+        window.SentinelaReadingPosition?.save();
+        location.assign(url.href);
+      }
       else if (!isModalOpen) unblockTextSelection();
       return;
     }

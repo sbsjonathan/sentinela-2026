@@ -17,3 +17,33 @@ body.sentinela-bible.audio-open.with-bottom-navbar{padding-bottom:calc(var(--bib
 
 /* Avoid flashing the first-install welcome screen on an already prepared reader. */
 .bible-restoring #empty,.bible-restoring #status:not(.error){display:none!important}
+
+/* Study references opened from an article are a reading screen, with their
+   original verse and return path, rather than a sheet over another chapter. */
+.study-article-header{position:sticky;top:0;z-index:31;display:flex;align-items:center;min-height:calc(44px + env(safe-area-inset-top));padding:env(safe-area-inset-top) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left));background:var(--chrome);border-bottom:1px solid #bcbcbc}
+.study-article-header button{display:flex;align-items:center;gap:4px;width:100%;min-width:0;min-height:44px;border:0;background:none;padding:6px 0;color:var(--purple);text-align:left;font-size:var(--font-base-global,16px)}
+.study-article-header svg{width:21px;flex-shrink:0}
+.study-article-header span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reference-reading .app-header,.article-study-opening .app-header{display:none!important}
+.article-study-opening #study-article-header[hidden]{display:flex!important}
+.article-study-opening #section-tabs,.article-study-opening main> :not(#study-reference){display:none!important}
+.article-study-opening #study-reference[hidden]{display:block!important}
+body.reference-reading,html.article-study-opening body{background:#fafafa}
+.study-reference{background:#fafafa;min-height:calc(100dvh - 44px - env(safe-area-inset-top) - var(--bible-menu-height));font-family:"Noto Sans",-apple-system,BlinkMacSystemFont,sans-serif;font-size:var(--read-size);line-height:1.55}
+.study-reference-toolbar{position:relative;display:flex;align-items:center;justify-content:center;min-height:48px;border-bottom:1px solid #eee;background:#fafafa}
+.study-reference-toolbar h2{margin:0;padding:10px 48px;font-size:calc(14px * var(--font-scale-global,1));font-weight:400;line-height:1.4}
+.study-reference-toolbar button{position:absolute;left:8px;top:50%;transform:translateY(-50%)}
+.study-publication{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 10px 0 0;background:#efefef;color:#262626;border:0;text-align:left;font-size:var(--font-base-global,16px);line-height:1.3}
+.study-publication>img{width:48px;height:48px;object-fit:cover;flex-shrink:0}
+.study-publication>span:nth-child(2){flex:1;min-width:0;padding:8px 0}
+.study-publication small{display:block;font-size:.78em;padding-top:3px}
+.study-publication-arrow{color:#777;font-size:25px;font-weight:300}
+.study-reference-body{padding:18px clamp(20px,5.6vw,28px) 30px;overflow-wrap:anywhere}
+.study-reference-verse{margin:0 0 22px}
+.study-reference-number{font-weight:700}
+.study-reference-note{white-space:pre-line;margin:0 0 22px}
+.study-reference-note strong{font-weight:700}
+.study-reference-note .inline-reference{font:inherit;line-height:inherit}
+.study-reference-status{font-size:var(--font-base-global,16px);line-height:1.5;margin:0 0 18px}
+.study-reference-body>.button{max-width:100%;white-space:normal}
+@media(min-width:760px){.study-article-header{padding-left:max(12px,calc((100vw - 760px)/2));padding-right:max(12px,calc((100vw - 760px)/2))}.study-reference-body{padding:24px 32px 40px}}

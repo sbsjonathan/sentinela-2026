@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<script>try{if(localStorage.getItem('sentinela-bible-view-v1'))document.documentElement.classList.add('bible-restoring');}catch{}</script>
+<script>try{if(localStorage.getItem('sentinela-bible-view-v1'))document.documentElement.classList.add('bible-restoring');const p=new URLSearchParams(location.search);if(p.get('studyView')==='reference'&&p.get('from')==='article')document.documentElement.classList.add('article-study-opening');}catch{}</script>
 <meta name="theme-color" content="#d8d8d8"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="Sua Bíblia no iPhone, com notas de estudo, referências e apêndices.">
 <link rel="manifest" href="../manifest.json"><link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/apple-touch-icon.png?v=2026.11.02.12"><link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32.png?v=2026.11.02.12"><link rel="stylesheet" href="fonts/fonts.css"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="../navbar/navbar-unified.css"><link rel="stylesheet" href="integration.css"><link rel="stylesheet" href="search-panel.css">
@@ -21,6 +21,7 @@
 <symbol id="i-read" viewBox="0 0 24 24"><path d="M5 2h14v20H5zM8 7h8M8 11h8M8 15h5"/></symbol>
 <symbol id="i-close" viewBox="0 0 24 24"><path d="m5 5 14 14M19 5 5 19"/></symbol>
 </defs></svg>
+<header id="study-article-header" class="study-article-header" hidden><button id="study-article-back" type="button" aria-label="Voltar ao artigo"><svg><use href="#i-back"/></svg><span id="study-article-title">Voltar ao artigo</span></button></header>
 <header class="app-header">
 <button id="back" class="header-back" aria-label="Voltar" hidden><svg><use href="#i-back"/></svg><span>Voltar</span></button>
 <div class="header-title"><h1 id="screen-title">Bíblia</h1><p id="screen-subtitle">Sua biblioteca pessoal</p></div>
@@ -37,6 +38,11 @@
 </section>
 <section id="section-list" class="section-list" hidden></section>
 <article id="reader" class="reader" hidden><h2 id="reading-title" tabindex="-1"></h2><div id="verses" class="verses"></div><nav class="chapter-nav" aria-label="Navegação entre capítulos"><button id="previous" class="text-button">‹ Anterior</button><span id="position"></span><button id="next" class="text-button">Próximo ›</button></nav></article>
+<article id="study-reference" class="study-reference" aria-labelledby="study-reference-title" hidden>
+<header class="study-reference-toolbar"><button id="study-reference-back" class="icon-button" type="button" aria-label="Voltar ao artigo"><svg><use href="#i-back"/></svg></button><h2 id="study-reference-title">Referências</h2></header>
+<button id="study-publication" class="study-publication" type="button" disabled><img src="bundled/media/1001070000_univ_sqr-120x120.jpg" alt=""><span><span id="study-publication-title">Bíblia de Estudo</span><small id="study-publication-book"></small></span><span class="study-publication-arrow" aria-hidden="true">›</span></button>
+<div id="study-reference-body" class="study-reference-body" aria-live="polite"><p class="study-reference-status">Abrindo a nota de estudo…</p></div>
+</article>
 <article id="document" class="document reader" hidden><h2 id="document-title" tabindex="-1"></h2><div id="document-body"></div></article>
 <section id="bookmarks" class="saved-page" hidden><h2>Marcadores</h2><p class="page-hint">Seus capítulos e versículos para voltar depois.</p><div id="bookmark-list"></div></section>
 <section id="library" class="library" hidden><h2>Biblioteca</h2><label for="publication">Tradução da Bíblia</label><select id="publication"></select><button id="add-file" class="button primary">Adicionar arquivo JWPUB</button><p class="page-hint">A Bíblia de Estudo já está incluída. Seus marcadores e outros arquivos ficam neste iPhone.</p><button id="offline-status" class="menu-row">Conferir leitura offline <span>↓</span></button><p id="offline-detail" class="page-hint">Preparando a leitura offline…</p><details><summary>Como usar no iPhone</summary><p>Na primeira abertura, aguarde “Bíblia disponível offline”. Depois você poderá ler os livros, notas, mapas e apêndices sem internet. Áudios e vídeos precisam de conexão.</p><p>Para instalar A Sentinela, toque em Compartilhar no Safari e em Adicionar à Tela de Início.</p><p>Toque nos números azuis para ver notas de estudo. Símbolos e letras pequenas abrem notas e referências.</p></details></section>

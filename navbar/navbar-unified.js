@@ -162,6 +162,11 @@ class UnifiedNavbar {
         this.setupScrollBehavior();
         this.setupKeyboardBehavior();
         this.setupNavigation();
+        this._referenceContextHandler = () => {
+            this.currentPage = this.detectCurrentPage();
+            this.updateActiveState();
+        };
+        document.addEventListener('sentinela:reference-context', this._referenceContextHandler);
         this.finishInitialPaint();
     }
 
@@ -175,6 +180,7 @@ class UnifiedNavbar {
     }
 
     detectCurrentPage() {
+        if (document.body.dataset.studyReferenceContext === 'article') return 'watchtower';
         const path = window.location.pathname.toLowerCase();
         if (path.includes('index.html') || path === '/' || path.endsWith('/')) return 'home';
         if (path.includes('biblia') || path.includes('livro') || path.includes('capitulo')) return 'bible';
@@ -457,6 +463,8 @@ class UnifiedNavbar {
         }
         this._metricsListeners = [];
 
+        document.removeEventListener('sentinela:reference-context', this._referenceContextHandler);
+
         if (this.navbar) {
             this.navbar.remove();
             this.navbar = null;
@@ -523,6 +531,10 @@ async function irParaSentinela(event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
+    }
+    if (document.body.dataset.studyReferenceContext === 'article') {
+        document.dispatchEvent(new Event('sentinela:return-to-article'));
+        return false;
     }
 
     let semana = window.getGlobalWeek();
@@ -603,7 +615,7 @@ document.addEventListener('touchend', function (event) {
 // Reopening an installed iPhone app may resume the page without another load event.
 (function manageAppUpdates() {
     if (!('serviceWorker' in navigator)) return;
-    const release = '2026.11.03.6';
+    const release = '2026.11.03.7';
     const root = getProjectRootURL();
     let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
     const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);
