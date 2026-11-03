@@ -310,7 +310,6 @@ $("btn2").onclick = () => {
     <meta name="theme-color" content="X">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link id="sentinela-statusbar-style" rel="stylesheet" href="../../shared/statusbar.css">
     <script id="sentinela-statusbar-script" src="../../shared/statusbar.js"></script>
     <title>A Sentinela</title>

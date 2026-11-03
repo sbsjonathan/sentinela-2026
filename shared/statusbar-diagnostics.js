@@ -1,7 +1,7 @@
 /* An opt-in, on-device visual experiment. No telemetry or user-content access. */
 (function initStatusbarDiagnostic() {
     'use strict';
-    const VERSION = '2026.11.03.13';
+    const VERSION = '2026.11.03.14';
     if (new URLSearchParams(location.search).get('diagnostico') !== 'statusbar') return;
     if (document.documentElement.dataset.statusbarDiagnosticLoader === 'error') return;
     if (window.StatusbarDiagnostic?.documentRoot === document.documentElement) return;

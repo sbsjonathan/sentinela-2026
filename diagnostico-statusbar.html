@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f5f3f7">
   <title>Diagnóstico da barra superior</title>
   <link id="sentinela-statusbar-style" rel="stylesheet" href="shared/statusbar.css">
@@ -43,8 +42,11 @@
     <a class="action" href="richtext/container.html?diagnostico=statusbar">Anotações</a>
     <a class="action" href="save/auth-supabase.html?diagnostico=statusbar">Salvar</a>
   </nav>
+  <h2>Comparar o modo do ícone instalado</h2>
+  <p>Se a versão atual continuar desfocada mesmo com os filtros desligados, podemos comparar esta instalação com um ícone separado, chamado <strong>Teste de tela</strong>. O aplicativo original permanece no aparelho.</p>
+  <a class="action" href="diagnostico-pwa/index.html?instalacao=atual">Abrir comparação de instalação</a>
   <p class="small">O relatório contém medidas da tela, versões carregadas e suas respostas sobre o desfoque. Não inclui o conteúdo de anotações, senhas ou textos dos artigos. Nada é enviado automaticamente.</p>
-  <p class="small">Diagnóstico 2026.11.03.13 · <a href="atualizar.html">Verificar atualização</a></p>
+  <p class="small">Diagnóstico 2026.11.03.14 · <a href="atualizar.html">Verificar atualização</a></p>
 </main>
 <script>
   const installed = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;

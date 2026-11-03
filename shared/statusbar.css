@@ -2,7 +2,7 @@
  * Keep it taller than 10px: env(safe-area-inset-top) may legitimately be zero.
  * The home page keeps its existing translucent treatment without this strip.
  */
-:root { --statusbar-build: "2026.11.03.13"; }
+:root { --statusbar-build: "2026.11.03.14"; }
 #app-solid-statusbar { display: none; }
 html[data-native-statusbar="solid"] {
     --app-statusbar-height: max(12px, env(safe-area-inset-top, 0px));

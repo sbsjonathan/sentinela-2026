@@ -119,12 +119,12 @@
     for (const meta of head.statusMetas.reverse()) {
       contents = contents.slice(0, meta.start - head.start) + contents.slice(meta.end - head.start);
     }
-    // Normalize every opening, including already prepared/offline HTML. A saved
-    // black-translucent head must not restore the home screen's native overlay.
-    const status = '<meta name="apple-mobile-web-app-status-bar-style" content="default">';
+    // Remove legacy native status-bar metadata on every opening, including old
+    // offline HTML. The install/launch policy must also be absent on the index;
+    // toggling it per page cannot reliably change an installed iOS web view.
     // Reading position runs before styles; typography follows legacy bootstraps.
     // The URL stays estudo.html, preserving all relative assets and links.
-    return html.slice(0, head.start) + (head.explicit ? '' : '<head>') + status + script + statusbar +
+    return html.slice(0, head.start) + (head.explicit ? '' : '<head>') + script + statusbar +
       contents + typography + (head.closed ? '' : '</head>') + html.slice(head.end);
   }
 

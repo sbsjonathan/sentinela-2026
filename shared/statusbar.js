@@ -40,12 +40,13 @@
 
     function refresh() {
         if (document.documentElement !== root) return;
-        const metas = [...document.head.querySelectorAll('meta[name="apple-mobile-web-app-status-bar-style"]')];
-        const meta = metas.shift() || document.createElement('meta');
-        metas.forEach(duplicate => duplicate.remove());
-        meta.name = 'apple-mobile-web-app-status-bar-style';
-        meta.content = home ? 'black-translucent' : 'default';
-        if (!meta.isConnected) document.head.append(meta);
+        // Native chrome is not a per-page blur setting. In particular, requesting
+        // black-translucent on the launch page can affect the installed PWA even
+        // after navigating to a document declaring default. Leave this deprecated
+        // key absent everywhere; the home-only material remains in styles.css.
+        for (const meta of document.head.querySelectorAll('meta[name]')) {
+            if (meta.name.toLowerCase() === 'apple-mobile-web-app-status-bar-style') meta.remove();
+        }
         root.dataset.appStatusbar = home ? 'home' : 'solid';
         root.dataset.statusbarSurface = surface;
         if (!home && ios && (navigator.standalone === true || standalone.matches)) {
@@ -62,7 +63,7 @@
         }
     }
 
-    window.AppStatusBar = { documentRoot: root, revision: '2026.11.03.13', refresh };
+    window.AppStatusBar = { documentRoot: root, revision: '2026.11.03.14', refresh };
     refresh();
     window.addEventListener('pageshow', refresh);
     standalone.addEventListener('change', refresh);
