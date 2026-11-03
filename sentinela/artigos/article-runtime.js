@@ -46,6 +46,65 @@
     return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   }
 
+  function isStatusBarMeta(tag) {
+    const attributes = tag.replace(/^<meta\b/i, '').replace(/>$/, '');
+    const attribute = /([^\s"'<>\/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+    let match;
+    while ((match = attribute.exec(attributes))) {
+      if (match[1].toLowerCase() === 'name') {
+        return (match[2] ?? match[3] ?? match[4] ?? '').toLowerCase() === 'apple-mobile-web-app-status-bar-style';
+      }
+    }
+    return false;
+  }
+
+  // The worker has no DOMParser. Scan just the real head, leaving comments,
+  // script/style text and inert template contents untouched in old downloads.
+  function articleHead(html) {
+    const token = /<!--[\s\S]*?(?:-->|$)|<![^>]*>|<\/?([a-z][a-z0-9:-]*)\b(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi;
+    const headElements = new Set(['base', 'basefont', 'bgsound', 'link', 'meta', 'title', 'noscript', 'noframes', 'script', 'style', 'template']);
+    const rawText = new Set(['script', 'style', 'title', 'noscript', 'noframes']);
+    let start = 0, end = html.length, cursor = 0, explicit = false, closed = false, templates = 0, match;
+    const statusMetas = [];
+    while ((match = token.exec(html))) {
+      const tag = match[0], name = (match[1] || '').toLowerCase(), closing = /^<\//.test(tag);
+      if (!templates && /\S/.test(html.slice(cursor, match.index))) {
+        end = cursor;
+        break;
+      }
+      cursor = token.lastIndex;
+      if (!name) {
+        if (!explicit && /^<!doctype\b/i.test(tag)) start = cursor;
+        continue;
+      }
+      if (name === 'template') {
+        templates = Math.max(0, templates + (closing ? -1 : 1));
+        continue;
+      }
+      if (templates) {
+        if (!closing && rawText.has(name)) {
+          const close = new RegExp('</' + name + '\\b[^>]*>', 'gi');
+          close.lastIndex = cursor;
+          const found = close.exec(html);
+          cursor = token.lastIndex = found ? close.lastIndex : html.length;
+        }
+        continue;
+      }
+      if (name === 'html' && !closing && !explicit) { start = cursor; continue; }
+      if (name === 'head' && !closing && !explicit) { start = cursor; explicit = true; continue; }
+      if (name === 'head' && closing) { end = match.index; closed = true; break; }
+      if (!headElements.has(name)) { end = match.index; break; }
+      if (name === 'meta' && !closing && isStatusBarMeta(tag)) statusMetas.push({ start: match.index, end: cursor });
+      if (!closing && rawText.has(name)) {
+        const close = new RegExp('</' + name + '\\b[^>]*>', 'gi');
+        close.lastIndex = cursor;
+        const found = close.exec(html);
+        cursor = token.lastIndex = found ? close.lastIndex : html.length;
+      }
+    }
+    return { start, end, explicit, closed, statusMetas };
+  }
+
   function prepareHTML(html, { date, rootURL }) {
     if (!isArticle(html)) throw new Error('O conteúdo recebido não é um estudo.');
     const root = new URL('./', rootURL).href;
@@ -53,15 +112,18 @@
     const script = /\bid\s*=\s*["']sentinela-reading-position["']/i.test(html) ? '' : `<script id="sentinela-reading-position" src="${escapeAttribute(scriptURL)}" data-study-date="${escapeAttribute(date)}" data-project-root="${escapeAttribute(root)}"></script>`;
     const typography = (/\bid\s*=\s*["']sentinela-typography-script["']/i.test(html) ? '' : `<script id="sentinela-typography-script" src="${escapeAttribute(new URL('shared/typography.js', root).href)}"></script>`) +
       (/\bid\s*=\s*["']sentinela-typography-style["']/i.test(html) ? '' : `<link id="sentinela-typography-style" rel="stylesheet" href="${escapeAttribute(new URL('shared/typography.css', root).href)}">`);
-    // Run before styles, external scripts and article content. The document URL
-    // stays estudo.html, preserving every existing relative asset and link.
-    if (/<head\b[^>]*>/i.test(html)) {
-      const prepared = html.replace(/<head\b[^>]*>/i, match => match + '\n' + script);
-      // Run after legacy font bootstraps/styles, before the article can paint.
-      return /<\/head\s*>/i.test(prepared) ? prepared.replace(/<\/head\s*>/i, typography + '\n</head>') : prepared.replace(/<head\b[^>]*>/i, match => match + typography);
+    const head = articleHead(html);
+    let contents = html.slice(head.start, head.end);
+    for (const meta of head.statusMetas.reverse()) {
+      contents = contents.slice(0, meta.start - head.start) + contents.slice(meta.end - head.start);
     }
-    if (/<html\b[^>]*>/i.test(html)) return html.replace(/<html\b[^>]*>/i, match => match + '<head>' + script + typography + '</head>');
-    return html.replace(/<!doctype[^>]*>/i, match => match + '<head>' + script + typography + '</head>');
+    // Normalize every opening, including already prepared/offline HTML. A saved
+    // black-translucent head must not restore the home screen's native overlay.
+    const status = '<meta name="apple-mobile-web-app-status-bar-style" content="default">';
+    // Reading position runs before styles; typography follows legacy bootstraps.
+    // The URL stays estudo.html, preserving all relative assets and links.
+    return html.slice(0, head.start) + (head.explicit ? '' : '<head>') + status + script +
+      contents + typography + (head.closed ? '' : '</head>') + html.slice(head.end);
   }
 
   scope.SentinelaArticleRuntime = Object.freeze({ CACHE_NAME, PROXY_URL, resolveDate, cacheKey, isArticle, prepareHTML });

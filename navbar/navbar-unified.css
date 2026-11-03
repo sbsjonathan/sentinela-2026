@@ -13,6 +13,11 @@
     --navbar-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* The home status material must never cover an internal page's heading. */
+html[data-app-statusbar="solid"] .home-statusbar {
+    display: none !important;
+}
+
 [data-theme="dark"] {
     --navbar-bg: #1c1c1e;
     --navbar-border: rgba(255, 255, 255, 0.1);

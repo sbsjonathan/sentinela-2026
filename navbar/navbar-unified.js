@@ -79,6 +79,25 @@ function joinProjectPath(relativePath) {
     return new URL(relativePath.replace(/^\/+/, ''), getProjectRootURL()).href;
 }
 
+// Only the actual home document opts into the translucent iOS status area.
+// Reapply on BFCache returns and on older directly opened article documents.
+(function configureStatusBar() {
+    function apply() {
+        const root = new URL(getProjectRootURL());
+        const home = location.origin === root.origin &&
+            [root.pathname, new URL('index.html', root).pathname].includes(location.pathname);
+        const metas = [...document.head.querySelectorAll('meta[name="apple-mobile-web-app-status-bar-style"]')];
+        const meta = metas.shift() || document.createElement('meta');
+        metas.forEach(duplicate => duplicate.remove());
+        meta.name = 'apple-mobile-web-app-status-bar-style';
+        meta.content = home ? 'black-translucent' : 'default';
+        if (!meta.isConnected) document.head.append(meta);
+        document.documentElement.dataset.appStatusbar = home ? 'home' : 'solid';
+    }
+    apply();
+    window.addEventListener('pageshow', apply);
+})();
+
 (function initSharedAppIcons() {
     // Change this only when the artwork changes, independently of app releases.
     const ICON_REVISION = '2026.11.02.12';
@@ -695,7 +714,7 @@ document.addEventListener('touchend', function (event) {
 // Reopening an installed iPhone app may resume the page without another load event.
 (function manageAppUpdates() {
     if (!('serviceWorker' in navigator)) return;
-    const release = '2026.11.03.8';
+    const release = '2026.11.03.9';
     const root = getProjectRootURL();
     let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
     const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);
