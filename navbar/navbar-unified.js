@@ -79,23 +79,25 @@ function joinProjectPath(relativePath) {
     return new URL(relativePath.replace(/^\/+/, ''), getProjectRootURL()).href;
 }
 
-// Only the actual home document opts into the translucent iOS status area.
-// Reapply on BFCache returns and on older directly opened article documents.
-(function configureStatusBar() {
-    function apply() {
-        const root = new URL(getProjectRootURL());
-        const home = location.origin === root.origin &&
-            [root.pathname, new URL('index.html', root).pathname].includes(location.pathname);
-        const metas = [...document.head.querySelectorAll('meta[name="apple-mobile-web-app-status-bar-style"]')];
-        const meta = metas.shift() || document.createElement('meta');
-        metas.forEach(duplicate => duplicate.remove());
-        meta.name = 'apple-mobile-web-app-status-bar-style';
-        meta.content = home ? 'black-translucent' : 'default';
-        if (!meta.isConnected) document.head.append(meta);
-        document.documentElement.dataset.appStatusbar = home ? 'home' : 'solid';
+// Older directly opened article documents may predate the shared head include.
+(function loadSharedStatusBar() {
+    const scriptUrl = new URL('shared/statusbar.js', getProjectRootURL());
+    if (NAVBAR_SCRIPT_SRC) scriptUrl.search = new URL(NAVBAR_SCRIPT_SRC).search;
+    const stylesheetUrl = new URL('statusbar.css', scriptUrl);
+    stylesheetUrl.search = scriptUrl.search;
+    if (!document.getElementById('sentinela-statusbar-style') && !Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some((link) => new URL(link.href).pathname === stylesheetUrl.pathname)) {
+        const link = document.createElement('link');
+        link.id = 'sentinela-statusbar-style';
+        link.rel = 'stylesheet';
+        link.href = stylesheetUrl.href;
+        document.head.appendChild(link);
     }
-    apply();
-    window.addEventListener('pageshow', apply);
+    if (!document.getElementById('sentinela-statusbar-script') && !Array.from(document.scripts).some((script) => script.src && new URL(script.src).pathname === scriptUrl.pathname)) {
+        const script = document.createElement('script');
+        script.id = 'sentinela-statusbar-script';
+        script.src = scriptUrl.href;
+        document.head.appendChild(script);
+    }
 })();
 
 (function initSharedAppIcons() {
@@ -714,7 +716,7 @@ document.addEventListener('touchend', function (event) {
 // Reopening an installed iPhone app may resume the page without another load event.
 (function manageAppUpdates() {
     if (!('serviceWorker' in navigator)) return;
-    const release = '2026.11.03.11';
+    const release = '2026.11.03.12';
     const root = getProjectRootURL();
     let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
     const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);

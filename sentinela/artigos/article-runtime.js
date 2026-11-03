@@ -110,6 +110,8 @@
     const root = new URL('./', rootURL).href;
     const scriptURL = new URL('sentinela/artigos/reading-position.js', root).href;
     const script = /\bid\s*=\s*["']sentinela-reading-position["']/i.test(html) ? '' : `<script id="sentinela-reading-position" src="${escapeAttribute(scriptURL)}" data-study-date="${escapeAttribute(date)}" data-project-root="${escapeAttribute(root)}"></script>`;
+    const statusbar = (/\bid\s*=\s*["']sentinela-statusbar-style["']/i.test(html) ? '' : `<link id="sentinela-statusbar-style" rel="stylesheet" href="${escapeAttribute(new URL('shared/statusbar.css', root).href)}">`) +
+      (/\bid\s*=\s*["']sentinela-statusbar-script["']/i.test(html) ? '' : `<script id="sentinela-statusbar-script" src="${escapeAttribute(new URL('shared/statusbar.js', root).href)}"></script>`);
     const typography = (/\bid\s*=\s*["']sentinela-typography-script["']/i.test(html) ? '' : `<script id="sentinela-typography-script" src="${escapeAttribute(new URL('shared/typography.js', root).href)}"></script>`) +
       (/\bid\s*=\s*["']sentinela-typography-style["']/i.test(html) ? '' : `<link id="sentinela-typography-style" rel="stylesheet" href="${escapeAttribute(new URL('shared/typography.css', root).href)}">`);
     const head = articleHead(html);
@@ -122,7 +124,7 @@
     const status = '<meta name="apple-mobile-web-app-status-bar-style" content="default">';
     // Reading position runs before styles; typography follows legacy bootstraps.
     // The URL stays estudo.html, preserving all relative assets and links.
-    return html.slice(0, head.start) + (head.explicit ? '' : '<head>') + status + script +
+    return html.slice(0, head.start) + (head.explicit ? '' : '<head>') + status + script + statusbar +
       contents + typography + (head.closed ? '' : '</head>') + html.slice(head.end);
   }
 
