@@ -177,10 +177,13 @@ $("btn1").onclick = () => {
 
   let descCount = 0;
   txt = txt.replace(/<figure>([\s\S]*?)<\/figure>/gi, (m, inner) => {
-    let hasAsterisk = /\*/.test(inner);
+    // hope4 carries explicit note destinations. Keep those links and the image
+    // URL selected by the source; legacy image descriptions have plain stars.
+    const explicitNote = /data-note-id=["']hope4-note-/.test(inner);
+    let hasAsterisk = !explicitNote && /\*/.test(inner);
     
     inner = inner.replace(/<img\s+src=(["'])(.*?_lg\.jpg)\1/i, (imgM, q, src) => {
-      let newSrc = src.replace("_lg.jpg", "_xl.jpg");
+      let newSrc = src;
       if (hasAsterisk && descCount < descricoesImagem.length) {
         let altTxt = descricoesImagem[descCount];
         return `<img src="${newSrc}"\n       alt="${altTxt}"`;
@@ -262,8 +265,9 @@ $("btn1").onclick = () => {
     return `<div class="quadro1">\n  <h3 class="quadro1-titulo">${titulo}</h3>\n  <div class="quadro1-corpo">\n${htmlCorpo.trimEnd()}\n  </div>\n</div>\n\n`;
   });
 
-  txt = txt.replace(/<nota>\s*\*?\s*([\s\S]*?)<\/nota>/gi, (_, content) => {
-    return `<p class="nota-rodape"><span class="simbolo-rodape">*</span> ${content.trim()}</p>\n\n`;
+  txt = txt.replace(/<nota(?:\s+id="(hope4-note-[a-zA-Z0-9_-]+)")?>\s*\*?\s*([\s\S]*?)<\/nota>/gi, (_, noteId, content) => {
+    const target = noteId ? ` id="${noteId}"` : "";
+    return `<p class="nota-rodape"${target}><span class="simbolo-rodape">*</span> ${content.trim()}</p>\n\n`;
   });
 
   txt = txt.replace(/\n{3,}/g, "\n\n");

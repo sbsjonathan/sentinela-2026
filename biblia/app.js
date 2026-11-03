@@ -8,7 +8,7 @@ const mediaURLs=new Map();
 let textActions,bibleAudio,readAlong,toastTimer,bookmarksFromReading=false;
 const OPENING_VIEW_KEY='sentinela-bible-view-v1';
 const OPENING_VIEW_VERSION=1;
-let openingRestored=false;
+let openingRestored=false,openingStudyHandled=false;
 function toast(message){let node=document.getElementById('action-status');if(!node){node=document.createElement('div');node.id='action-status';node.setAttribute('role','status');document.body.append(node);}node.textContent=message;node.hidden=!message;clearTimeout(toastTimer);toastTimer=setTimeout(()=>node.hidden=true,3500);}
 function audioContext(verse=1){return {publication:state.publication,...state.pubInfo,book:Number(state.book),chapter:Number(state.chapter),verse:Number(verse)||1,chapters:state.chapters.length,verses:(state.data?.verses||[]).map(v=>Number(v.number)),title:`${nameOf(state.book)} ${state.chapter}`};}
 function bookmarkSelection(selection){const marks=savedMarks();const found=marks.some(m=>m.publication===state.publication&&m.book===state.book&&m.chapter===state.chapter&&m.verse===selection.startVerse&&m.endVerse===selection.endVerse);if(!found){marks.unshift({publication:state.publication,book:state.book,chapter:state.chapter,verse:selection.startVerse,endVerse:selection.endVerse,title:selection.reference,edition:editionName()});save('jwpub-bookmarks',marks);}toast(found?'Este trecho já está nos marcadores.':'Trecho salvo nos marcadores.');}
@@ -18,8 +18,8 @@ function save(key,value){try{localStorage.setItem(key,JSON.stringify(value));}ca
 function read(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
 function rpc(action,args={}){return new Promise((resolve,reject)=>{if(!worker)return reject(new Error('Reabra a página no Safari para iniciar o leitor.'));const id=++serial;pending.set(id,{resolve,reject});worker.postMessage({id,action,args});});}
 function openingRoute(){
- const params=new URLSearchParams(location.search),book=Number(params.get('book')),chapter=Number(params.get('chapter')),verse=Number(params.get('verse')),endVerse=Number(params.get('endVerse')),endChapter=Number(params.get('endChapter'));
- return {book:book>=1&&book<=66?book:null,chapter:chapter>0?chapter:null,verse:verse>0?verse:null,endVerse:Number.isInteger(endVerse)&&endVerse>0&&endVerse<=176?endVerse:null,endChapter:Number.isInteger(endChapter)&&endChapter>=chapter&&endChapter<=150?endChapter:null,grid:params.get('from')==='navbar'||params.get('resume')==='0'};
+ const params=new URLSearchParams(location.search),book=Number(params.get('book')),chapter=Number(params.get('chapter')),verse=Number(params.get('verse')),endVerse=Number(params.get('endVerse')),endChapter=Number(params.get('endChapter')),studyVerse=Number(params.get('studyVerse'));
+ return {book:book>=1&&book<=66?book:null,chapter:chapter>0?chapter:null,verse:verse>0?verse:null,endVerse:Number.isInteger(endVerse)&&endVerse>0&&endVerse<=176?endVerse:null,endChapter:Number.isInteger(endChapter)&&endChapter>=chapter&&endChapter<=150?endChapter:null,studyVerse:Number.isInteger(studyVerse)&&studyVerse>0&&studyVerse<=176?studyVerse:null,grid:params.get('from')==='navbar'||params.get('resume')==='0'};
 }
 function referenceEnd(reference){
  const crosses=(reference.endChapter&&Number(reference.endChapter)!==Number(reference.chapter))||(reference.endBook&&Number(reference.endBook)!==Number(reference.book));
@@ -179,6 +179,15 @@ async function openPassage(link){
  }catch(e){if(epoch===noteEpoch)ui['note-body'].textContent=e.message;}
 }
 function openVerseStudies(notes,verse,trigger){if(notes.length===1)return openNote(notes[0].id,trigger);noteTrigger=trigger;noteHistory=[];currentNote=null;document.body.classList.add('sheet-open');showDialog(ui['note-dialog']);renderNote({title:`${nameOf(state.book)} ${state.chapter}:${verse}`,kind:'study',text:'Notas de estudo deste versículo',links:notes.map(n=>({noteId:n.id,label:n.title}))});}
+async function openOpeningStudy(route){
+ if(openingStudyHandled||!route.studyVerse)return;
+ openingStudyHandled=true;
+ if(state.screen!=='reading'||Number(state.book)!==route.book||Number(state.chapter)!==route.chapter||document.querySelector('dialog[open]'))return;
+ const verse=state.data?.verses.find(item=>Number(item.number)===route.studyVerse);
+ const notes=(verse?.notes||[]).filter(note=>note.kind==='study');
+ if(!notes.length){toast('Esta edição não tem nota de estudo para este versículo.');return;}
+ await openVerseStudies(notes,route.studyVerse,document.getElementById(`verse-${route.studyVerse}`));
+}
 ui['note-back'].onclick=()=>{++noteEpoch;const note=noteHistory.pop();if(note)renderNote(note);};
 ui['note-close'].onclick=closeNotes;
 ui['note-dialog'].addEventListener('close',()=>{++noteEpoch;if(!document.querySelector('dialog[open]'))document.body.classList.remove('sheet-open');if(noteTrigger?.isConnected&&!document.querySelector('dialog[open]'))noteTrigger.focus({preventScroll:true});});
@@ -197,6 +206,7 @@ async function prepareIncludedBible(){
  ui['retry-bundle'].hidden=true;
  try{
   const bundled=await rpc('ensure-bundled'),route=openingRoute();
+  const canOpenStudy=!visible||state.epoch===openingEpoch;
   // A cached view is already interactive. Never reset it after a user's tap.
   if(!visible){
    await refresh(route.book||route.grid?{publication:bundled.id}:undefined);setBusy(false);
@@ -206,6 +216,7 @@ async function prepareIncludedBible(){
    else if(!route.book&&!route.grid){const saved=read('jwpub-reading',{});if(saved.book&&saved.chapter&&(state.book!==String(saved.book)||state.chapter!==String(saved.chapter)))await loadChapter(saved.book,saved.chapter,null,true);}
   }
   openingRestored=true;saveOpeningView();
+  if(canOpenStudy)await openOpeningStudy(route);
   window.prepareSentinelaBibleOffline?.({textReady:true,fresh:!bundled.reused});
   if(state.hasReading)bibleAudio?.prepare(audioContext()).catch(()=>{});
  }catch(e){notice(e.message,true);ui['retry-bundle'].hidden=false;}

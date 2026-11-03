@@ -1,54 +1,40 @@
 // Resolve from this script so the reader works under any application base path.
 const BIBLE_HOLD_MS = 150;
 const BIBLE_OPEN_DELAY_MS = 100;
+const articleBibleDataRoot = new URL('data/', document.currentScript.src);
+let articleBibleSession = null;
 const articleBibleReaderRoutes = import(new URL('../../biblia/legacy-routes.js', document.currentScript.src).href).catch(() => null);
 
 // scriptbbl.js - Versão final com "Robô 2.0" E suporte a referências complexas.
 
 document.addEventListener('cacheRestored', () => {
-  console.log('🟢 scriptbbl.js ouviu o sinal. Iniciando...');
-
-  // --- O "ROBÔ" QUE AMARRA OS LINKS (VERSÃO 2.0 - MAIS INTELIGENTE) ---
-  function wrapBblLinks() {
-    console.log('   -> Robô 2.0 iniciando: procurando links para amarrar...');
-    
-    if (!document.querySelector('#style-no-wrap')) {
-      const style = document.createElement('style');
-      style.id = 'style-no-wrap';
-      style.textContent = '.no-wrap { white-space: nowrap; }';
-      document.head.appendChild(style);
-    }
-
-    const processedParents = new Set(); 
-
-    document.querySelectorAll('a.bbl').forEach(linkEl => {
-      const parent = linkEl.parentNode;
-      if (!parent || processedParents.has(parent)) {
-        return; 
-      }
-      
-      const regex = /\(\s*(<a class="bbl"[^>]*>.*?<\/a>)\s*\)/g;
-      const originalHTML = parent.innerHTML;
-      const newHTML = originalHTML.replace(regex, '<span class="no-wrap">($1)</span>');
-      
-      if (originalHTML !== newHTML) {
-        parent.innerHTML = newHTML;
-      }
-
-      processedParents.add(parent);
-    });
-    console.log('   -> Robô 2.0 terminou o trabalho de amarração.');
-  }
-  // --- FIM DO ROBÔ ---
-
-  wrapBblLinks();
-  
-  if (typeof ABREVIACOES === 'undefined') {
-    console.error("ERRO: O arquivo abrev.js não foi carregado ou não foi encontrado.");
+  const modal = document.getElementById('modal-biblia');
+  const modalCorpo = document.getElementById('modal-biblia-corpo');
+  const botaoFechar = document.getElementById('modal-biblia-fechar');
+  const modalContent = modal?.querySelector('.modal-biblia-content');
+  if (!modal || !modalCorpo || !botaoFechar || !modalContent || typeof ABREVIACOES === 'undefined') return;
+  if (articleBibleSession?.modal === modal) {
+    articleBibleSession.bind(document);
     return;
   }
-  
-  let isModalOpen = false;
+  articleBibleSession?.controller.abort();
+  const controller = new AbortController(), cleanupTimers = [];
+  const listen = (target, type, handler) => target.addEventListener(type, handler, {signal:controller.signal});
+  articleBibleSession = {modal, controller, bind:bindReferences};
+  console.log('🟢 scriptbbl.js ouviu o sinal. Iniciando...');
+
+  // Old cached articles may contain .no-wrap spans. Let references wrap
+  // normally without rewriting paragraph HTML or replacing existing links.
+  let wrapStyle = document.getElementById('style-no-wrap');
+  if (!wrapStyle) {
+    wrapStyle = document.createElement('style');
+    wrapStyle.id = 'style-no-wrap';
+    document.head.appendChild(wrapStyle);
+  }
+  wrapStyle.textContent = '.no-wrap { white-space: normal; }';
+
+  let isModalOpen = false, modalEpoch = 0;
+  const boundReferences = new WeakSet(), bookRequests = new Map();
 
   function blockTextSelection() {
     document.body.classList.add('no-select-global');
@@ -58,333 +44,224 @@ document.addEventListener('cacheRestored', () => {
     document.body.classList.remove('no-select-global');
   }
 
-  // A lógica de adicionar os listeners foi mantida.
-  document.querySelectorAll('.bbl').forEach(el => {
-    el.style.cursor = 'pointer';
-    let pressTimer = null;
-    let openTimer = null;
-    let moveTooMuch = false;
-    let startX = 0, startY = 0;
-
-    el.addEventListener('touchstart', function(e) {
-      if (e.touches.length > 1) return;
-      moveTooMuch = false;
-      blockTextSelection();
-      const touch = e.touches[0];
-      startX = touch.clientX;
-      startY = touch.clientY;
-      el.classList.add('pressionando');
-      pressTimer = setTimeout(() => {
-        if (!moveTooMuch) {
-          el.classList.remove('pressionando');
-          el.classList.add('ref-aberta');
-          openTimer = setTimeout(() => {
-            abrirModalSeForRef(el); // Esta função foi melhorada
-            el.classList.remove('ref-aberta');
-          }, BIBLE_OPEN_DELAY_MS);
+  const isStudyLabel = el => /^notas?\s+de\s+estudo$/i.test(el.textContent.trim().replace(/\s+/g, ' '));
+  const studySource = el => ({href:el.getAttribute('href') || '', targetVerses:el.getAttribute('data-targetverses') || ''});
+  function bindReferences(container) {
+    container.querySelectorAll('.bbl').forEach(bindReference);
+    for (const el of container.querySelectorAll('a[href], a[data-targetverses]')) {
+      if (!isStudyLabel(el) || boundReferences.has(el)) continue;
+      articleBibleReaderRoutes.then(routes => {
+        if (!controller.signal.aborted && el.isConnected && routes?.bibleStudyURL(studySource(el), ABREVIACOES)) {
+          el.classList.add('bbl');
+          bindReference(el);
         }
-      }, BIBLE_HOLD_MS);
-    });
+      });
+    }
+  }
+  function resolveStudyLink(el, routes) {
+    const source = studySource(el);
+    if (source.href || source.targetVerses) return routes.bibleStudyURL(source, ABREVIACOES);
+    // Old downloaded articles lost the source URL. Only an unambiguous verse
+    // immediately preceding this label in the same paragraph can restore it.
+    const paragraph = el.closest('p');
+    const preceding = [...paragraph?.querySelectorAll('.bbl') || []].filter(link => link !== el && link.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+    for (const link of preceding.reverse()) {
+      if (routes.parseBibleReferences(link.textContent, ABREVIACOES).length) return routes.bibleStudyURL({reference:link.textContent}, ABREVIACOES);
+    }
+    return null;
+  }
 
-    el.addEventListener('touchmove', function(e) {
-      const touch = e.touches[0];
-      if (Math.abs(touch.clientX - startX) > 10 || Math.abs(touch.clientY - startY) > 10) {
-        moveTooMuch = true;
-        clearTimeout(pressTimer);
-        clearTimeout(openTimer);
-        el.classList.remove('pressionando', 'ref-aberta');
-      }
+  // The same activation rules cover article text, questions, recap and images.
+  function bindReference(el) {
+    if (boundReferences.has(el)) return;
+    boundReferences.add(el);
+    el.dataset.processado = 'true';
+    el.style.cursor = 'pointer';
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+    let pressTimer = null, openTimer = null, suppressClickUntil = 0;
+    let moveTooMuch = false, startX = 0, startY = 0;
+    cleanupTimers.push(() => {
+      clearTimeout(pressTimer); clearTimeout(openTimer);
+      el.classList.remove('pressionando', 'ref-aberta');
     });
 
     function resetAppearance() {
       clearTimeout(pressTimer);
-      el.classList.remove('pressionando');
-      el.classList.remove('ref-aberta');
-      if (!isModalOpen) {
-        setTimeout(() => { unblockTextSelection(); }, 50);
-      }
+      el.classList.remove('pressionando', 'ref-aberta');
+      if (!isModalOpen) setTimeout(() => { if (!isModalOpen && !controller.signal.aborted) unblockTextSelection(); }, 50);
     }
+    function cancelPress() {
+      moveTooMuch = true;
+      clearTimeout(openTimer);
+      resetAppearance();
+    }
+    listen(el, 'touchstart', e => {
+      clearTimeout(pressTimer); clearTimeout(openTimer);
+      suppressClickUntil = performance.now() + 1200;
+      if (e.touches.length !== 1) { cancelPress(); return; }
+      moveTooMuch = false;
+      blockTextSelection();
+      const touch = e.touches[0];
+      startX = touch.clientX; startY = touch.clientY;
+      el.classList.add('pressionando');
+      pressTimer = setTimeout(() => {
+        if (moveTooMuch) return;
+        el.classList.remove('pressionando'); el.classList.add('ref-aberta');
+        openTimer = setTimeout(() => {
+          abrirModalSeForRef(el);
+          el.classList.remove('ref-aberta');
+        }, BIBLE_OPEN_DELAY_MS);
+      }, BIBLE_HOLD_MS);
+    });
+    listen(el, 'touchmove', e => {
+      const touch = e.touches[0];
+      if (!touch || e.touches.length !== 1 || Math.abs(touch.clientX - startX) > 10 || Math.abs(touch.clientY - startY) > 10) cancelPress();
+    });
+    listen(el, 'touchend', () => {
+      suppressClickUntil = performance.now() + 800;
+      // Once the hold is accepted, releasing during its feedback may still open.
+      resetAppearance();
+    });
+    listen(el, 'touchcancel', cancelPress);
+    listen(el, 'click', e => {
+      e.preventDefault();
+      // iOS synthesizes a click after a tap; that must not bypass the hold.
+      if (performance.now() < suppressClickUntil) return;
+      abrirModalSeForRef(el);
+    });
+    listen(el, 'keydown', e => {
+      if (!['Enter', ' '].includes(e.key) || e.repeat) return;
+      e.preventDefault();
+      abrirModalSeForRef(el);
+    });
+    listen(el, 'contextmenu', e => e.preventDefault());
+  }
+  bindReferences(document);
 
-    el.addEventListener('touchend', resetAppearance);
-    el.addEventListener('touchcancel', () => { clearTimeout(openTimer); resetAppearance(); });
-    el.addEventListener('contextmenu', e => e.preventDefault());
-  });
-
-  const modal = document.getElementById('modal-biblia');
-  const modalCorpo = document.getElementById('modal-biblia-corpo');
-  const botaoFechar = document.getElementById('modal-biblia-fechar');
-  const modalContent = document.querySelector('.modal-biblia-content');
-
-  async function abrirModalBibl(referencia) {
+  async function abrirModalBibl(referencia, references) {
+    const epoch = ++modalEpoch;
     isModalOpen = true;
+    document.dispatchEvent(new CustomEvent('sentinela:bible-preview-open', {detail:{reference:referencia}}));
     blockTextSelection();
     modal.style.display = 'flex';
     document.body.style.overflow = "hidden";
-    modalCorpo.innerHTML = '<h3>Carregando...</h3>';
-    const resultado = await buscarVersiculo(referencia);
-    modalCorpo.innerHTML = `<h3>${resultado.titulo}</h3><div>${resultado.texto}</div>`;
     modalCorpo.dataset.reference = referencia;
-    articleBibleReaderRoutes.then(routes => {
-      if (routes && modalCorpo.dataset.reference === referencia) routes.appendBibleChapterLink(modalCorpo, referencia, ABREVIACOES);
-    });
+    modalCorpo.innerHTML = '<h3>Carregando...</h3>';
+    const resultado = await buscarReferencias(references);
+    if (!isModalOpen || epoch !== modalEpoch || controller.signal.aborted) return;
+    modalCorpo.innerHTML = `<h3>${resultado.titulo}</h3><div>${resultado.texto}</div>`;
+    modalCorpo.scrollTop = 0;
+    if (resultado.valid) {
+      const routes = await articleBibleReaderRoutes;
+      if (routes && isModalOpen && epoch === modalEpoch && !controller.signal.aborted) routes.appendBibleChapterLink(modalCorpo, referencia, ABREVIACOES);
+    }
   }
 
-  // FUNÇÃO ATUALIZADA para detectar múltiplas referências com ";"
-  function abrirModalSeForRef(el) {
+  async function abrirModalSeForRef(el) {
     const ref = el.textContent.trim();
-    
-    // Se tiver ponto e vírgula, já sabemos que é complexa
-    if (ref.includes(';')) {
-      console.log('🎯 Detectadas múltiplas referências:', ref);
-      abrirModalBibl(ref);
+    const routes = await articleBibleReaderRoutes;
+    if (controller.signal.aborted) return;
+    if (routes && isStudyLabel(el)) {
+      const url = resolveStudyLink(el, routes);
+      if (url) location.assign(url.href);
+      else if (!isModalOpen) unblockTextSelection();
       return;
     }
-    
-    // CORREÇÃO: Adicionado áÁ no regex
-    if (/^[1-3]?\s?[A-Za-zêÊãÃíÍóÓâÂéÉôÔúÚçÇáÁ.]+\s\d+:[\d,\s-–—]+$/.test(ref) || /^[1-3]?\s?[A-Za-zêÊãÃíÍóÓâÂéÉôÔúÚçÇáÁ.]+\s\d+:\d+\s*[\u2013\u2014-]\s*\d+:\d+$/.test(ref)) {
-      abrirModalBibl(ref);
-    }
+    const references = routes?.parseBibleReferences(ref, ABREVIACOES) || [];
+    if (references.length) abrirModalBibl(ref, references);
+    else if (!isModalOpen) unblockTextSelection();
   }
 
   function fecharModal() {
+    ++modalEpoch;
     modal.style.display = 'none';
     document.body.style.overflow = "";
     isModalOpen = false;
-    setTimeout(() => { unblockTextSelection(); }, 100);
+    setTimeout(() => { if (!isModalOpen && !controller.signal.aborted) unblockTextSelection(); }, 100);
   }
 
-  botaoFechar.addEventListener('click', fecharModal);
-  modal.addEventListener('click', fecharModal);
-  modalContent.addEventListener('click', e => e.stopPropagation());
-  modalContent.addEventListener('touchstart', e => e.stopPropagation());
-  window.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
+  listen(botaoFechar, 'click', fecharModal);
+  listen(modal, 'click', fecharModal);
+  listen(modalContent, 'click', e => e.stopPropagation());
+  listen(modalContent, 'touchstart', e => e.stopPropagation());
+  listen(window, 'keydown', e => { if (e.key === 'Escape') fecharModal(); });
 
-  // FUNÇÕES ADICIONADAS para processar referências complexas
-  async function processarMultiplasReferencias(refString) {
-    const referencias = refString.split(';').map(ref => ref.trim()).filter(ref => ref.length > 0);
-    
-    let resultadosCompletos = [];
-    let nomeLivroBase = '';
-    let titulosParaMostrar = [];
+  controller.signal.addEventListener('abort', () => {
+    ++modalEpoch; isModalOpen = false;
+    cleanupTimers.forEach(cleanup => cleanup());
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+    unblockTextSelection();
+  }, {once:true});
 
-    for (let i = 0; i < referencias.length; i++) {
-        let refAtual = referencias[i].trim();
-        
-        if (i > 0 && /^\d+:[\d,\s-–—]+$/.test(refAtual)) {
-            const primeiraRef = referencias[0];
-            const matchPrimeiraRef = primeiraRef.match(/^([1-3]?\s?[A-Za-zêÊãÃíÍóÓâÂéÉôÔúÚçÇáÁ.]+)\s/);
-            if (matchPrimeiraRef) {
-                refAtual = matchPrimeiraRef[1] + ' ' + refAtual;
-            }
-        }
-
-        const resultado = await buscarVersiculo(refAtual);
-        
-        if (resultado.titulo !== "Referência Inválida" && resultado.titulo !== "Não Encontrado" && resultado.titulo !== "Livro não encontrado") {
-            resultadosCompletos.push(resultado);
-            if (nomeLivroBase === '') {
-                const livroMatch = resultado.titulo.match(/^([^0-9]+)/);
-                if (livroMatch) nomeLivroBase = livroMatch[1].trim();
-            }
-            titulosParaMostrar.push(resultado.titulo.replace(nomeLivroBase, '').trim());
-        }
+  function loadBook(slug) {
+    if (!bookRequests.has(slug)) {
+      const request = fetch(new URL(slug + '.json', articleBibleDataRoot)).then(async response => {
+        if (!response.ok) throw new Error('Livro indisponível.');
+        const data = await response.json();
+        if (!Array.isArray(data.capitulos)) throw new Error('Livro indisponível.');
+        return data;
+      }).catch(error => { bookRequests.delete(slug); throw error; });
+      bookRequests.set(slug, request);
     }
-
-    if (resultadosCompletos.length === 0) {
-      return { titulo: "Referências Inválidas", texto: "Nenhuma das referências pôde ser encontrada." };
-    }
-    
-    const capitulosUnicos = new Set(resultadosCompletos.map(r => r.titulo.match(/(\d+):/)?.[1]).filter(Boolean));
-    const temMultiplosCapitulos = capitulosUnicos.size > 1;
-
-    const tituloFinal = nomeLivroBase + ' ' + titulosParaMostrar.join('; ');
-    let textoFinal = '';
-    let capitulosJaMostrados = new Set();
-    
-    resultadosCompletos.forEach((resultado, index) => {
-        const numeroCapitulo = resultado.titulo.match(/(\d+):/)?.[1];
-        
-        if (temMultiplosCapitulos && numeroCapitulo && !capitulosJaMostrados.has(numeroCapitulo)) {
-            if (index > 0) {
-                textoFinal += '<div style="margin: 20px 0 15px 0; border-top: 2px solid #ddd; padding-top: 15px;"></div>';
-            }
-            textoFinal += `<div style="margin-bottom: 12px;"><strong style="font-style: italic; color: #666; font-size: 1.1em;">Capítulo ${numeroCapitulo}</strong></div>`;
-            capitulosJaMostrados.add(numeroCapitulo);
-        } else if (index > 0) {
-            textoFinal += '<div style="margin-top: 15px;"></div>';
-        }
-        
-        textoFinal += resultado.texto;
-    });
-
-    return { titulo: tituloFinal, texto: textoFinal };
+    return bookRequests.get(slug);
   }
 
-  // FUNÇÃO PRINCIPAL ATUALIZADA
-  async function buscarVersiculo(refString) {
-    if (refString.includes(';')) {
-      return await processarMultiplasReferencias(refString);
+  function renderVerses(verses) {
+    const severalChapters = new Set(verses.map(verse => verse.capitulo)).size > 1;
+    let html = '', paragraph = '', chapter = null;
+    const flush = () => { if (paragraph) html += `<p>${paragraph}</p>`; paragraph = ''; };
+    for (const verse of verses) {
+      if (severalChapters && chapter !== verse.capitulo) {
+        flush();
+        if (chapter !== null) html += '<div style="margin:20px 0 15px;border-top:2px solid #ddd;padding-top:15px"></div>';
+        html += `<div style="margin-bottom:12px"><strong style="font-style:italic;color:#666">Capítulo ${verse.capitulo}</strong></div>`;
+      }
+      chapter = verse.capitulo;
+      if (verse.novo_paragrafo) flush();
+      paragraph += `${paragraph ? ' ' : ''}<strong>${verse.verso}</strong> ${verse.texto}`;
     }
-    
-    // CORREÇÃO: Adicionado áÁ nos regex
-    let multiCapMatch = refString.match(/^([1-3]?\s?[A-Za-zêÊãÃíÍóÓâÂéÉôÔúÚçÇáÁ.]+)\s?(\d{1,3}):(\d{1,3})\s*[-–—]\s*(\d{1,3}):(\d{1,3})$/);
-    let singleCapMatch = refString.match(/^([1-3]?\s?[A-Za-zêÊãÃíÍóÓâÂéÉôÔúÚçÇáÁ.]+)\s?(\d{1,3}):([\d,\s-–—]+)/);
+    flush();
+    return html;
+  }
 
-    if (!multiCapMatch && !singleCapMatch) {
-      return { titulo: "Referência Inválida", texto: "Formato não reconhecido." };
-    }
-    
-    const isMultiCap = !!multiCapMatch;
-    const match = isMultiCap ? multiCapMatch : singleCapMatch;
-    
-    // CORREÇÃO: Melhorada a limpeza do nome
-    let nomeAbreviado = match[1].replace(/[\.\s]/g, '').trim();
-    
-    const mapeamentosEspeciais = {
-      'Deut': 'deuteronomio',
-      'Gál': 'galatas'
-    };
-    
-    const nomeLivro = mapeamentosEspeciais[nomeAbreviado] || ABREVIACOES[nomeAbreviado] || nomeAbreviado.toLowerCase().replace(/\s/g, '');
-
-    let dados;
+  async function buscarReferencias(references) {
+    const results = [];
     try {
-      const resp = await fetch(`../biblia/data/${nomeLivro}.json`);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      dados = await resp.json();
-    } catch (e) {
-      console.error(`Erro ao buscar ../biblia/data/${nomeLivro}.json:`, e);
-      return { titulo: "Livro não encontrado", texto: `O livro "${nomeLivro}" não foi encontrado.` };
-    }
-
-    let textoHtml = "";
-    let versosColetados = [];
-
-    if (isMultiCap) {
-      let capIni = parseInt(match[2]), versIni = parseInt(match[3]);
-      let capFim = parseInt(match[4]), versFim = parseInt(match[5]);
-
-      for (let c = capIni; c <= capFim; c++) {
-        const capObj = dados.capitulos.find(chap => chap.capitulo === c);
-        if (!capObj) continue;
-
-        let versiculosDoCapitulo = [];
-        if (c === capIni && c === capFim) versiculosDoCapitulo = capObj.versiculos.filter(v => v.verso >= versIni && v.verso <= versFim);
-        else if (c === capIni) versiculosDoCapitulo = capObj.versiculos.filter(v => v.verso >= versIni);
-        else if (c === capFim) versiculosDoCapitulo = capObj.versiculos.filter(v => v.verso <= versFim);
-        else versiculosDoCapitulo = capObj.versiculos;
-        
-        versosColetados.push(...versiculosDoCapitulo.map(v => ({...v, capitulo: c}) ));
+      for (const reference of references) {
+        const data = await loadBook(reference.slug), verses = [], seen = new Set();
+        const add = (verse, chapter) => {
+          const key = chapter + ':' + verse.verso;
+          if (!seen.has(key)) { seen.add(key); verses.push({...verse, capitulo:chapter}); }
+        };
+        if (reference.chapterOnly) {
+          const chapter = data.capitulos.find(item => Number(item.capitulo) === reference.chapter);
+          for (const verse of chapter?.versiculos || []) add(verse, reference.chapter);
+        } else {
+          for (const range of reference.ranges) {
+            const first = data.capitulos.find(item => Number(item.capitulo) === range.chapter);
+            const last = data.capitulos.find(item => Number(item.capitulo) === range.endChapter);
+            if (!first?.versiculos?.some(verse => Number(verse.verso) === range.verse) || !last?.versiculos?.some(verse => Number(verse.verso) === range.endVerse)) {
+              return {titulo:'Não encontrado', texto:'Esta passagem não está disponível nesta Bíblia.', valid:false};
+            }
+            for (let chapter = range.chapter; chapter <= range.endChapter; chapter++) {
+              const item = data.capitulos.find(value => Number(value.capitulo) === chapter);
+              const start = chapter === range.chapter ? range.verse : 1;
+              const end = chapter === range.endChapter ? range.endVerse : Infinity;
+              for (const verse of item?.versiculos || []) if (verse.verso >= start && verse.verso <= end) add(verse, chapter);
+            }
+          }
+        }
+        if (!verses.length) return {titulo:'Não encontrado', texto:'Esta passagem não está disponível nesta Bíblia.', valid:false};
+        const name = data.nome_do_livro || reference.slug;
+        results.push({titulo:`${name} ${reference.chapter}${reference.chapterOnly ? '' : ':' + reference.verseSpec}`, texto:renderVerses(verses)});
       }
-    } else {
-      const capituloNum = parseInt(match[2]);
-      const capObj = dados.capitulos.find(c => c.capitulo === capituloNum);
-      if (!capObj) return { titulo: "Não Encontrado", texto: `Capítulo ${capituloNum} não encontrado.` };
-      
-      match[3].split(',').forEach(item => {
-        if (item.includes('-')) {
-          const [ini, fim] = item.split('-').map(Number);
-          versosColetados.push(...capObj.versiculos.filter(v => v.verso >= ini && v.verso <= fim));
-        } else {
-          const verso = capObj.versiculos.find(v => v.verso === Number(item));
-          if (verso) versosColetados.push(verso);
-        }
-      });
+      return {titulo:results.map(result => result.titulo).join('; '), texto:results.map(result => result.texto).join('<div style="margin-top:15px"></div>'), valid:results.length > 0};
+    } catch {
+      return {titulo:'Não foi possível abrir a passagem', texto:'Confira sua conexão ou tente novamente. As passagens já baixadas continuam disponíveis.', valid:false};
     }
-
-    if (versosColetados.length > 0) {
-      const temMultiplosCapitulos = new Set(versosColetados.map(v => v.capitulo)).size > 1;
-      
-      textoHtml = "";
-      let capituloAtual = null;
-      let paragrafoAtual = "";
-      
-      versosColetados.forEach((verso) => {
-        const numeroCapitulo = verso.capitulo || parseInt(match[2]);
-        
-        if (temMultiplosCapitulos && numeroCapitulo !== capituloAtual) {
-          if (paragrafoAtual) textoHtml += `<p>${paragrafoAtual}</p>`;
-          paragrafoAtual = "";
-          if (capituloAtual !== null) textoHtml += '<div style="margin: 20px 0 15px 0; border-top: 2px solid #ddd; padding-top: 15px;"></div>';
-          textoHtml += `<div style="margin-bottom: 12px;"><strong style="font-style: italic; color: #666; font-size: 1.1em;">Capítulo ${numeroCapitulo}</strong></div>`;
-          capituloAtual = numeroCapitulo;
-        }
-        
-        if (verso.novo_paragrafo && paragrafoAtual) {
-          textoHtml += `<p>${paragrafoAtual}</p>`;
-          paragrafoAtual = `<strong>${verso.verso}</strong> ${verso.texto}`;
-        } else {
-          paragrafoAtual += (paragrafoAtual ? ` <strong>${verso.verso}</strong> ` : `<strong>${verso.verso}</strong> `) + verso.texto;
-        }
-      });
-      if (paragrafoAtual) textoHtml += `<p>${paragrafoAtual}</p>`;
-    }
-
-    const nomeLivroFormatado = dados.nome_do_livro || nomeLivro.charAt(0).toUpperCase() + nomeLivro.slice(1);
-    const tituloRef = isMultiCap ? `${nomeLivroFormatado} ${multiCapMatch[2]}:${multiCapMatch[3]}-${multiCapMatch[4]}:${multiCapMatch[5]}` : `${nomeLivroFormatado} ${singleCapMatch[2]}:${singleCapMatch[3]}`;
-    
-    return {
-      titulo: tituloRef,
-      texto: textoHtml || "Versículo(s) não encontrado(s)."
-    };
   }
 
-  // PATCH 1: APENAS para ilustrações dinâmicas - função mínima
-  window.ativarLinksBiblicos = function(container) {
-    console.log('🎨 Processando ilustração:', container);
-    
-    // Aplica a MESMA lógica original apenas nos novos elementos
-    container.querySelectorAll('.bbl:not([data-processado])').forEach(el => {
-      el.dataset.processado = 'true';
-      el.style.cursor = 'pointer';
-      let pressTimer = null;
-      let openTimer = null;
-      let moveTooMuch = false;
-      let startX = 0, startY = 0;
-
-      el.addEventListener('touchstart', function(e) {
-        if (e.touches.length > 1) return;
-        moveTooMuch = false;
-        blockTextSelection();
-        const touch = e.touches[0];
-        startX = touch.clientX;
-        startY = touch.clientY;
-        el.classList.add('pressionando');
-        pressTimer = setTimeout(() => {
-          if (!moveTooMuch) {
-            el.classList.remove('pressionando');
-            el.classList.add('ref-aberta');
-            openTimer = setTimeout(() => {
-              abrirModalSeForRef(el);
-              el.classList.remove('ref-aberta');
-            }, BIBLE_OPEN_DELAY_MS);
-          }
-        }, BIBLE_HOLD_MS);
-      });
-
-      el.addEventListener('touchmove', function(e) {
-        const touch = e.touches[0];
-        if (Math.abs(touch.clientX - startX) > 10 || Math.abs(touch.clientY - startY) > 10) {
-          moveTooMuch = true;
-          clearTimeout(pressTimer);
-          clearTimeout(openTimer);
-          el.classList.remove('pressionando', 'ref-aberta');
-        }
-      });
-
-      function resetAppearance() {
-        clearTimeout(pressTimer);
-        el.classList.remove('pressionando');
-        el.classList.remove('ref-aberta');
-        if (!isModalOpen) {
-          setTimeout(() => { unblockTextSelection(); }, 50);
-        }
-      }
-
-      el.addEventListener('touchend', resetAppearance);
-      el.addEventListener('touchcancel', () => { clearTimeout(openTimer); resetAppearance(); });
-      el.addEventListener('contextmenu', e => e.preventDefault());
-    });
-  };
-
+  window.ativarLinksBiblicos = articleBibleSession.bind;
 });

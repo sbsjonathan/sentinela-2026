@@ -119,6 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 (function () {
+  let ultimoAcionador = null;
+
   function ensureAltModal() {
     if (document.getElementById("alt-modal")) return;
 
@@ -127,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.innerHTML = `
       <div class="alt-box" role="dialog" aria-modal="true">
         <div class="alt-topo">
-          <div class="alt-titulo">Nota de rodapé</div>
+        <div class="alt-titulo" id="alt-modal-titulo">Nota de rodapé</div>
           <button class="alt-fechar" aria-label="Fechar">&times;</button>
         </div>
         <div class="alt-corpo">
@@ -137,11 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
     document.body.appendChild(modal);
+    modal.querySelector('.alt-box').setAttribute('aria-labelledby', 'alt-modal-titulo');
 
     document.addEventListener("click", (e) => {
       const m = document.getElementById("alt-modal");
       if (!m || !m.classList.contains("aberto")) return;
-      if (!m.contains(e.target) && !e.target.classList.contains("alt-link") && !e.target.classList.contains("footnote-link")) {
+      if (!m.contains(e.target) && !e.target.closest('.alt-link, .footnote-link, .footnote-ref')) {
         fecharPopover();
       }
     });
@@ -153,7 +156,50 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function abrirPopover({ titulo = "Nota de rodapé", rotulo = "", texto = "" } = {}) {
+  // Rebuild a small, safe inline fragment instead of copying arbitrary article HTML.
+  // Bible anchors are rebound below; cloned DOM does not retain event listeners.
+  function conteudoNota(nota) {
+    const fragmento = document.createDocumentFragment();
+    const permitidas = new Set(['A', 'SPAN', 'EM', 'STRONG', 'B', 'I', 'U', 'S', 'SUP', 'SUB', 'BR', 'CODE']);
+    const ignoradas = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'FORM', 'INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'LINK', 'META']);
+
+    function copiar(origem, destino) {
+      if (origem.nodeType === Node.TEXT_NODE) {
+        destino.appendChild(document.createTextNode(origem.nodeValue));
+        return;
+      }
+      if (origem.nodeType !== Node.ELEMENT_NODE || ignoradas.has(origem.tagName) ||
+          origem.matches('.simbolo-rodape, .footnote-backref, [role="doc-backlink"]')) return;
+      let novo = destino;
+      if (permitidas.has(origem.tagName)) {
+        novo = document.createElement(origem.tagName.toLowerCase());
+        if (origem.classList.contains('bbl')) novo.classList.add('bbl');
+        if (origem.tagName === 'A') {
+          const href = origem.getAttribute('href');
+          if (href) {
+            try {
+              const url = new URL(href, document.baseURI);
+              if (url.protocol === 'https:' || url.protocol === 'http:') {
+                novo.href = url.href;
+                if (origem.target === '_blank') {
+                  novo.target = '_blank';
+                  novo.rel = 'noopener noreferrer';
+                }
+              }
+            } catch (_) { /* Invalid links remain readable text. */ }
+          }
+        }
+        destino.appendChild(novo);
+      }
+      origem.childNodes.forEach(child => copiar(child, novo));
+    }
+    nota.childNodes.forEach(child => copiar(child, fragmento));
+    const primeiroTexto = document.createTreeWalker(fragmento, NodeFilter.SHOW_TEXT).nextNode();
+    if (primeiroTexto) primeiroTexto.nodeValue = primeiroTexto.nodeValue.replace(/^\s*\*\s*/, '');
+    return fragmento;
+  }
+
+  function abrirPopover({ titulo = "Nota de rodapé", rotulo = "", texto = "", nota = null, acionador = null } = {}) {
     ensureAltModal();
     const modal = document.getElementById("alt-modal");
 
@@ -174,199 +220,181 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    if (body) body.textContent = texto || "";
+    if (body) {
+      body.replaceChildren(nota ? conteudoNota(nota) : document.createTextNode(texto || ''));
+      if (typeof window.ativarLinksBiblicos === 'function') window.ativarLinksBiblicos(body);
+    }
+    ultimoAcionador = acionador;
 
     const alturaAtualDaTela = window.scrollY + (window.innerHeight / 2);
     modal.style.top = alturaAtualDaTela + "px";
 
     modal.classList.add("aberto");
+    modal.querySelector('.alt-fechar').focus({ preventScroll: true });
   }
 
-  function fecharPopover() {
+  function fecharPopover(restaurarFoco = true) {
     const modal = document.getElementById("alt-modal");
     if (!modal || !modal.classList.contains("aberto")) return;
     modal.classList.remove("aberto");
+    if (restaurarFoco && ultimoAcionador?.isConnected) ultimoAcionador.focus({ preventScroll: true });
+    ultimoAcionador = null;
   }
 
   function aplicarAsteriscoAlt(raiz = document) {
-    raiz.querySelectorAll("figure").forEach((fig) => {
-      const img = fig.querySelector("img");
-      const cap = fig.querySelector("figcaption");
-      if (!img || !cap) return;
-
-      const alt = (img.getAttribute("alt") || "").trim();
-      if (!alt) return;
-
-      if (cap.querySelector(".alt-link")) return;
-
-      const a = document.createElement("a");
-      a.className = "alt-link";
-      a.href = "javascript:void(0)";
-      a.textContent = "*";
-      a.setAttribute("aria-label", "Ver descrição da imagem");
-
-      a.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        abrirPopover({
-          titulo: "Nota de rodapé",
-          rotulo: "DESCRIÇÃO DA IMAGEM:",
-          texto: alt
-        });
-      });
-
+    raiz.querySelectorAll('figure').forEach(fig => {
+      const img = fig.querySelector('img');
+      const cap = fig.querySelector('figcaption');
+      if (!img || !cap || !(img.getAttribute('alt') || '').trim() || cap.querySelector('.alt-link')) return;
+      const a = document.createElement('a');
+      a.className = 'alt-link';
+      a.href = '#';
+      a.textContent = '*';
+      a.setAttribute('aria-label', 'Ver descrição da imagem');
       cap.appendChild(a);
     });
   }
 
-  // PATCH: Lógica exclusiva para abrir notas do Quadro 1 ocultas no HTML
-  function prepararNotasQuadro(raiz = document) {
-    const quadros = raiz.querySelectorAll(".quadro1");
-
-    quadros.forEach((quadro) => {
-      const linkQuadro = quadro.querySelector(".footnote-link");
-      const notaOculta = quadro.querySelector(".quadro1-nota");
-
-      if (linkQuadro && notaOculta) {
-        linkQuadro.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation(); 
-
-          abrirPopover({
-            titulo: "Nota de rodapé",
-            rotulo: "",
-            texto: notaOculta.textContent.trim()
-          });
-        });
-      }
-    });
-  }
-
-  function prepararNotasRodape(raiz = document) {
-    const main = raiz.querySelector("main");
-    if (!main) return;
-
-    if (!main.querySelector("p.nota-rodape")) return;
-
-    const hr = main.querySelector("hr.linha-divisoria");
-    if (!hr) return;
-
-    const notas = [];
-    let el = hr.nextElementSibling;
-    while (el) {
-      if (el.matches && el.matches("p.nota-rodape")) {
-        notas.push(el);
-      }
-      el = el.nextElementSibling;
-    }
-    if (!notas.length) return;
-
-    const textosNotas = notas.map(p => {
-      const clone = p.cloneNode(true);
-      const s = clone.querySelector(".simbolo-rodape");
-      if (s) s.remove();
-      let t = (clone.textContent || "").trim();
-      t = t.replace(/^\*\s*/, "").trim();
-      return t;
-    });
-
-    const recap = main.querySelector(".secao-recapitulacao");
-    const boundary = recap && (recap.compareDocumentPosition(hr) & Node.DOCUMENT_POSITION_FOLLOWING) ? recap : hr;
-
-    function permitidoTextNode(node) {
-      const p = node.parentElement;
-      if (!p) return false;
-
-      if (p.closest("p.nota-rodape")) return false;
-      if (p.closest("#alt-modal")) return false;
-      if (p.closest("figure figcaption")) return false;
-      if (p.closest("a")) return false;
-      if (p.closest("script, style")) return false;
-
-      if (boundary) {
-        const rel = p.compareDocumentPosition(boundary);
-        if (!(rel & Node.DOCUMENT_POSITION_FOLLOWING)) return false; 
-      }
-
-      return true;
-    }
-
-    let contador = 0;
-
-    const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, {
-      acceptNode(node) {
-        if (!node.nodeValue || !node.nodeValue.includes("*")) return NodeFilter.FILTER_REJECT;
-        return permitidoTextNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-      }
-    });
-
-    const toProcess = [];
-    let n;
-    while ((n = walker.nextNode())) toProcess.push(n);
-
-    const reAsterisco = /\*/g;
-
-    for (const node of toProcess) {
-      if (contador >= textosNotas.length) break;
-
-      const s = node.nodeValue;
-      if (!s || !s.includes("*")) continue;
-
-      let lastIndex = 0;
-      let changed = false;
-
-      const frag = document.createDocumentFragment();
-      reAsterisco.lastIndex = 0;
-
-      let m;
-      while ((m = reAsterisco.exec(s))) {
-        if (contador >= textosNotas.length) break;
-
-        const before = s.slice(lastIndex, m.index);
-        if (before) frag.appendChild(document.createTextNode(before));
-
-        const a = document.createElement("a");
-        a.href = "javascript:void(0)";
-        a.className = "footnote-link";
-        a.textContent = "*";
-        a.dataset.fn = String(contador); 
-        frag.appendChild(a);
-
-        contador++;
-        lastIndex = m.index + 1;
-        changed = true;
-      }
-
-      if (!changed) continue;
-
-      const after = s.slice(lastIndex);
-      if (after) frag.appendChild(document.createTextNode(after));
-
-      node.parentNode.replaceChild(frag, node);
-    }
-
-    main.addEventListener("click", (e) => {
-      const a = e.target.closest && e.target.closest("a.footnote-link");
-      if (!a) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      const i = parseInt(a.dataset.fn || "-1", 10);
-      if (Number.isNaN(i) || i < 0 || i >= textosNotas.length) return;
-
-      abrirPopover({
-        titulo: "Nota de rodapé",
-        rotulo: "",
-        texto: textosNotas[i]
+  function notasPrincipais(main) {
+    const notas = Array.from(main.querySelectorAll('.nota-rodape')).filter(nota => !nota.closest('.quadro1'));
+    // Old hope3 output sometimes closed .container/main before the final figure,
+    // recap and notes. Recover only that known article tail, stopping at any app
+    // chrome/script/modal; this also repairs already-downloaded publications.
+    if (document.querySelectorAll('main').length === 1) {
+      const finais = new Set([main, main.closest('.container')].filter(Boolean));
+      finais.forEach(final => {
+        let sibling = final.nextElementSibling;
+        while (sibling?.matches('figure, .secao-recapitulacao, .secao-cantico, hr.linha-divisoria, .nota-rodape')) {
+          if (sibling.matches('.nota-rodape') && !notas.includes(sibling)) notas.push(sibling);
+          sibling = sibling.nextElementSibling;
+        }
       });
+    }
+    return notas;
+  }
+
+  function garantirId(nota, sugerido) {
+    if (nota.id && document.getElementById(nota.id) === nota) return nota.id;
+    let id = sugerido;
+    let sufixo = 1;
+    while (document.getElementById(id) && document.getElementById(id) !== nota) id = `${sugerido}-${sufixo++}`;
+    nota.id = id;
+    return id;
+  }
+
+  function destinoExplicito(link) {
+    if (link.dataset.noteId) return link.dataset.noteId;
+    if (link.dataset.footnoteTarget) return link.dataset.footnoteTarget;
+    const href = link.getAttribute('href') || '';
+    if (href.startsWith('#') && href.length > 1) {
+      try { return decodeURIComponent(href.slice(1)); } catch (_) { return href.slice(1); }
+    }
+    return null;
+  }
+
+  function marcadorLegado(link) {
+    const href = (link.getAttribute('href') || '').trim();
+    return !href || href === '#' || /^javascript:\s*void\(0\);?$/i.test(href);
+  }
+
+  function resolverNota(link, main) {
+    const id = destinoExplicito(link);
+    if (id) {
+      const nota = document.getElementById(id);
+      return nota && (notasPrincipais(main).includes(nota) ||
+        (main.contains(nota) && nota.matches('.quadro1-nota'))) ? nota : null;
+    }
+    // A saved data-fn is an explicit index from the old reader, not a fresh guess.
+    if (marcadorLegado(link) && /^\d+$/.test(link.dataset.fn || '')) return notasPrincipais(main)[Number(link.dataset.fn)] || null;
+    return null;
+  }
+
+  function associarNota(link, nota) {
+    link.dataset.noteId = nota.id;
+    link.href = `#${nota.id}`;
+    link.classList.add('footnote-link');
+    link.setAttribute('role', 'doc-noteref');
+    if (!link.hasAttribute('aria-label')) link.setAttribute('aria-label', 'Abrir nota de rodapé');
+  }
+
+  function prepararNotasQuadro(main) {
+    main.querySelectorAll('.quadro1').forEach((quadro, index) => {
+      const notas = quadro.querySelectorAll('.quadro1-nota');
+      const links = quadro.querySelectorAll('.footnote-link, .footnote-ref');
+      if (notas.length !== 1 || links.length !== 1 || !marcadorLegado(links[0])) return;
+      garantirId(notas[0], `sentinela-nota-quadro-${index + 1}`);
+      associarNota(links[0], notas[0]);
     });
   }
+
+  function prepararNotasRodape(main) {
+    const notas = notasPrincipais(main);
+    if (!notas.length) return;
+    notas.forEach((nota, index) => garantirId(nota, `sentinela-nota-${index + 1}`));
+    main.querySelectorAll('.footnote-link, .footnote-ref').forEach(link => {
+      const nota = resolverNota(link, main);
+      if (nota) associarNota(link, nota);
+    });
+
+    // Legacy articles lost the source IDs. Only repair the simple one-marker-per-
+    // note case in the main paragraphs, with an exact count and consistent order.
+    // Never consume stars in captions, boxes, editable comments or existing links.
+    const referencias = [];
+    const walker = document.createTreeWalker(main, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const parent = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+      if (!parent?.closest('.paragrafo') || parent.closest('.nota-rodape, .quadro1, figure, .secao-recapitulacao, .anotacao, [contenteditable="true"], script, style')) continue;
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.matches('a.footnote-link, a.footnote-ref')) referencias.push({ link: node, nota: resolverNota(node, main) });
+      } else if (!parent.closest('a') && node.nodeValue.includes('*')) {
+        for (const match of node.nodeValue.matchAll(/\*/g)) referencias.push({ node, offset: match.index });
+      }
+    }
+    if (referencias.length !== notas.length || referencias.some((ref, index) => ref.link && ref.nota !== notas[index])) return;
+
+    // Replace backwards so offsets in a text node stay valid when it has two notes.
+    for (let index = referencias.length - 1; index >= 0; index--) {
+      const ref = referencias[index];
+      if (ref.link) continue;
+      const marcador = ref.node.splitText(ref.offset);
+      marcador.splitText(1);
+      const link = document.createElement('a');
+      link.textContent = '*';
+      link.dataset.fn = String(index);
+      associarNota(link, notas[index]);
+      marcador.replaceWith(link);
+    }
+  }
+
+  // One delegated listener survives cached innerHTML replacements and repeated
+  // cacheRestored events; it resolves the current target at the moment of the tap.
+  document.addEventListener('click', event => {
+    const link = event.target.closest?.('a.footnote-link, a.footnote-ref, a.alt-link');
+    if (!link) return;
+    if (link.classList.contains('alt-link')) {
+      const texto = link.closest('figure')?.querySelector('img')?.getAttribute('alt')?.trim();
+      if (!texto) return;
+      event.preventDefault();
+      event.stopPropagation();
+      abrirPopover({ rotulo: 'DESCRIÇÃO DA IMAGEM:', texto, acionador: link });
+      return;
+    }
+    const main = link.closest('main');
+    if (!main) return;
+    const nota = resolverNota(link, main);
+    if (!nota) return; // A genuine or unresolved source link keeps its own behavior.
+    event.preventDefault();
+    event.stopPropagation();
+    abrirPopover({ nota, acionador: link });
+  });
 
   function runAll() {
     aplicarAsteriscoAlt();
-    prepararNotasQuadro();
-    prepararNotasRodape();
+    document.querySelectorAll('main').forEach(main => {
+      prepararNotasQuadro(main);
+      prepararNotasRodape(main);
+    });
   }
 
   if (document.readyState === "loading") {
@@ -376,4 +404,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   document.addEventListener("cacheRestored", runAll);
+  document.addEventListener('sentinela:bible-preview-open', () => fecharPopover(false));
 })();

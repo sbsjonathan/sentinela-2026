@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.03.3",
+  "version": "2026.11.03.4",
   "shell": [
     "assets/icons/apple-touch-icon.png",
     "assets/icons/favicon-32.png",
@@ -93,10 +93,13 @@
     "sentinela/biblia/data/salmos.json",
     "sentinela/biblia/scriptbbl.js",
     "sentinela/biblia/stylebbl.css",
+    "sentinela/imagem.js",
     "sentinela/menu/menu.js",
+    "sentinela/style.css",
     "shared/typography.css",
     "shared/typography.js",
-    "styles.css"
+    "styles.css",
+    "worker/worker.js"
   ],
   "app": [
     "assets/icons/app-icon.svg",
@@ -362,8 +365,8 @@
     "assets/icons/icon-192.png": "3a0d55dc41b9c452226c37ae998d3e9ffc920f9e7ca31bf5655b47a2e934b4cc",
     "assets/icons/icon-512.png": "197b3cde490637c2be1b9445d3c84408944a569804914ba3175bd2cee79f3973",
     "assets/icons/maskable-icon-512.png": "197b3cde490637c2be1b9445d3c84408944a569804914ba3175bd2cee79f3973",
-    "atualizar.html": "47bd6808cb549e067622f98be77eb2e5dbd9008c3164d9188b693988ccd8e3ad",
-    "biblia/app.js": "ebe480987afcf248a5db5f6644478d12c93a8e8e3ce10327e8e118b6047ff091",
+    "atualizar.html": "79c8289d2572885f2fb9e7fd83d0de552e9b7dbc4e4d3e5b838d0f5458232b96",
+    "biblia/app.js": "1c975f56a09b2d16e46702849150e9f2dbad0d55fb0233442d882a7c79058d4a",
     "biblia/apple-touch-icon.png": "8135af07c538ba327a4794c58cd2df7cbc051394234894a744de432bba0c30f8",
     "biblia/audio-player.js": "afd34d024b21480f1217ace3e26b829428f4cea979098395730c9c82bd07dde4",
     "biblia/audio-source.js": "9d0a8f82f6c99adc319bcf33d2fe6c2713fe1bbfafa3dd13059161083d04bc83",
@@ -387,7 +390,7 @@
     "biblia/index.html": "f64eff8ce1dab3f3bde7749cbc5a5760d5296ebff493dae6981d05945695bd82",
     "biblia/integration.css": "f4ceb0ee423114f2a5706fb1dea5543659802ef79a12c1103f2788290e8e5cd3",
     "biblia/integration.js": "67bfb9859e596010d0ea9a1bbda3af41eb70044187d52a46115150d773f285d7",
-    "biblia/legacy-routes.js": "31144bf9ca94bc0bd87ca5ba6431fa1f19cbcbe1c88a558c0f07cf32f778a257",
+    "biblia/legacy-routes.js": "ca87b1522fd31eb7b9ee2fafa8b6e8321b19f423cb4d397ac9deb651879a449f",
     "biblia/livro/01-genesis/genesis.html": "2be64b7707175de1deafe4f6ca24b1404c1d3edab3658a9e72479927dd3a1e0b",
     "biblia/livro/02-exodo/exodo.html": "5b116fcde52e649cf9a06be8950cfeb64225a9766ae59969edaa39542ca3904c",
     "biblia/livro/03-levitico/levitico.html": "762b1b601a852af467a304e2331f72c8ecccb0b0e1bfd0964b755f9a0e4f1e15",
@@ -473,11 +476,11 @@
     "biblia/vendor/sql-wasm.js": "694ca5b36aa3e6e71f417819d7df390b65343665fcfa5c69015ca33d93d291b3",
     "biblia/vendor/sql-wasm.wasm": "0734155c83e493983d1f2ff5b09a4fab6e35a32e9449c7e4e545756439f62d73",
     "home-layout.js": "f9bd522f456c3e4804538254247cc1a3d5bfda3b90fe39a667bd15271b4fe97d",
-    "index.html": "7dfb79b5255fc177582d3bf3348ea6595f0d4ab9ab8c2a653d2498e913071f04",
+    "index.html": "7af4ed2212a372add7eb5ac176ff2305a332469a56bda17c6fd840284775c0fc",
     "main.js": "4945e7204451b05ac9cc1ec8a53e7aa3c34108d7c5667f097e95020b1f26cdcb",
     "manifest.json": "46e7fdf4455d846d9fa4f9fed2469fa12ec4573b192c8b88e0ddd2e6750f2d96",
     "navbar/navbar-unified.css": "56ea1f79c28b8062e7b487125c8a252087e7dc05b5b7989f99f37cf8fca71a05",
-    "navbar/navbar-unified.js": "4511228bf839bcb7e098f9b5e6aa926fab895869d85d9004d4f73d10c9e358a9",
+    "navbar/navbar-unified.js": "eea130666dfa68555fa0e9484a6558ded5090c29221985f4c62de9266681282c",
     "navbar/network-sensor.js": "bdd0c69f88f3b6b388a803cdd47ec5331b20eff9ddf2d2a9700fb6632630335f",
     "richtext/barra.css": "bfeb7e8237eaad82ac64e37b3171550f06f95ff55c202e815a2dc5f44e0d0d46",
     "richtext/barra.js": "0122f55bbaa2e1d58866370899a6651348c02c3c9e070cff110ab4e75d1b3907",
@@ -581,7 +584,7 @@
     "sentinela/biblia/data/tiago.json": "5ae41e50408423b89ada71250eb215b7c61a09da363be3b093f63275b79bfba5",
     "sentinela/biblia/data/tito.json": "251f297ff1477f85e14b96a7290861fd6ae749d8cbe912a8c04ff46e1a4ab24f",
     "sentinela/biblia/data/zacarias.json": "6165f900b5571ef42b18593c9d93e0468dc2dc62b58096586c4d41f264c967b8",
-    "sentinela/biblia/scriptbbl.js": "da857c941e254172e402b15bcdfdb02a80cc74598aa7a1ec6c01465b83329142",
+    "sentinela/biblia/scriptbbl.js": "e984b9b3b43dd431db7c0591db70f8e18488522c88268c7c0bd95bf77f19a69e",
     "sentinela/biblia/stylebbl.css": "b9716e26df0029bd13854f5262edc29fbb1c6008f7e8082b59d2988ae48c0a9a",
     "sentinela/clickable/agente-modal/agente-modal.css": "8df26b1d3077b5774c202a0c40874a1471ec40d7cd3ec51b531168ba1dd1d922",
     "sentinela/clickable/agente-modal/agente-modal.js": "69c5072e6a3ea03755915193ed118276c8334895802d5f6303e834d2d9749dc7",
@@ -592,7 +595,7 @@
     "sentinela/clickable/cache.js": "afd9e391dff8b0e0424c22d5e201d66204a4ec245a2e71b785d7a1a1d23d3ac8",
     "sentinela/clickable/clickable.css": "299341c2024726adbe1c0759a1892d19af371c5d4613693c3723115efd11fca2",
     "sentinela/clickable/clickable.js": "f53e01718522090727df85cb833f3b8e9987d7c6d01e9f9864f5428ac07cb37a",
-    "sentinela/imagem.js": "574eb9adafa1e9ef0cf5ce2c66f8f6d60adb571eeaedca4c786aa793fa36365c",
+    "sentinela/imagem.js": "d79d36f9c6515cdad5c43dc156ca0c3d92165b60086b09c6b83a4582cde5c404",
     "sentinela/imagem/swiper-zoom.css": "679b0932ba199442c7d3209d4f4c9850358803f97a2f40be8199ae6eade589ee",
     "sentinela/imagem/swiper-zoom.js": "0ffd02b88acdbc31fa639c0b12c7b72645edefb8f73cee87e5444a075ea3b34e",
     "sentinela/mark.js": "dcae069df0b695562dda5ad923444a7f5079e2112abfeb1d5ea15eef1b7f4dab",
@@ -600,7 +603,7 @@
     "sentinela/menu/menu.css": "973081986a6ee6f606b18000324bce7d40ad62e03876dddfd42d127c9335898a",
     "sentinela/menu/menu.js": "d7250fcdcede0f51fb5a159ba197456be331834708ff3334b6737715d35b9863",
     "sentinela/menu/style.css": "bd53983030e2c9375f71d1d4c67648eb1564a526abef37c4d826d59886ececa1",
-    "sentinela/style.css": "90df60d15c7bd46f3de743d35c7ea783f284d1f0c8b1c0a6c324be4fe1b45b1f",
+    "sentinela/style.css": "77b2137e83cd0a7192a52cceddfd38669bbe9e3a300435b76c84f38c8f9fb6c5",
     "shared/typography.css": "09d03b6936253dd222c05771a47c99ec74657ff6308aee0d9c4cc1f5ac3551b0",
     "shared/typography.js": "6fad9510be7551cb843d2efb31c28614cf65617dfff9bcb3763f695a315d06e6",
     "styles.css": "3bc59706af8e626dcdd0c2e1e773262f4315733725604f9d53de800a767ec544",
@@ -608,6 +611,6 @@
     "worker/styly.css": "1d19551861682cc76ae445427faee8bc5926608239b856e53279198af590fd2d",
     "worker/worker.css": "adc1363ab2789da30a2bc417a4e10d77fcd04c155fd06f0be34cae926ad72e6b",
     "worker/worker.html": "961bd1e396c13ec3ef3f0a5df555e3152df0582efb914d6055e7b3670c52b310",
-    "worker/worker.js": "33b8e6d2ad1d60f2d52dee982de28d69eab37f621f3b3f51583e79a0a0700328"
+    "worker/worker.js": "60a27b079cc3f240247a0a73bef60e3ffa30b256afba6cddc9c2d5bf8290500f"
   }
 }

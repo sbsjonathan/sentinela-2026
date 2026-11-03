@@ -345,21 +345,30 @@ mark.ia-underline-recap {
   pointer-events: none;
 }
 
-.figura-container {
+/* Some saved hope3 articles place their final figure after the container. */
+.figura-container,
+.container main figure,
+.container ~ figure {
     margin: 32px 0;
     padding: 0;
     border: none;
     background-color: transparent;
 }
 
-.figura-container img {
+.figura-container img,
+.container main figure img,
+.container ~ figure img {
     width: 100%;
+    max-width: 100%;
+    height: auto;
     display: block;
     border-radius: 0;
     box-shadow: none;
 }
 
-.figura-legenda {
+.figura-legenda,
+.container main figure figcaption,
+.container ~ figure figcaption {
     margin-top: calc(12px * var(--font-scale-global));
     padding: 0;
     font-size: calc(12.8px * var(--font-scale-global));
@@ -367,6 +376,7 @@ mark.ia-underline-recap {
     line-height: 1.5;
     text-align: left;
     position: relative;
+    overflow-wrap: anywhere;
 }
 
 .figura-legenda::after {
@@ -466,6 +476,17 @@ mark.ia-highlight-b.ia-underline-recap {
 html { 
   -webkit-text-size-adjust: none; 
   text-size-adjust: none; 
+}
+
+/* References can span several lines on narrow screens. Keep this more
+   specific than the legacy injected .no-wrap rule in already-downloaded articles. */
+.container main .no-wrap,
+.container main a.bbl {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.container main a.bbl {
+  display: inline;
 }
 
 .no-wrap,
