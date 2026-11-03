@@ -1,4 +1,6 @@
 // Resolve from this script so the reader works under any application base path.
+const BIBLE_HOLD_MS = 150;
+const BIBLE_OPEN_DELAY_MS = 100;
 const articleBibleReaderRoutes = import(new URL('../../biblia/legacy-routes.js', document.currentScript.src).href).catch(() => null);
 
 // scriptbbl.js - Versão final com "Robô 2.0" E suporte a referências complexas.
@@ -60,6 +62,7 @@ document.addEventListener('cacheRestored', () => {
   document.querySelectorAll('.bbl').forEach(el => {
     el.style.cursor = 'pointer';
     let pressTimer = null;
+    let openTimer = null;
     let moveTooMuch = false;
     let startX = 0, startY = 0;
 
@@ -75,12 +78,12 @@ document.addEventListener('cacheRestored', () => {
         if (!moveTooMuch) {
           el.classList.remove('pressionando');
           el.classList.add('ref-aberta');
-          setTimeout(() => {
+          openTimer = setTimeout(() => {
             abrirModalSeForRef(el); // Esta função foi melhorada
             el.classList.remove('ref-aberta');
-          }, 200);
+          }, BIBLE_OPEN_DELAY_MS);
         }
-      }, 300);
+      }, BIBLE_HOLD_MS);
     });
 
     el.addEventListener('touchmove', function(e) {
@@ -88,7 +91,8 @@ document.addEventListener('cacheRestored', () => {
       if (Math.abs(touch.clientX - startX) > 10 || Math.abs(touch.clientY - startY) > 10) {
         moveTooMuch = true;
         clearTimeout(pressTimer);
-        el.classList.remove('pressionando');
+        clearTimeout(openTimer);
+        el.classList.remove('pressionando', 'ref-aberta');
       }
     });
 
@@ -102,7 +106,7 @@ document.addEventListener('cacheRestored', () => {
     }
 
     el.addEventListener('touchend', resetAppearance);
-    el.addEventListener('touchcancel', resetAppearance);
+    el.addEventListener('touchcancel', () => { clearTimeout(openTimer); resetAppearance(); });
     el.addEventListener('contextmenu', e => e.preventDefault());
   });
 
@@ -334,6 +338,7 @@ document.addEventListener('cacheRestored', () => {
       el.dataset.processado = 'true';
       el.style.cursor = 'pointer';
       let pressTimer = null;
+      let openTimer = null;
       let moveTooMuch = false;
       let startX = 0, startY = 0;
 
@@ -349,12 +354,12 @@ document.addEventListener('cacheRestored', () => {
           if (!moveTooMuch) {
             el.classList.remove('pressionando');
             el.classList.add('ref-aberta');
-            setTimeout(() => {
+            openTimer = setTimeout(() => {
               abrirModalSeForRef(el);
               el.classList.remove('ref-aberta');
-            }, 200);
+            }, BIBLE_OPEN_DELAY_MS);
           }
-        }, 300);
+        }, BIBLE_HOLD_MS);
       });
 
       el.addEventListener('touchmove', function(e) {
@@ -362,7 +367,8 @@ document.addEventListener('cacheRestored', () => {
         if (Math.abs(touch.clientX - startX) > 10 || Math.abs(touch.clientY - startY) > 10) {
           moveTooMuch = true;
           clearTimeout(pressTimer);
-          el.classList.remove('pressionando');
+          clearTimeout(openTimer);
+          el.classList.remove('pressionando', 'ref-aberta');
         }
       });
 
@@ -376,7 +382,7 @@ document.addEventListener('cacheRestored', () => {
       }
 
       el.addEventListener('touchend', resetAppearance);
-      el.addEventListener('touchcancel', resetAppearance);
+      el.addEventListener('touchcancel', () => { clearTimeout(openTimer); resetAppearance(); });
       el.addEventListener('contextmenu', e => e.preventDefault());
     });
   };
