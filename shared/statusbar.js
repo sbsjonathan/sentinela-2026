@@ -62,8 +62,44 @@
         }
     }
 
-    window.AppStatusBar = { documentRoot: root, refresh };
+    window.AppStatusBar = { documentRoot: root, revision: '2026.11.03.13', refresh };
     refresh();
     window.addEventListener('pageshow', refresh);
     standalone.addEventListener('change', refresh);
+
+    // Opt-in measurements run on the affected page, inside the same installed app.
+    if (new URLSearchParams(location.search).get('diagnostico') === 'statusbar') {
+        const stylesheet = document.createElement('link');
+        stylesheet.rel = 'stylesheet';
+        stylesheet.href = new URL('shared/statusbar-diagnostics.css', project).href;
+        const script = document.createElement('script');
+        script.src = new URL('shared/statusbar-diagnostics.js', project).href;
+        let settled = false;
+        root.dataset.statusbarDiagnosticLoader = 'loading';
+        const timeout = setTimeout(failed, 10000);
+        function failed() {
+            if (settled || document.documentElement !== root) return;
+            settled = true; clearTimeout(timeout);
+            root.dataset.statusbarDiagnosticLoader = 'error';
+            const show = () => {
+                if (document.documentElement !== root) return;
+                const message = document.createElement('div');
+                message.setAttribute('role', 'alert');
+                message.style.cssText = 'position:fixed;bottom:20px;left:12px;right:12px;z-index:2147483600;padding:18px;background:#fff;color:#222;border:1px solid #777;border-radius:12px;font:16px/1.5 system-ui';
+                message.textContent = 'O diagnóstico não carregou. ';
+                const retry = document.createElement('a');
+                retry.href = new URL('atualizar.html', project).href;
+                retry.textContent = 'Verifique a atualização e tente novamente.';
+                message.append(retry); document.body.append(message);
+            };
+            if (document.body) show(); else document.addEventListener('DOMContentLoaded', show, { once: true });
+        }
+        stylesheet.onerror = script.onerror = failed;
+        stylesheet.onload = () => { if (!settled && document.documentElement === root) document.head.append(script); };
+        script.onload = () => {
+            if (settled || document.documentElement !== root) return;
+            settled = true; clearTimeout(timeout); root.dataset.statusbarDiagnosticLoader = 'ready';
+        };
+        document.head.append(stylesheet);
+    }
 })();

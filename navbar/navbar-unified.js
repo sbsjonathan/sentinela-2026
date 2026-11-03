@@ -716,7 +716,7 @@ document.addEventListener('touchend', function (event) {
 // Reopening an installed iPhone app may resume the page without another load event.
 (function manageAppUpdates() {
     if (!('serviceWorker' in navigator)) return;
-    const release = '2026.11.03.12';
+    const release = '2026.11.03.13';
     const root = getProjectRootURL();
     let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
     const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);
@@ -733,8 +733,12 @@ document.addEventListener('touchend', function (event) {
         diagnose.className = 'btn btn-secondary';
         diagnose.href = new URL('index.html?diagnostico=1', root).href;
         diagnose.textContent = 'Diagnóstico da tela inicial';
+        const statusbarDiagnose = document.createElement('a');
+        statusbarDiagnose.className = 'btn btn-secondary';
+        statusbarDiagnose.href = new URL('diagnostico-statusbar.html', root).href;
+        statusbarDiagnose.textContent = 'Diagnóstico da barra superior';
         versionNode.style.cssText = 'font-size:12px;margin:12px 0;color:inherit;opacity:.7';
-        offlineSection.append(versionNode, update, diagnose);
+        offlineSection.append(versionNode, update, statusbarDiagnose, diagnose);
     }
     function askVersion(worker) {
         return new Promise(resolve => {
