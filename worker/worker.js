@@ -1,48 +1,21 @@
 const $ = (id) => document.getElementById(id);
 
-const WORKER_BASE = "https://hope3.momentaneo2021.workers.dev/";
+const WORKER_BASE = "https://hope4.momentaneo2021.workers.dev/";
 
 function monthToIssue(yyyyDashMm) {
   if (!/^\d{4}-\d{2}$/.test(yyyyDashMm)) return null;
   return yyyyDashMm.replace("-", "");
 }
 
-function buildEndpoint(issue) {
-  const params = new URLSearchParams({
-    pub: "w",
-    issue,
-    langwritten: "T",
-    txtCMSLang: "T",
-    fileformat: "RTF",
-    output: "json",
-    alllangs: "0"
-  });
-  return `https://b.jw-cdn.org/apis/pub-media/GETPUBMEDIALINKS?${params.toString()}`;
-}
-
 async function fetchTextOrThrow(url) {
-  const r = await fetch(url, { cache: "no-store" });
-  if (!r.ok) throw new Error("http error: " + r.status);
-  return await r.text();
-}
-
-async function fetchJsonOrThrow(url) {
-  const txt = await fetchTextOrThrow(url);
-  return JSON.parse(txt);
-}
-
-async function getRtfUrl(issue, studyNN) {
-  const wanted = `w_T_${issue}_${studyNN}.rtf`;
-  const endpoint = buildEndpoint(issue);
-
-  const data = await fetchJsonOrThrow(endpoint);
-  const list = data?.files?.T?.RTF;
-  if (!Array.isArray(list)) throw new Error("lista");
-
-  const hit = list.find(x => x?.name === wanted || x?.file?.url?.endsWith("/" + wanted));
-  if (!hit?.file?.url) throw new Error("nao_encontrou");
-
-  return hit.file.url;
+  const response = await fetch(url, { cache: "no-store" });
+  const text = await response.text();
+  if (!response.ok) {
+    let message = `HTTP ${response.status}`;
+    try { message = JSON.parse(text).error?.message || message; } catch (_) {}
+    throw new Error(message);
+  }
+  return text;
 }
 
 function setLoading(on) {
@@ -72,8 +45,8 @@ async function carregar() {
 
   setLoading(true);
   try {
-    const rtfUrl = await getRtfUrl(issue, study);
-    const workerUrl = `${WORKER_BASE}?arquivo=${encodeURIComponent(rtfUrl)}`;
+    const params = new URLSearchParams({ issue, study, format: "fragment" });
+    const workerUrl = `${WORKER_BASE}convert?${params}`;
     
     const out = await fetchTextOrThrow(workerUrl);
     $("outputArea").value = out;
@@ -111,6 +84,9 @@ $("btn1").onclick = () => {
   feedbackBotao($("btn1"));
   const area = $("outputArea");
   let txt = area.value.trim();
+  // hope4 already supplies the structured article; keep step 1 safe to repeat.
+  if (/^<div\b[^>]*\bdata-hope4-article=/.test(txt) || /^<!doctype\s+html/i.test(txt)) return;
+
 
   let estudoId = "";
   let corHex = "";
@@ -309,7 +285,7 @@ $("btn2").onclick = () => {
       d = m[1];
       mesNome = m[2];
     } else {
-      m = up.match(/^(\d{1,2})\s+A\s+\d{1,2}\s+DE\s+([A-ZÇÃÕ]+)\s+DE\s+\d{4}$/i);
+      m = up.match(/^(\d{1,2})\s*(?:A|[-–—])\s*\d{1,2}\s+DE\s+([A-ZÇÃÕ]+)\s+DE\s+\d{4}$/i);
       if (m) {
         d = m[1];
         mesNome = m[2];

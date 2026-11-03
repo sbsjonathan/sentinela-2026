@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.03.4",
+  "version": "2026.11.03.5",
   "shell": [
     "assets/icons/apple-touch-icon.png",
     "assets/icons/favicon-32.png",
@@ -365,7 +365,7 @@
     "assets/icons/icon-192.png": "3a0d55dc41b9c452226c37ae998d3e9ffc920f9e7ca31bf5655b47a2e934b4cc",
     "assets/icons/icon-512.png": "197b3cde490637c2be1b9445d3c84408944a569804914ba3175bd2cee79f3973",
     "assets/icons/maskable-icon-512.png": "197b3cde490637c2be1b9445d3c84408944a569804914ba3175bd2cee79f3973",
-    "atualizar.html": "79c8289d2572885f2fb9e7fd83d0de552e9b7dbc4e4d3e5b838d0f5458232b96",
+    "atualizar.html": "1f644788d0c8bf31234a59bb976950ac2468bf19c566bc92a66a8e3a2ca1d0c4",
     "biblia/app.js": "1c975f56a09b2d16e46702849150e9f2dbad0d55fb0233442d882a7c79058d4a",
     "biblia/apple-touch-icon.png": "8135af07c538ba327a4794c58cd2df7cbc051394234894a744de432bba0c30f8",
     "biblia/audio-player.js": "afd34d024b21480f1217ace3e26b829428f4cea979098395730c9c82bd07dde4",
@@ -476,11 +476,11 @@
     "biblia/vendor/sql-wasm.js": "694ca5b36aa3e6e71f417819d7df390b65343665fcfa5c69015ca33d93d291b3",
     "biblia/vendor/sql-wasm.wasm": "0734155c83e493983d1f2ff5b09a4fab6e35a32e9449c7e4e545756439f62d73",
     "home-layout.js": "f9bd522f456c3e4804538254247cc1a3d5bfda3b90fe39a667bd15271b4fe97d",
-    "index.html": "7af4ed2212a372add7eb5ac176ff2305a332469a56bda17c6fd840284775c0fc",
+    "index.html": "2f7f294ef7cad8c81b2b30eec2921659b6701e70731e476276e3ece313fb6007",
     "main.js": "4945e7204451b05ac9cc1ec8a53e7aa3c34108d7c5667f097e95020b1f26cdcb",
     "manifest.json": "46e7fdf4455d846d9fa4f9fed2469fa12ec4573b192c8b88e0ddd2e6750f2d96",
     "navbar/navbar-unified.css": "56ea1f79c28b8062e7b487125c8a252087e7dc05b5b7989f99f37cf8fca71a05",
-    "navbar/navbar-unified.js": "eea130666dfa68555fa0e9484a6558ded5090c29221985f4c62de9266681282c",
+    "navbar/navbar-unified.js": "337cc588d1397bb1884a02d76450f7983c9ee955fc0758f9c6f65f74804265fa",
     "navbar/network-sensor.js": "bdd0c69f88f3b6b388a803cdd47ec5331b20eff9ddf2d2a9700fb6632630335f",
     "richtext/barra.css": "bfeb7e8237eaad82ac64e37b3171550f06f95ff55c202e815a2dc5f44e0d0d46",
     "richtext/barra.js": "0122f55bbaa2e1d58866370899a6651348c02c3c9e070cff110ab4e75d1b3907",
@@ -611,6 +611,6 @@
     "worker/styly.css": "1d19551861682cc76ae445427faee8bc5926608239b856e53279198af590fd2d",
     "worker/worker.css": "adc1363ab2789da30a2bc417a4e10d77fcd04c155fd06f0be34cae926ad72e6b",
     "worker/worker.html": "961bd1e396c13ec3ef3f0a5df555e3152df0582efb914d6055e7b3670c52b310",
-    "worker/worker.js": "60a27b079cc3f240247a0a73bef60e3ffa30b256afba6cddc9c2d5bf8290500f"
+    "worker/worker.js": "1be75b886e3da1e2715f80a3ea53d5533549f1fbe27ba4a4d35b4c35bca11497"
   }
 }
