@@ -346,7 +346,7 @@
       }
     } catch (_) {}
 
-    setLoading(wrapperElement, respostaDiv, '✨ Lendo o artigo completo e preparando a visão geral...');
+    setLoading(wrapperElement, respostaDiv, 'Lendo o artigo completo e preparando a visão geral...');
 
     try {
       const prompt = buildPrompt(bundle);

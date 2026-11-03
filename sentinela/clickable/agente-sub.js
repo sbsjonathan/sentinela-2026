@@ -407,7 +407,7 @@
       return;
     }
 
-    setLoading(wrapperElement, respostaDiv, '✨ Lendo os parágrafos desta seção e preparando a visão geral...');
+    setLoading(wrapperElement, respostaDiv, 'Lendo os parágrafos desta seção e preparando a visão geral...');
 
     try {
       const prompt = buildPrompt(bundle);

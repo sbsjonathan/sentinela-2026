@@ -3,7 +3,7 @@
   to   { transform: translateY(0); opacity: 1; }
 }
 
-@keyframes spin {
+@keyframes ia-sparkle-spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
@@ -73,28 +73,51 @@
   margin: 0;
   font-size: 1.3rem;
   cursor: pointer;
-  color: #375255;
+  color: var(--cor-principal-estudo, #375255);
   border-radius: 50%;
   width: 34px;
   height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s, transform 0.2s;
+  transition: background-color 0.2s;
 }
 
 .btn-gerar-ia:hover {
-  background-color: rgba(55, 82, 85, 0.1);
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.btn-gerar-ia:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.btn-gerar-ia .ia-sparkle {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  pointer-events: none;
+  transform-box: view-box;
+  transform-origin: 50% 50%;
 }
 
 .btn-gerar-ia:disabled {
   cursor: not-allowed;
-  color: #9ca3af;
+  opacity: .55;
 }
 
 .ia-wrapper.ia-loading .btn-gerar-ia {
-  animation: spin 1s linear infinite;
   pointer-events: none;
+  opacity: 1;
+}
+
+.ia-wrapper.ia-loading .btn-gerar-ia .ia-sparkle {
+  animation: ia-sparkle-spin 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ia-wrapper.ia-loading .btn-gerar-ia .ia-sparkle { animation: none; }
 }
 
 .ia-ref-clicavel {
@@ -218,11 +241,6 @@ html[data-theme="dark"] .clickable,
   background-color: #2c2c2e;
   color: #f2f2f7;
   border-color: #3a3a3c;
-}
-
-html[data-theme="dark"] .btn-gerar-ia,
-@media (prefers-color-scheme: dark) { html:not([data-theme="light"]) .btn-gerar-ia } {
-  color: #98989d;
 }
 
 html[data-theme="dark"] .ia-ref-clicavel:hover,

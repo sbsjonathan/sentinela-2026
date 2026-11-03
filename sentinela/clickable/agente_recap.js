@@ -584,7 +584,7 @@
       return;
     }
 
-    setLoading(wrapperElement, respostaDiv, '✨ Buscando a resposta no artigo...');
+    setLoading(wrapperElement, respostaDiv, 'Buscando a resposta no artigo...');
 
     try {
       const prompt = buildPrompt(bundle);

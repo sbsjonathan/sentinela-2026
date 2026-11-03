@@ -434,7 +434,7 @@
       if (parsed.bible_analysis) {
         lines.push(`<div class="ia-answer-main">${textToHTML(parsed.bible_analysis)}</div>`);
       } else {
-        lines.push('<div class="ia-inline-note">✨ Cruzando textos bíblicos lidos...</div>');
+        lines.push('<div class="ia-inline-note">Cruzando textos bíblicos lidos...</div>');
       }
       lines.push('</div>');
     }
@@ -444,7 +444,7 @@
       if (parsed.image_analysis) {
         lines.push(`<div class="ia-answer-main">${textToHTML(parsed.image_analysis)}</div>`);
       } else {
-        lines.push('<div class="ia-inline-note">✨ Analisando os detalhes da imagem...</div>');
+        lines.push('<div class="ia-inline-note">Analisando os detalhes da imagem...</div>');
       }
       lines.push('</div>');
     }
@@ -919,7 +919,7 @@
     const imageInfo = findAssociatedImage(bundle);
     const bibleLinks = findBibleLinks(bundle);
 
-    setLoading(iaWrapper, button, responseDiv, '✨ Analisando o artigo para gerar a resposta...');
+    setLoading(iaWrapper, button, responseDiv, 'Analisando o artigo para gerar a resposta...');
 
     let textParsed = null;
     try {

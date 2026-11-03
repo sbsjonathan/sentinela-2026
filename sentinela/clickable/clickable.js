@@ -1,5 +1,20 @@
 // clickable/clickable.js (VERSÃO COMPLETA COM OBJETIVO + SUBTÍTULOS)
 
+function refreshLegacyIAPlaceholders() {
+  const messages = new Map([
+    ['Clique no ícone ✨ para gerar uma resposta.', 'Toque no ícone de IA para gerar uma resposta.'],
+    ['Clique no ícone ✨ para gerar uma visão geral completa do artigo.', 'Toque no ícone de IA para gerar uma visão geral completa do artigo.'],
+    ['Clique no ícone ✨ para gerar uma visão geral desta seção.', 'Toque no ícone de IA para gerar uma visão geral desta seção.']
+  ]);
+  // Only old, untouched hints are updated. Saved answers remain as written.
+  document.querySelectorAll('.ia-wrapper > .clickable').forEach(response => {
+    const hint = response.firstElementChild;
+    if (response.childElementCount !== 1 || hint.tagName !== 'SPAN' || hint.children.length) return;
+    const replacement = messages.get(response.textContent.trim());
+    if (replacement) hint.textContent = replacement;
+  });
+}
+
 function initClickable() {
   const estudoId = window.estudoId || "0";
   const triggers = document.querySelectorAll("p.pergunta, .lista-recapitulacao li");
@@ -19,8 +34,11 @@ function initClickable() {
     respostaIADiv.innerHTML = placeholderHTML;
 
     const btnGerarIA = document.createElement("button");
-    btnGerarIA.textContent = "✨";
+    // Four identical curved points around (12, 12) keep rotation balanced.
+    btnGerarIA.innerHTML = '<svg class="ia-sparkle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M12 3C12.8 8.2 15.8 11.2 21 12C15.8 12.8 12.8 15.8 12 21C11.2 15.8 8.2 12.8 3 12C8.2 11.2 11.2 8.2 12 3Z" fill="currentColor" fill-opacity=".07"/></svg>';
+    btnGerarIA.type = 'button';
     btnGerarIA.title = buttonTitle;
+    btnGerarIA.setAttribute('aria-label', buttonTitle);
     btnGerarIA.className = "btn-gerar-ia";
 
     iaWrapper.appendChild(respostaIADiv);
@@ -43,7 +61,7 @@ function initClickable() {
       const { anotacaoContainer, iaWrapper, respostaIADiv, btnGerarIA } = createIAResponseBlock({
         idRespostaIA,
         buttonTitle: 'Gerar Resposta com IA (Análise Global)',
-        placeholderHTML: '<span style="color: #9ca3af;">Clique no ícone ✨ para gerar uma resposta.</span>'
+        placeholderHTML: '<span style="color: #9ca3af;">Toque no ícone de IA para gerar uma resposta.</span>'
       });
 
       const comentariosDiv = document.createElement("div");
@@ -56,7 +74,7 @@ function initClickable() {
 
       if (window.CacheAnotacao) {
         comentariosDiv.innerHTML = window.CacheAnotacao.carregar(idComentario);
-        respostaIADiv.innerHTML = window.CacheAnotacao.carregar(idRespostaIA) || '<span style="color: #9ca3af;">Clique no ícone ✨ para gerar uma resposta.</span>';
+        respostaIADiv.innerHTML = window.CacheAnotacao.carregar(idRespostaIA) || '<span style="color: #9ca3af;">Toque no ícone de IA para gerar uma resposta.</span>';
         comentariosDiv.addEventListener('input', () => {
           window.CacheAnotacao.salvar(idComentario, comentariosDiv.innerHTML);
         });
@@ -103,7 +121,7 @@ function initClickable() {
       const { anotacaoContainer, iaWrapper, respostaIADiv, btnGerarIA } = createIAResponseBlock({
         idRespostaIA,
         buttonTitle: 'Gerar Resposta com IA',
-        placeholderHTML: '<span style="color: #9ca3af;">Clique no ícone ✨ para gerar uma resposta.</span>'
+        placeholderHTML: '<span style="color: #9ca3af;">Toque no ícone de IA para gerar uma resposta.</span>'
       });
 
       const comentariosDiv = document.createElement("div");
@@ -132,7 +150,7 @@ function initClickable() {
 
       if (window.CacheAnotacao) {
         comentariosDiv.innerHTML = window.CacheAnotacao.carregar(idComentario);
-        respostaIADiv.innerHTML = window.CacheAnotacao.carregar(idRespostaIA) || '<span style="color: #9ca3af;">Clique no ícone ✨ para gerar uma resposta.</span>';
+        respostaIADiv.innerHTML = window.CacheAnotacao.carregar(idRespostaIA) || '<span style="color: #9ca3af;">Toque no ícone de IA para gerar uma resposta.</span>';
         comentariosDiv.addEventListener('input', () => {
           window.CacheAnotacao.salvar(idComentario, comentariosDiv.innerHTML);
         });
@@ -163,7 +181,7 @@ function initClickable() {
     const { anotacaoContainer, iaWrapper, respostaIADiv, btnGerarIA } = createIAResponseBlock({
       idRespostaIA: idRespostaObjetivo,
       buttonTitle: 'Gerar Visão Geral do Artigo',
-      placeholderHTML: '<span style="color: #9ca3af;">Clique no ícone ✨ para gerar uma visão geral completa do artigo.</span>'
+      placeholderHTML: '<span style="color: #9ca3af;">Toque no ícone de IA para gerar uma visão geral completa do artigo.</span>'
     });
 
     respostaIADiv.style.minHeight = '120px';
@@ -173,7 +191,7 @@ function initClickable() {
     objetivoElement.parentNode.insertBefore(anotacaoContainer, objetivoElement.nextSibling);
 
     if (window.CacheAnotacao) {
-      respostaIADiv.innerHTML = window.CacheAnotacao.carregar(idRespostaObjetivo) || '<span style="color: #9ca3af;">Clique no ícone ✨ para gerar uma visão geral completa do artigo.</span>' ;
+      respostaIADiv.innerHTML = window.CacheAnotacao.carregar(idRespostaObjetivo) || '<span style="color: #9ca3af;">Toque no ícone de IA para gerar uma visão geral completa do artigo.</span>' ;
     }
 
     btnGerarIA.onclick = () => gerarRespostaIA_Objetivo(idObjetivo, iaWrapper, idRespostaObjetivo);
@@ -202,7 +220,7 @@ function initClickable() {
 
     const idTrigger = tipo === 'h1' ? `sub-h1-${estudoId}` : `sub-h2-${index}-${estudoId}`;
     const idRespostaIA = `r-${idTrigger}`;
-    const placeholderHTML = '<span style="color: #9ca3af;">Clique no ícone ✨ para gerar uma visão geral desta seção.</span>' ;
+    const placeholderHTML = '<span style="color: #9ca3af;">Toque no ícone de IA para gerar uma visão geral desta seção.</span>' ;
 
     element.id = idTrigger;
     element.classList.add('subtitulo-ia-trigger');
@@ -235,7 +253,10 @@ function initClickable() {
       }
     });
   });
+  refreshLegacyIAPlaceholders();
 }
+
+document.addEventListener('cacheRestored', refreshLegacyIAPlaceholders);
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initClickable);
