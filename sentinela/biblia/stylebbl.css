@@ -103,7 +103,7 @@
 /* --- Estilo dos Parágrafos com os Versículos --- */
 #modal-biblia-corpo p {
   font-family: 'Sumana', serif;
-  font-size: 1.2em; 
+  font-size: 16px;
   line-height: 1.7;
   color: #555;
   margin-bottom: calc(12px * var(--font-scale-global));

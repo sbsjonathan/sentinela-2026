@@ -229,7 +229,7 @@ b .bbl {
 
 .paragrafo {
     color: var(--text-main);
-    font-size: calc(16px * var(--font-scale-global));
+    font-size: 16px;
     margin-bottom: calc(24px * var(--font-scale-global));
     line-height: 1.62;
     -webkit-user-select: text;

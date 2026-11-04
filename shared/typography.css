@@ -1,7 +1,7 @@
 @import url('../biblia/fonts/fonts.css');
 
-/* A single base size. Headings/captions keep their hierarchy; authored note
-   formatting is deliberately left on the element instead of being rewritten. */
+/* Interface text follows the global preference. The reading surfaces listed
+   below stay at 16px; authored note formatting is left on the element. */
 html[data-font-size-global] {
     font-size: var(--font-base-global, 16px);
 }
@@ -13,16 +13,19 @@ html[data-font-size-global] :is(input, select, textarea) {
     font-family: inherit;
 }
 
-/* Bible reading, study material, and Scripture previews use the same size. */
-html[data-font-size-global] .sentinela-bible :is(.verses, .document, .note-body) {
+/* These reading surfaces use an explicit size, independent of the interface
+   scale and of relative sizes in restored article styles. */
+html[data-font-size-global] .sentinela-bible :is(.verses, .study-reference-verse),
+html[data-font-size-global] .paragrafo,
+html[data-font-size-global] #modal-biblia-corpo p {
+    font-size: 16px;
+}
+html[data-font-size-global] .sentinela-bible :is(.document, .note-body) {
     font-size: var(--font-base-global);
 }
 html[data-font-size-global] .sentinela-bible :is(.verses, .note-body),
 html[data-font-size-global] .sentinela-bible .document p {
     font-family: "Sumana", Georgia, serif;
-}
-html[data-font-size-global] #modal-biblia-corpo p {
-    font-size: var(--font-base-global);
 }
 
 /* Navigation remains readable at large settings. Its existing ResizeObserver
@@ -69,8 +72,7 @@ html[data-font-size-global] .home-screen .act-ico { flex-shrink: 0; }
 html.large-reading-text .home-screen .cover { overflow-y: auto; justify-content: flex-start; }
 html.large-reading-text .home-screen .cover-foot { margin-top: auto; flex-shrink: 0; padding-top: calc(55px * var(--font-scale-global)); }
 
-/* Bible interface. The chapter and note text above use the base exactly;
-   interface labels retain their original proportions. */
+/* Bible interface labels retain their original proportions. */
 html[data-font-size-global] .sentinela-bible { --header: max(44px, calc(44px * var(--font-scale-global))); }
 html[data-font-size-global] .sentinela-bible .header-title h1 { font-size: calc(17px * var(--font-scale-global)); }
 html[data-font-size-global] .sentinela-bible .header-title p { font-size: calc(13px * var(--font-scale-global)); }

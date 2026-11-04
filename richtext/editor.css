@@ -13,7 +13,7 @@
   --font-base-global: 16px;
   --font-scale-global: 1;
   --editor-body-font-size: var(--font-base-global);
-  --editor-normal-font-size: var(--font-base-global);
+  --editor-normal-font-size: 16px;
   --editor-row-height: calc(28px * var(--font-scale-global));
   --editor-arrow-width: calc(35px * var(--font-scale-global));
   --editor-arrow-height: calc(28px * var(--font-scale-global));
