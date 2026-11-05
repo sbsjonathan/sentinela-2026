@@ -27,6 +27,11 @@ html[data-app-statusbar="solid"] .home-statusbar {
 }
 
 .bottom-navbar {
+    /* The dock is interface chrome, independent of the selected reading level. */
+    --font-base-global: 16px;
+    --font-scale-global: 1;
+    --tamanho-fonte: 16px;
+    font-size: 16px;
     --navbar-active: #6B46C1 !important;
     --navbar-inactive: #8E8E93 !important;
 }

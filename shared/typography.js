@@ -1,7 +1,7 @@
 /* One reading-size preference for every page, including restored/offline articles. */
 (function initSharedTypography() {
     'use strict';
-    if (window.GlobalFontScale?.version === 2 && window.GlobalFontScale.documentRoot === document.documentElement) {
+    if (window.GlobalFontScale?.version === 3 && window.GlobalFontScale.documentRoot === document.documentElement) {
         window.GlobalFontScale.refresh();
         return;
     }
@@ -74,11 +74,15 @@
         const nextSize = clamp(size);
         const changed = nextSize !== currentSize;
         currentSize = nextSize;
+        // Home and account screens keep their interface sizing. The reading
+        // preference remains saved so returning to an article restores its level.
+        const interfaceOnly = root.dataset.fontScope === 'interface';
+        const displaySize = interfaceOnly ? DESIGN_BASE_SIZE : nextSize;
         const properties = {
-            '--tamanho-fonte': `${nextSize}px`,
+            '--tamanho-fonte': `${displaySize}px`,
             '--font-base-default': String(DESIGN_BASE_SIZE),
-            '--font-base-global': `${nextSize}px`,
-            '--font-scale-global': String(nextSize / DESIGN_BASE_SIZE),
+            '--font-base-global': `${displaySize}px`,
+            '--font-scale-global': String(displaySize / DESIGN_BASE_SIZE),
             '--read-size': `${nextSize}px`
         };
         Object.entries(properties).forEach(([name, value]) => {
@@ -86,7 +90,7 @@
         });
         root.dataset.fontSizeGlobal = String(nextSize);
         root.dataset.fontLevelGlobal = String(levelForSize(nextSize));
-        root.classList.toggle('large-reading-text', nextSize >= 25);
+        root.classList.toggle('large-reading-text', !interfaceOnly && nextSize >= 25);
         if (announce) window.dispatchEvent(new CustomEvent('globalfont:changed', {
             detail: { size: nextSize, level: levelForSize(nextSize), scale: nextSize / DESIGN_BASE_SIZE }
         }));
@@ -96,7 +100,7 @@
     }
 
     window.GlobalFontScale = {
-        version: 2,
+        version: 3,
         documentRoot: root,
         storageKey: STORAGE_KEY,
         defaultSize: DEFAULT_SIZE,

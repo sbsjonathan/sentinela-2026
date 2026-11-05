@@ -1,6 +1,6 @@
 /* Cached article documents may predate the shared head include. */
 (function loadSharedTypography() {
-    if (window.GlobalFontScale?.version === 2 && window.GlobalFontScale.documentRoot === document.documentElement) {
+    if (window.GlobalFontScale?.version === 3 && window.GlobalFontScale.documentRoot === document.documentElement) {
         window.GlobalFontScale.refresh();
         return;
     }
@@ -716,7 +716,7 @@ document.addEventListener('touchend', function (event) {
 // Reopening an installed iPhone app may resume the page without another load event.
 (function manageAppUpdates() {
     if (!('serviceWorker' in navigator)) return;
-    const release = '2026.11.05.1';
+    const release = '2026.11.05.2';
     const root = getProjectRootURL();
     let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
     const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);

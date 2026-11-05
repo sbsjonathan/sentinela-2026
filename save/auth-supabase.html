@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-font-scope="interface">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -120,12 +120,29 @@
             background: var(--bg-container);
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-            padding: 40px;
+            padding: 28px 24px;
             width: 100%;
             max-width: 400px;
+            box-sizing: border-box;
             position: relative;
             overflow: hidden;
             transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* Account controls keep a comfortable, fixed UI scale at every reading level. */
+        .save-screen .auth-container {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .auth-container h2 {
+            font-size: 22px;
+            line-height: 1.3;
+        }
+
+        .auth-container p {
+            font-size: 14px;
+            line-height: 1.5;
         }
 
         [data-theme="dark"] .auth-container {
@@ -144,24 +161,27 @@
 
         .logo {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 24px;
         }
 
         .logo-icon {
-            font-size: 3rem;
-            margin-bottom: 10px;
+            font-size: 36px;
+            line-height: 1.2;
+            margin-bottom: 12px;
         }
 
         .logo-title {
-            font-size: 1.5rem;
+            font-size: 24px;
+            line-height: 1.25;
             font-weight: 700;
             color: var(--text-title);
-            margin-bottom: 5px;
+            margin: 0 0 6px;
             transition: color 0.3s ease;
         }
 
         .logo-subtitle {
-            font-size: 0.9rem;
+            font-size: 14px;
+            margin: 0;
             color: var(--text-subtitle);
             transition: color 0.3s ease;
         }
@@ -172,7 +192,7 @@
 
         .form-label {
             display: block;
-            font-size: 0.9rem;
+            font-size: 14px;
             font-weight: 600;
             color: var(--text-label);
             margin-bottom: 8px;
@@ -181,10 +201,12 @@
 
         .form-input {
             width: 100%;
-            padding: 16px;
+            min-height: 48px;
+            padding: 12px 14px;
             border: 2px solid var(--border-input);
             border-radius: 12px;
-            font-size: 1rem;
+            font-size: 16px;
+            line-height: 1.4;
             transition: all 0.3s ease;
             background: var(--bg-input);
             color: var(--text-input);
@@ -210,9 +232,12 @@
 
         .btn {
             width: 100%;
-            padding: 16px;
+            min-height: 48px;
+            padding: 12px 14px;
             border-radius: 12px;
-            font-size: 1rem;
+            font-family: inherit;
+            font-size: 16px;
+            line-height: 1.35;
             font-weight: 600;
             border: none;
             cursor: pointer;
@@ -268,7 +293,7 @@
         .auth-switch {
             text-align: center;
             margin-top: 20px;
-            font-size: 0.9rem;
+            font-size: 14px;
             color: var(--text-subtitle);
         }
 
@@ -276,6 +301,7 @@
             background: none;
             border: none;
             color: var(--cor-principal);
+            font: inherit;
             font-weight: 600;
             cursor: pointer;
             text-decoration: underline;
@@ -285,7 +311,7 @@
             padding: 12px;
             border-radius: 8px;
             margin-bottom: 20px;
-            font-size: 0.9rem;
+            font-size: 14px;
             text-align: center;
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
@@ -359,7 +385,7 @@
         }
 
         .progress-text {
-            font-size: 0.8rem;
+            font-size: 13px;
             color: var(--text-subtitle);
             text-align: center;
             margin-bottom: 12px;
@@ -379,7 +405,7 @@
 <script id="sentinela-typography-script" src="../shared/typography.js"></script>
 <link id="sentinela-typography-style" rel="stylesheet" href="../shared/typography.css">
 </head>
-<body>
+<body class="save-screen">
     <div class="page-wrapper">
         <div class="auth-container">
             <div class="logo">
@@ -445,9 +471,9 @@
 
             <div class="screen" id="logged-screen">
                 <div style="text-align: center; margin-bottom: 30px;">
-                    <div style="font-size: 2.5rem; margin-bottom: 15px;">👤</div>
+                    <div style="font-size: 36px; margin-bottom: 15px;">👤</div>
                     <h2 style="color: var(--text-title); margin-bottom: 10px;" id="logged-user-name">Usuário Logado</h2>
-                    <p style="color: var(--text-subtitle); font-size: 0.9rem;" id="logged-user-info">Suas anotações estão sincronizadas</p>
+                    <p style="color: var(--text-subtitle);" id="logged-user-info">Suas anotações estão sincronizadas</p>
                 </div>
 
                 <div class="message success">
@@ -473,7 +499,7 @@
                 </div>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                    <div style="font-size: 2rem; margin-bottom: 15px;">✅</div>
+                    <div style="font-size: 32px; margin-bottom: 15px;">✅</div>
                     <h2 style="color: var(--text-title); margin-bottom: 10px;">Bem-vindo!</h2>
                     <p style="color: var(--text-subtitle);" id="welcome-text">Suas anotações estão sincronizadas</p>
                 </div>
@@ -493,9 +519,9 @@
 
             <div class="offline-section">
                 <div style="text-align: center; margin-bottom: 15px;">
-                    <div style="font-size: 1.8rem; margin-bottom: 5px;">✈️</div>
-                    <h3 style="color: var(--text-title); margin: 0; font-size: 1.1rem;">Modo Offline</h3>
-                    <p style="color: var(--text-subtitle); font-size: 0.85rem; margin-top: 5px;">Baixe a Bíblia, App e a Sentinela da semana para ler sem internet.</p>
+                    <div style="font-size: 28px; margin-bottom: 5px;">✈️</div>
+                    <h3 style="color: var(--text-title); margin: 0; font-size: 18px;">Modo Offline</h3>
+                    <p style="color: var(--text-subtitle); margin-top: 5px;">Baixe a Bíblia, App e a Sentinela da semana para ler sem internet.</p>
                 </div>
                 
                 <div class="progress-bar-container" id="offline-progress-container">
