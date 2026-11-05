@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#d8d8d8"><meta name="apple-mobile-web-app-capable" content="yes"><link id="sentinela-statusbar-style" rel="stylesheet" href="../shared/statusbar.css">
 <script id="sentinela-statusbar-script" src="../shared/statusbar.js"></script>
 <meta name="description" content="Sua Bíblia no iPhone, com notas de estudo, referências e apêndices.">
-<link rel="manifest" href="../manifest.json"><link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/apple-touch-icon.png?v=2026.11.02.12"><link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32.png?v=2026.11.02.12"><link rel="stylesheet" href="fonts/fonts.css"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="../navbar/navbar-unified.css"><link rel="stylesheet" href="integration.css"><link rel="stylesheet" href="search-panel.css">
+<link rel="manifest" href="../manifest.json"><link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/apple-touch-icon.png?v=2026.11.02.12"><link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32.png?v=2026.11.02.12"><link rel="stylesheet" href="fonts/fonts.css"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="interaction-motion.css"><link rel="stylesheet" href="../navbar/navbar-unified.css"><link rel="stylesheet" href="integration.css"><link rel="stylesheet" href="search-panel.css">
 <script src="../shared/typography.js"></script><link rel="stylesheet" href="../shared/typography.css">
-<title>Bíblia · A Sentinela</title><script src="../navbar/navbar-unified.js" defer></script><script src="dialog-motion.js" defer></script><script src="integration.js" defer></script><script src="audio-source.js" defer></script><script src="audio-player.js" defer></script><script src="text-actions.js" defer></script><script src="read-along.js" defer></script><script src="search-client.js" defer></script><script src="search-panel.js" defer></script><script src="app.js" defer></script>
+<title>Bíblia · A Sentinela</title><script src="../navbar/navbar-unified.js" defer></script><script src="dialog-motion.js" defer></script><script src="interaction-motion.js" defer></script><script src="integration.js" defer></script><script src="audio-source.js" defer></script><script src="audio-player.js" defer></script><script src="text-actions.js" defer></script><script src="read-along.js" defer></script><script src="search-client.js" defer></script><script src="search-panel.js" defer></script><script src="app.js" defer></script>
 </head>
 <body class="sentinela-bible" data-bible-reader>
 <svg class="symbol-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -34,7 +34,7 @@
 <div id="status" class="notice" role="status" aria-live="polite" hidden></div>
 <section id="empty" class="welcome"><svg class="welcome-book"><use href="#i-book"/></svg><h2>Sua Bíblia já está aqui.</h2><p>Preparando a Bíblia de Estudo para ler neste iPhone. Na primeira vez, mantenha esta página aberta com internet.</p><button id="retry-bundle" class="button primary" hidden>Tentar novamente</button><button id="empty-add" hidden>Abrir outro JWPUB</button><p class="small">O texto é preparado primeiro. Mapas e imagens são salvos em seguida.</p></section>
 <section id="navigator" hidden>
-<div id="book-grids"><h2>ESCRITURAS HEBRAICO-ARAMAICAS</h2><div id="hebrew-books" class="book-grid"></div><h2>ESCRITURAS GREGAS CRISTÃS</h2><div id="greek-books" class="book-grid"></div><button id="library-entry" class="menu-row">Biblioteca e arquivos <span>›</span></button></div>
+<div id="book-grids"><h2>ESCRITURAS HEBRAICO-ARAMAICAS</h2><div id="hebrew-books" class="book-grid"></div><h2>ESCRITURAS GREGAS CRISTÃS</h2><div id="greek-books" class="book-grid"></div></div>
 <div id="chapter-panel" hidden><div id="chapter-grid" class="chapter-grid"></div><div id="book-info" class="book-info"></div></div>
 </section>
 <section id="section-list" class="section-list" hidden></section>

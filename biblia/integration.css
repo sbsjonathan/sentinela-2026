@@ -47,3 +47,13 @@ body.reference-reading,html.article-study-opening body{background:#fafafa}
 .study-reference-status{font-size:var(--font-base-global,16px);line-height:1.5;margin:0 0 18px}
 .study-reference-body>.button{max-width:100%;white-space:normal}
 @media(min-width:760px){.study-article-header{padding-left:max(12px,calc((100vw - 760px)/2));padding-right:max(12px,calc((100vw - 760px)/2))}.study-reference-body{padding:24px 32px 40px}}
+
+/* Cross references open directly as passages, with one heading per citation. */
+.note-dialog .eyebrow[hidden],.note-links:empty{display:none}
+.reference-preview{padding:0 0 16px;margin:0 0 20px;border-bottom:1px solid var(--line,#ddd);white-space:normal}
+.reference-preview:last-child{padding-bottom:0;margin-bottom:0;border-bottom:0}
+.reference-preview-title{margin:0 0 10px;color:var(--blue);font:600 1em/1.4 "Noto Sans",-apple-system,BlinkMacSystemFont,sans-serif;overflow-wrap:anywhere}
+.reference-preview-body p:last-child{margin-bottom:0}
+.reference-preview-open{display:block;min-height:44px;margin:8px 0 0;padding:6px 0;border:0;background:transparent;color:var(--purple);font:500 14px/1.4 "Noto Sans",-apple-system,BlinkMacSystemFont,sans-serif;text-align:left}
+.reference-preview-open:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.reference-preview-open:active{text-decoration:underline}
