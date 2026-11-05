@@ -1,29 +1,29 @@
-/* Search has one scrollable results area; its controls stay above the iPhone keyboard. */
-#search-dialog.bible-search-dialog {
-  position: fixed;
-  inset: auto;
-  top: var(--search-viewport-top, 0px);
-  left: var(--search-viewport-left, 0px);
-  width: var(--search-viewport-width, 100%);
-  height: var(--search-viewport-height, 100dvh);
-  max-width: none;
-  max-height: none;
-  min-width: 0;
-  min-height: 0;
-  margin: 0;
-  padding: env(safe-area-inset-top, 0px) max(14px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
+/* A normal-flow search screen. iOS owns document scrolling while the keyboard
+   is visible: no fixed body, translated input, or visualViewport positioning. */
+body.bible-search-open { background: #fff; }
+/* A returning chapter must retain its full document height while iOS is still
+   dismissing the keyboard. Reserve the measured navbar, not its temporary zero
+   keyboard reserve; this also covers a missing/delayed WebKit resize event. */
+body.sentinela-bible.with-bottom-navbar:not(.bible-search-open) { padding-bottom: var(--navbar-real-height, var(--bible-menu-height)) !important; }
+body.sentinela-bible.audio-open.with-bottom-navbar:not(.bible-search-open) { padding-bottom: calc(var(--navbar-real-height, var(--bible-menu-height)) + 116px) !important; }
+body.sentinela-bible.with-bottom-navbar.bible-search-open,
+body.sentinela-bible.audio-open.with-bottom-navbar.bible-search-open { padding-bottom: 0 !important; }
+body.bible-search-open > :is(.app-header, .study-article-header, .section-tabs),
+body.bible-search-open :is(#audio-follow, #audio-player, #bible-offline-notice) { display: none !important; }
+body.bible-search-open .bottom-navbar { visibility: hidden; pointer-events: none; }
+#search-dialog.bible-search-page {
+  display: block;
+  position: relative;
+  margin: 0 auto;
+  padding: var(--app-statusbar-height, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
   border: 0;
-  border-radius: 0;
   background: #fff;
   color: #292929;
-  overflow: hidden;
-  overscroll-behavior: contain;
   font-family: "Noto Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: visible;
 }
-#search-dialog.bible-search-dialog[open] { display: flex; }
-#search-dialog.bible-search-dialog.search-keyboard-open { padding-bottom: 8px; }
-#search-dialog .search-surface { display: flex; flex: 1; flex-direction: column; width: 100%; max-width: 760px; min-width: 0; min-height: 0; margin: 0 auto; }
-#search-dialog .search-panel-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; padding: 2px 0 4px; }
+#search-dialog .search-surface { display: block; width: 100%; min-width: 0; }
+#search-dialog .search-panel-header { position: sticky; top: var(--app-statusbar-height, env(safe-area-inset-top, 0px)); z-index: 2; background: #fff; display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; padding: 2px 0 4px; }
 #search-dialog .search-panel-header h2 { margin: 0; font-size: 20px; font-weight: 650; line-height: 1.25; }
 #search-dialog .search-close, #search-dialog .search-clear, #search-dialog .search-submit { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; border: 0; border-radius: 6px; background: transparent; color: var(--purple, #604184); padding: 8px; }
 #search-dialog .search-close { margin-right: 0; }
@@ -51,7 +51,7 @@
 #search-dialog .search-status-text { display: -webkit-box; min-width: 0; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 #search-dialog .search-status.is-error { color: #a33d28; }
 #search-dialog .search-status.is-loading::before { content: ''; flex: 0 0 auto; width: 12px; height: 12px; border: 2px solid #d8cfe4; border-top-color: var(--purple, #604184); border-radius: 50%; animation: bible-search-spin .8s linear infinite; }
-#search-dialog .search-results-scroll { flex: 1 1 auto; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 0 2px 8px; scroll-padding: 8px; }
+#search-dialog .search-results-scroll { display: block; min-width: 0; overflow: visible; padding: 0 2px 8px; }
 #search-dialog #search-results { display: block; margin: 0; }
 #search-dialog #search-results .search-result { display: block; width: 100%; min-width: 0; min-height: 64px; margin: 0; padding: 13px 0 16px; border: 0; border-bottom: 1px solid #e5e2e9; border-radius: 0; background: transparent; color: #292929; font-family: inherit; text-align: left; white-space: normal; overflow-wrap: anywhere; }
 #search-dialog #search-results .search-result:active { background: #f4f1f7; }
@@ -68,43 +68,16 @@
 #search-dialog #search-results .search-example { display: inline-block; width: auto; min-height: 42px; padding: 9px 13px; border: 1px solid #d8d0e2; border-radius: 6px; background: #f7f4fa; color: var(--purple, #604184); font-size: 14px; }
 #search-dialog .search-suggestions-title { margin: 0 0 4px; color: #68616e; font-size: 13px; font-weight: 600; }
 #search-dialog .search-empty { margin: 14px 0; color: #777; font-size: 14px; line-height: 1.6; }
-#search-dialog.search-keyboard-open .search-panel-header { min-height: 44px; padding: 0; }
-#search-dialog.search-keyboard-open #search-form { padding-bottom: 6px; }
-#search-dialog.search-keyboard-open #search-form label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-#search-dialog.search-keyboard-open .search-category { min-height: 40px; padding-top: 7px; padding-bottom: 7px; }
-#search-dialog.search-keyboard-open .search-status { min-height: 31px; padding-top: 6px; padding-bottom: 6px; }
 @keyframes bible-search-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { #search-dialog .search-status.is-loading::before { animation: none; } }
 @media (max-width: 360px) {
-  #search-dialog.bible-search-dialog { padding-left: max(10px, env(safe-area-inset-left, 0px)); padding-right: max(10px, env(safe-area-inset-right, 0px)); }
+  #search-dialog.bible-search-page { padding-left: max(10px, env(safe-area-inset-left, 0px)); padding-right: max(10px, env(safe-area-inset-right, 0px)); }
   #search-dialog .search-panel-header h2 { font-size: 18px; }
   #search-dialog #search-input { font-size: 16px; }
 }
-@media (max-height: 450px) {
-  #search-dialog .search-panel-header { min-height: 44px; padding: 0; }
-  #search-dialog #search-form label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  #search-dialog .search-status { min-height: 31px; padding-top: 6px; padding-bottom: 6px; }
-}
 
-/* VisualViewport.offsetTop already accounts for the part above the visible area. */
-html #search-dialog.bible-search-dialog,
-html[data-native-statusbar] #search-dialog.bible-search-dialog {
-  padding-top: max(0px, calc(var(--app-statusbar-height, env(safe-area-inset-top, 0px)) - var(--search-viewport-top, 0px)));
-  overscroll-behavior: none;
-}
-#search-dialog .search-surface { overflow: clip; }
-#search-dialog .search-results-scroll { overscroll-behavior-y: none; touch-action: pan-y pinch-zoom; overflow-anchor: none; }
-#search-dialog .search-categories { touch-action: pan-x pinch-zoom; }
-
-/* Keep controls usable above a short keyboard viewport; result text retains the
-   chosen reading size. There is still only one vertical scroll container. */
-#search-dialog.bible-search-dialog.search-compact { padding-bottom: 8px; }
-#search-dialog.bible-search-dialog.search-compact .search-panel-header { min-height: 44px; padding: 0; }
-#search-dialog.bible-search-dialog.search-compact .search-panel-header h2 { font-size: min(22px, calc(20px * var(--font-scale-global, 1))); }
-#search-dialog.bible-search-dialog.search-compact #search-input { font-size: 17px; }
-#search-dialog.bible-search-dialog.search-compact #search-form { padding-bottom: 6px; }
-#search-dialog.bible-search-dialog.search-compact #search-form label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-#search-dialog.bible-search-dialog.search-compact .search-category { min-height: 40px; padding-top: 7px; padding-bottom: 7px; font-size: min(14px, calc(13px * var(--font-scale-global, 1))); }
-#search-dialog.bible-search-dialog.search-compact .search-category-count { font-size: 10px; }
-#search-dialog.bible-search-dialog.search-compact .search-status { min-height: 31px; padding-top: 6px; padding-bottom: 6px; font-size: 12px; }
-#search-dialog.bible-search-dialog.search-compact .search-status-text { -webkit-line-clamp: 1; }
+/* Reading results follow the chosen text size; the search controls stay compact. */
+html body #search-dialog.bible-search-page .search-panel-header h2 { font-size: min(22px, calc(20px * var(--font-scale-global, 1))); }
+html body #search-dialog.bible-search-page .search-category { font-size: min(14px, calc(13px * var(--font-scale-global, 1))); }
+html body #search-dialog.bible-search-page .search-category-count { font-size: 10px; }
+html body #search-dialog.bible-search-page :is(.search-status, #search-form label) { font-size: 12px; }

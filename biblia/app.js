@@ -10,6 +10,7 @@ const OPENING_VIEW_KEY='sentinela-bible-view-v1';
 const OPENING_VIEW_VERSION=1;
 let openingRestored=false,openingStudyHandled=false;
 let articleStudyContext=null,studyReferenceData=null,studyReferenceReturn=null;
+let searchReturn=null;
 const articleStudyParams=new URLSearchParams(location.search);
 const articleStudyRequested=articleStudyParams.get('studyView')==='reference'&&articleStudyParams.get('from')==='article';
 const articleStudyRoutes=articleStudyRequested?import(new URL('legacy-routes.js',document.currentScript.src).href).catch(()=>null):Promise.resolve(null);
@@ -87,8 +88,9 @@ function setBusy(value){state.busy=value;ui['add-file'].disabled=value;ui['empty
 function screen(which,title,subtitle='',back=false){
  textActions?.clear();
  if(state.screen==='reading'&&which!=='reading')state.readingScroll=window.scrollY;
- state.screen=which;for(const id of ['empty','navigator','section-list','reader','document','bookmarks','library','study-reference'])ui[id].hidden=true;
- ui[({books:'navigator',chapters:'navigator',section:'section-list',reading:'reader'})[which]||which].hidden=false;
+ state.screen=which;for(const id of ['empty','navigator','section-list','reader','document','bookmarks','library','study-reference','search-dialog'])ui[id].hidden=true;
+ ui[({books:'navigator',chapters:'navigator',section:'section-list',reading:'reader',search:'search-dialog'})[which]||which].hidden=false;
+ document.body.classList.toggle('bible-search-open',which==='search');
  document.body.classList.toggle('reading',which==='reading'||which==='document'||which==='study-reference');
  const reference=which==='study-reference';document.body.classList.toggle('reference-reading',reference);ui['study-article-header'].hidden=!reference;if(reference)document.documentElement.classList.remove('article-study-opening');setArticleReferenceContext(reference||document.documentElement.classList.contains('article-study-opening'));
  ui['screen-title'].textContent=title;ui['screen-subtitle'].textContent=subtitle;ui['screen-subtitle'].hidden=!subtitle;ui.back.hidden=!back;
@@ -141,7 +143,7 @@ function revealDocumentTarget(id){
 async function openDocument(id,paragraph,fromBack=false){const epoch=++state.epoch;if(!fromBack){if(state.screen==='document')state.documentHistory.push({id:state.documentId,scroll:window.scrollY});else{state.documentReturn={screen:state.screen,book:state.pickBook,section:state.section,scroll:window.scrollY};state.documentHistory=[];}}try{const data=await rpc('document',{publication:state.publication,id});if(epoch!==state.epoch)return;state.documentId=data.id;screen('document',data.title,'',true);ui['document-title'].textContent=data.title;ui['document-body'].replaceChildren();const blocks=[...(data.blocks||[])];const first=blocks[0];if(first?.type==='heading'&&(first.parts||[]).map(p=>p.text||'').join('').trim().toLocaleLowerCase('pt-BR')===String(data.title).trim().toLocaleLowerCase('pt-BR'))blocks.shift();renderDocumentBlocks(ui['document-body'],blocks);window.scrollTo(0,0);window.BibleMotion?.transition(ui.document,fromBack?'back':'forward');if(paragraph)requestAnimationFrame(()=>revealDocumentTarget('doc-p'+String(paragraph).replace(/^p/,'')));}catch(e){if(epoch===state.epoch)notice(e.message,true);}}
 function showLibrary(){++state.epoch;screen('library','Biblioteca','',true);window.scrollTo(0,0);}
 function showBookmarks(){if(state.screen!=='bookmarks')bookmarksFromReading=state.screen==='reading';++state.epoch;screen('bookmarks','Marcadores','',true);ui['bookmark-list'].replaceChildren();const marks=savedMarks();if(!marks.length){const p=document.createElement('p');p.className='page-hint';p.textContent='Durante a leitura, toque em um versículo e use o marcador no menu do texto para salvá-lo aqui.';ui['bookmark-list'].append(p);}for(const mark of marks){const row=document.createElement('div');row.className='saved-row';const open=button(mark.title,'',async()=>{if(mark.publication!==state.publication){ui.publication.value=mark.publication;await selectPublication(mark);if(mark.verse)document.getElementById(`verse-${mark.verse}`)?.scrollIntoView({block:'center'});}else await loadChapter(mark.book,mark.chapter,null,true,mark.verse??null);});const small=document.createElement('small');small.textContent=mark.edition;open.append(small);const remove=button('×','',()=>{save('jwpub-bookmarks',savedMarks().filter(m=>JSON.stringify(m)!==JSON.stringify(mark)));showBookmarks();});remove.setAttribute('aria-label','Remover '+mark.title);row.append(open,remove);ui['bookmark-list'].append(row);}window.scrollTo(0,0);}
-async function back(){if(state.screen==='study-reference')return returnToStudyArticle();if(state.screen==='reading'&&studyReferenceReturn){++state.epoch;const previous=studyReferenceReturn;studyReferenceReturn=null;showStudyReference(previous.data,'back');window.scrollTo(0,previous.scroll);return;}if(state.screen==='bookmarks'&&bookmarksFromReading){++state.epoch;return showReading(true);}if(state.screen==='reading')return showChapters(state.book,'back');if(state.screen==='chapters')return showBooks();if(state.screen==='document'){const previous=state.documentHistory.pop();if(previous){await openDocument(previous.id,null,true);window.scrollTo(0,previous.scroll);return;}const r=state.documentReturn;if(r?.screen==='chapters')await showChapters(r.book,'back');else if(r?.screen==='section')showSection(r.section);else if(r?.screen==='study-reference'&&studyReferenceData)showStudyReference(studyReferenceData);else showBooks();window.scrollTo(0,r?.scroll||0);return;}showBooks();}
+async function back(){if(state.screen==='search')return bibleSearch.close();if(state.screen==='study-reference')return returnToStudyArticle();if(state.screen==='reading'&&studyReferenceReturn){++state.epoch;const previous=studyReferenceReturn;studyReferenceReturn=null;showStudyReference(previous.data,'back');window.scrollTo(0,previous.scroll);return;}if(state.screen==='bookmarks'&&bookmarksFromReading){++state.epoch;return showReading(true);}if(state.screen==='reading')return showChapters(state.book,'back');if(state.screen==='chapters')return showBooks();if(state.screen==='document'){const previous=state.documentHistory.pop();if(previous){await openDocument(previous.id,null,true);window.scrollTo(0,previous.scroll);return;}const r=state.documentReturn;if(r?.screen==='chapters')await showChapters(r.book,'back');else if(r?.screen==='section')showSection(r.section);else if(r?.screen==='study-reference'&&studyReferenceData)showStudyReference(studyReferenceData);else showBooks();window.scrollTo(0,r?.scroll||0);return;}showBooks();}
 async function openSearchResult(item){
  const target=item.target||{};
  if(target.showChapters&&target.book)return showChapters(target.book);
@@ -373,6 +375,19 @@ const bibleSearchProvider=createBibleSearchProvider({
  getBooks:()=>state.books.map(book=>({...book,name:nameOf(book.number),aliases:[abbreviations[book.number-1]]})),
  readChapter:(book,chapter)=>rpc('chapter',{publication:state.publication,book,chapter})
 });
-const bibleSearch=initBibleSearch({dialog:ui['search-dialog'],getPublication:()=>state.publication,search:options=>bibleSearchProvider.search(options),onOpen:openSearchResult});
+const bibleSearch=initBibleSearch({view:ui['search-dialog'],getPublication:()=>state.publication,search:options=>bibleSearchProvider.search(options),onOpen:openSearchResult,
+ onEnter:()=>{
+  searchReturn={screen:state.screen,title:ui['screen-title'].textContent,subtitle:ui['screen-subtitle'].textContent,back:!ui.back.hidden,scroll:window.scrollY};
+  ++state.epoch;
+  screen('search','Buscar na Bíblia','',true);
+ },
+ onLeave:()=>{
+  const previous=searchReturn;searchReturn=null;
+  if(!previous)return;
+  screen(previous.screen,previous.title,previous.subtitle,previous.back);
+  // Result navigation may record this screen as its Back destination.
+  window.scrollTo({top:previous.scroll,left:0,behavior:'instant'});
+ }
+});
 ui.search.onclick=()=>bibleSearch.open(ui.search);
 start();

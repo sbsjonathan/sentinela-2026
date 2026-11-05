@@ -1,5 +1,5 @@
 'use strict';
-/* A search surface sized to the visible viewport, including the iPhone keyboard. */
+/* Search is a normal document screen: the browser owns keyboard panning and scrolling. */
 (() => {
   const defaultCategories = [
     ['all', 'Tudo'], ['verses', 'Versículos'], ['notes', 'Notas'],
@@ -46,15 +46,20 @@
     element.append(document.createTextNode(text.slice(cursor)));
   }
 
-  window.initBibleSearch = function initBibleSearch({dialog, getPublication, search, onOpen, getSuggestions}) {
-    if (!dialog || typeof search !== 'function') throw new Error('A busca não conseguiu iniciar.');
+  window.initBibleSearch = function initBibleSearch({view, getPublication, search, onOpen, getSuggestions, onEnter, onLeave}) {
+    if (!view || typeof search !== 'function') throw new Error('A busca não conseguiu iniciar.');
     const state = {publication:null, query:'', category:'all', items:[], counts:{}, total:0,
       hasMore:false, nextOffset:0, epoch:0, busy:false, responseTerms:[], trigger:null,
-      savedScroll:0, savedPaddingBottom:0, resultScroll:0, restoreScroll:true, restoreFocus:true, viewportBase:0, viewportWidth:0};
-    let debounceTimer, viewportFrame, viewportEvents;
-    let readingLock, readingEvents, unlockEvents, unlockObserver, unlockTimer, unlockFrame;
-    dialog.classList.add('bible-search-dialog');
-    dialog.setAttribute('aria-labelledby', 'search-title');
+      active:false, resultScroll:0, viewportBase:0};
+    let debounceTimer, closingPromise, resolveClose, closeOptions, enterAnimation, reopenRequest, historyExitReady = false;
+    const historyKey = 'bibleSearchView';
+    const historyToken = String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+    // A reload starts on the saved Bible screen, never on a stale search entry.
+    if (history.state?.[historyKey]) {
+      const clean = {...history.state}; delete clean[historyKey]; history.replaceState(clean, '');
+    }
+    view.classList.add('bible-search-page');
+    view.setAttribute('aria-labelledby', 'search-title');
     const surface = node('div', 'search-surface');
     const header = node('header', 'search-panel-header');
     const heading = node('h2', '', 'Buscar na Bíblia'); heading.id = 'search-title';
@@ -78,7 +83,7 @@
     const results = node('div', 'search-result-list'); results.id = 'search-results';
     const moreButton = node('button', 'search-load-more', 'Mostrar mais resultados'); moreButton.type = 'button'; moreButton.hidden = true;
     const footer = node('p', 'search-coverage', 'Versículos, notas, índices e apêndices desta Bíblia.');
-    resultsScroll.append(results, moreButton, footer); surface.append(header, form, categories, status, resultsScroll); dialog.replaceChildren(surface);
+    resultsScroll.append(results, moreButton, footer); surface.append(header, form, categories, status, resultsScroll); view.replaceChildren(surface);
 
     function addCategory(key, title) {
       const tab = node('button', 'search-category'); tab.type = 'button'; tab.id = 'search-category-' + key;
@@ -112,7 +117,7 @@
       moreButton.disabled = busy; moreButton.textContent = busy ? 'Buscando…' : 'Mostrar mais resultados';
     }
     async function selectResult(item) {
-      if(!await close({restoreScroll:false, restoreFocus:false}))return;
+      if(closingPromise || !await close({restoreScroll:false, restoreFocus:false}))return;
       try { await onOpen?.(item); }
       catch (error) { open(state.trigger, {focus:false}); showMessage(error?.message || 'Não foi possível abrir este resultado.', true); }
     }
@@ -139,7 +144,7 @@
     function renderSuggestions() {
       state.items = []; state.counts = {}; state.total = 0; state.hasMore = false; state.nextOffset = 0; state.responseTerms = []; state.resultScroll = 0;
       updateCategories(); updateBusy(false); results.replaceChildren(); moreButton.hidden = true;
-      resultsScroll.scrollTop = 0;
+      if (state.active && document.activeElement !== input) window.scrollTo({top:0,left:0,behavior:'instant'});
       showMessage('Pesquise uma palavra ou abra uma passagem.');
       const examples = node('div', 'search-examples');
       for (const term of ['Sangue', 'Amor', 'Fé', 'João 3:16']) {
@@ -155,13 +160,13 @@
       const query = input.value.trim(); state.query = query; clearButton.hidden = !query;
       const epoch = ++state.epoch;
       if (!query) { renderSuggestions(); return; }
-      if (!append) { state.items = []; state.counts = {}; state.hasMore = false; state.nextOffset = 0; state.resultScroll = 0; results.replaceChildren(); resultsScroll.scrollTop = 0; moreButton.hidden = true; updateCategories(); }
+      if (!append) { state.items = []; state.counts = {}; state.hasMore = false; state.nextOffset = 0; state.resultScroll = 0; results.replaceChildren(); if (state.active && document.activeElement !== input) window.scrollTo({top:0,left:0,behavior:'instant'}); moreButton.hidden = true; updateCategories(); }
       updateBusy(true); showMessage(append ? 'Buscando mais resultados…' : 'Buscando em versículos, notas e índices…');
       try {
         const publication = getPublication?.();
         const response = await search({query, category:state.category, offset:append ? state.nextOffset : 0, limit:40,
-          onProgress:message => { if (epoch === state.epoch && dialog.open) showMessage(typeof message === 'string' ? message : message?.message || 'Preparando a busca…'); }});
-        if (epoch !== state.epoch || !dialog.open || publication !== getPublication?.()) return;
+          onProgress:message => { if (epoch === state.epoch && state.active) showMessage(typeof message === 'string' ? message : message?.message || 'Preparando a busca…'); }});
+        if (epoch !== state.epoch || !state.active || publication !== getPublication?.()) return;
         state.responseTerms = response.queryTerms || response.terms || query.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
         const nextItems = Array.isArray(response.items) ? response.items : [];
         const appendFrom = append ? state.items.length : 0;
@@ -176,7 +181,7 @@
           const hint = node('p', 'search-empty', 'Tente outra palavra, uma expressão mais curta ou uma referência como João 3:16.'); results.append(hint);
         }
       } catch (error) {
-        if (epoch !== state.epoch || !dialog.open) return;
+        if (epoch !== state.epoch || !state.active) return;
         showMessage(error?.message || 'Não foi possível concluir a busca. Tente novamente.', true);
         if (!append) { const retry = node('button', 'search-retry', 'Tentar novamente'); retry.type = 'button'; retry.onclick = () => runSearch(false); results.replaceChildren(retry); }
       } finally { if (epoch === state.epoch) updateBusy(false); }
@@ -185,146 +190,116 @@
       ++state.epoch; clearTimeout(debounceTimer); state.category = 'all'; clearButton.hidden = !input.value;
       if (immediate || !input.value.trim()) runSearch(false); else debounceTimer = setTimeout(() => runSearch(false), 220);
     }
-    function measureViewport() {
-      viewportFrame = 0; if (!dialog.open) return;
-      const viewport = window.visualViewport;
-      const height = Math.max(1, viewport?.height || innerHeight);
-      const width = Math.max(1, viewport?.width || innerWidth);
-      if (Math.abs(width - state.viewportWidth) > 80) { state.viewportBase = Math.max(height, innerHeight); state.viewportWidth = width; }
-      state.viewportBase = Math.max(state.viewportBase, height);
-      dialog.style.setProperty('--search-viewport-top', `${Math.max(0, viewport?.offsetTop || 0)}px`);
-      dialog.style.setProperty('--search-viewport-left', `${Math.max(0, viewport?.offsetLeft || 0)}px`);
-      dialog.style.setProperty('--search-viewport-height', `${height}px`);
-      dialog.style.setProperty('--search-viewport-width', `${width}px`);
-      const keyboardOpen = state.viewportBase - height > 120;
-      dialog.classList.toggle('search-keyboard-open', keyboardOpen);
-      dialog.classList.toggle('search-compact', keyboardOpen || height < 460);
-    }
-    function queueViewport() { if (!viewportFrame) viewportFrame = requestAnimationFrame(measureViewport); }
-    function open(trigger, {focus = true} = {}) {
+    function open(trigger, {focus = true, fromHistory = false} = {}) {
+      if (closingPromise) { reopenRequest = {trigger, fromHistory}; return; }
       const publication = getPublication?.();
       if (state.publication !== publication) { reset(); state.publication = publication; }
-      if (dialog.open&&!window.BibleDialogs?.isClosing(dialog)) { if (focus) input.focus({preventScroll:true}); return; }
+      if (state.active) { if (focus) input.focus({preventScroll:true}); return; }
       state.trigger = trigger || document.activeElement;
-      lockReadingPosition();
-      state.restoreScroll = true; state.restoreFocus = true;
-      state.viewportBase = Math.max(innerHeight, window.visualViewport?.height || 0); state.viewportWidth = window.visualViewport?.width || innerWidth;
-      document.body.classList.add('sheet-open'); if(window.BibleDialogs)window.BibleDialogs.show(dialog);else dialog.showModal(); measureViewport();
-      viewportEvents?.abort(); viewportEvents = new AbortController();
-      const options = {passive:true, signal:viewportEvents.signal};
-      window.visualViewport?.addEventListener('resize', queueViewport, options);
-      window.visualViewport?.addEventListener('scroll', queueViewport, options);
-      addEventListener('resize', queueViewport, options); addEventListener('orientationchange', queueViewport, options);
-      if (focus) input.focus({preventScroll:true}); else closeButton.focus({preventScroll:true});
-      if (input.value.trim()) { if (!state.items.length || state.query !== input.value.trim()) runSearch(false); else { renderItems(); updateCategories(); resultsScroll.scrollTop = state.resultScroll; } }
-      else renderSuggestions();
+      state.viewportBase = Math.max(innerHeight, window.visualViewport?.height || 0);
+      // Save the reading entry before changing the DOM or focusing an input.
+      if (!fromHistory) history.pushState({...history.state, [historyKey]:historyToken}, '');
+      onEnter?.(); view.hidden = false; state.active = true;
+      if (input.value.trim()) {
+        if (!state.items.length || state.query !== input.value.trim()) runSearch(false);
+        else { renderItems(); updateCategories(); }
+      } else renderSuggestions();
+      const resumeResults = state.items.length > 0 && state.resultScroll > 0;
+      if (!resumeResults) state.resultScroll = 0;
+      window.scrollTo({top:state.resultScroll,left:0,behavior:'instant'});
+      // Focusing an off-screen input makes iOS pan even with preventScroll.
+      // Resume a scrolled result list without reopening the keyboard.
+      if (focus && !resumeResults) input.focus({preventScroll:true});
+      else closeButton.focus({preventScroll:true});
+      enterAnimation?.cancel();
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && view.animate)
+        enterAnimation = view.animate([{opacity:0},{opacity:1}], {duration:160,easing:'ease-out'});
     }
-    function close({restoreScroll = true, restoreFocus = true} = {}) {
-      state.restoreScroll = restoreScroll; state.restoreFocus = restoreFocus;
-      state.resultScroll = resultsScroll.scrollTop;
+    function keyboardReleased() {
+      // No viewport position/height writes. Wait only when leaving a keyboard
+      // session, so the restored reading isn't clamped before the navbar returns.
+      return new Promise(resolve => {
+        let timer, frame, finished = false;
+        const events = new AbortController();
+        const done = () => {
+          if (finished) return; finished = true;
+          events.abort(); clearTimeout(timer); cancelAnimationFrame(frame);
+          window.UnifiedNavbar?.instance?.syncBottomUI();
+          requestAnimationFrame(() => requestAnimationFrame(resolve));
+        };
+        const check = () => {
+          const viewport = window.visualViewport;
+          if (!viewport || viewport.height >= state.viewportBase - 120) {
+            if (!frame) frame = requestAnimationFrame(done);
+          }
+        };
+        window.visualViewport?.addEventListener('resize', check, {passive:true,signal:events.signal});
+        window.visualViewport?.addEventListener('scroll', check, {passive:true,signal:events.signal});
+        // A WebKit viewport may never report its final resize; never trap Back.
+        timer = setTimeout(done, 700);
+        check();
+      });
+    }
+    function finishClose(options = {restoreScroll:true, restoreFocus:true}) {
+      if (!state.active) return;
+      state.active = false;
       ++state.epoch; clearTimeout(debounceTimer); updateBusy(false);
-      if (dialog.contains(document.activeElement)) document.activeElement.blur();
-      if(window.BibleDialogs)return window.BibleDialogs.close(dialog);
-      if (dialog.open) dialog.close();
-      return Promise.resolve(true);
+      if (view.contains(document.activeElement)) document.activeElement.blur();
+      enterAnimation?.cancel(); view.hidden = true;
+      onLeave?.(options);
+      if (options.restoreFocus && state.trigger?.isConnected) state.trigger.focus({preventScroll:true});
+      // Let same-document history restoration complete before opening a result.
+      requestAnimationFrame(() => {
+        const resolve = resolveClose;
+        resolveClose = null; closingPromise = null; closeOptions = null; historyExitReady = false;
+        resolve?.(true);
+        if (reopenRequest) { const pending = reopenRequest; reopenRequest = null; open(pending.trigger, {focus:false, fromHistory:pending.fromHistory}); }
+      });
     }
-    function rememberStyles(element, properties) {
-      return properties.map(name => [name, element.style.getPropertyValue(name), element.style.getPropertyPriority(name)]);
+    function close({restoreScroll = true, restoreFocus = true, fromHistory = false} = {}) {
+      if (closingPromise) return closingPromise;
+      if (!state.active) return Promise.resolve(false);
+      state.resultScroll = window.scrollY;
+      ++state.epoch; clearTimeout(debounceTimer); updateBusy(false);
+      closeOptions = {restoreScroll, restoreFocus, fromHistory};
+      closingPromise = new Promise(resolve => { resolveClose = resolve; });
+      const result = closingPromise;
+      if (view.contains(document.activeElement)) document.activeElement.blur();
+      keyboardReleased().then(() => {
+        if (!state.active || closingPromise !== result) return;
+        if (closeOptions.fromHistory || history.state?.[historyKey] !== historyToken) finishClose(closeOptions);
+        else { historyExitReady = true; history.back(); }
+      });
+      return result;
     }
-    function restoreStyles(element, properties) {
-      for (const [name, value, priority] of properties) {
-        if (value) element.style.setProperty(name, value, priority); else element.style.removeProperty(name);
+    window.addEventListener('popstate', event => {
+      if (event.state?.[historyKey] === historyToken) {
+        if (!state.active) open(state.trigger, {focus:false, fromHistory:true});
+        else if (closingPromise) {
+          // Forward can reverse a Back gesture before the keyboard settles.
+          const resolve = resolveClose;
+          resolveClose = null; closingPromise = null; closeOptions = null; historyExitReady = false;
+          resolve?.(false);
+        }
+      } else if (state.active) {
+        if (historyExitReady) finishClose(closeOptions);
+        else if (closingPromise) closeOptions.fromHistory = true;
+        else close({fromHistory:true});
       }
-    }
-    function cancelUnlock() {
-      unlockEvents?.abort(); unlockEvents = null;
-      unlockObserver?.disconnect(); unlockObserver = null;
-      clearTimeout(unlockTimer); cancelAnimationFrame(unlockFrame); unlockFrame = 0;
-    }
-    function lockReadingPosition() {
-      cancelUnlock();
-      if (readingLock) return;
-      const root = document.documentElement, body = document.body;
-      state.savedScroll = window.scrollY;
-      state.savedPaddingBottom = parseFloat(getComputedStyle(body).paddingBottom) || 0;
-      readingLock = {
-        x:window.scrollX, y:state.savedScroll,
-        root:rememberStyles(root, ['overflow-x','overflow-y','overscroll-behavior-x','overscroll-behavior-y','scroll-behavior']),
-        body:rememberStyles(body, ['position','top','left','right','width','overflow-x','overflow-y'])
-      };
-      root.style.setProperty('scroll-behavior','auto','important');
-      for (const axis of ['x','y']) {
-        root.style.setProperty('overflow-'+axis,'hidden','important');
-        root.style.setProperty('overscroll-behavior-'+axis,'none','important');
-        body.style.setProperty('overflow-'+axis,'hidden','important');
-      }
-      // overflow:hidden alone lets iOS pan the document when the keyboard opens.
-      body.style.setProperty('position','fixed','important');
-      body.style.setProperty('top',`${-readingLock.y}px`,'important');
-      body.style.setProperty('left',`${-readingLock.x}px`,'important');
-      body.style.setProperty('right','0','important');
-      body.style.setProperty('width','100%','important');
-      readingEvents = new AbortController();
-      const resumeGesture = () => { if (!dialog.open) unlockReadingPosition(); };
-      for (const type of ['pointerdown','touchstart','wheel','keydown'])
-        document.addEventListener(type, resumeGesture, {capture:true,passive:true,signal:readingEvents.signal});
-    }
-    function unlockReadingPosition() {
-      cancelUnlock();
-      const lock = readingLock; if (!lock) return;
-      readingLock = null; readingEvents?.abort(); readingEvents = null;
-      const root = document.documentElement;
-      restoreStyles(document.body, lock.body);
-      // Restore once, with smooth document scrolling disabled for this operation.
-      restoreStyles(root, lock.root.filter(([name]) => name !== 'scroll-behavior'));
-      window.scrollTo(lock.x, lock.y);
-      restoreStyles(root, lock.root.filter(([name]) => name === 'scroll-behavior'));
-    }
-    function releaseReadingPosition(waitForKeyboard) {
-      cancelUnlock();
-      if (!readingLock) return;
-      if (!waitForKeyboard) { unlockReadingPosition(); return; }
-      const ready = () => {
-        const keyboardClosed = !window.visualViewport || window.visualViewport.height >= state.viewportBase - 120;
-        const padding = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
-        return keyboardClosed && padding >= state.savedPaddingBottom - 1;
-      };
-      if (ready()) { unlockReadingPosition(); return; }
-      // Keep the frozen page still while the keyboard/nav reserve settles. Events
-      // trigger one final restoration; never fight a gesture with a scroll loop.
-      unlockEvents = new AbortController();
-      const options = {passive:true, signal:unlockEvents.signal};
-      const check = () => {
-        if (unlockFrame) return;
-        unlockFrame = requestAnimationFrame(() => { unlockFrame = 0; if (!dialog.open && ready()) unlockReadingPosition(); });
-      };
-      window.visualViewport?.addEventListener('resize', check, options);
-      addEventListener('resize', check, options);
-      unlockObserver = new MutationObserver(check);
-      unlockObserver.observe(document.body, {attributes:true,attributeFilter:['class','style']});
-      unlockObserver.observe(document.documentElement, {attributes:true,attributeFilter:['style']});
-      unlockTimer = setTimeout(unlockReadingPosition, 650);
-      check();
-    }
+    });
     function reset() {
       ++state.epoch; clearTimeout(debounceTimer); state.query = ''; state.category = 'all'; state.items = []; state.responseTerms = [];
       input.value = ''; clearButton.hidden = true; renderSuggestions();
     }
-    resultsScroll.addEventListener('scroll', () => { if (dialog.open && !window.BibleDialogs?.isClosing(dialog)) state.resultScroll = resultsScroll.scrollTop; }, {passive:true});
+    window.addEventListener('scroll', () => { if (state.active && !closingPromise) state.resultScroll = window.scrollY; }, {passive:true});
     input.addEventListener('input', () => inputChanged());
-    input.addEventListener('focus', queueViewport);
     form.addEventListener('submit', event => { event.preventDefault(); runSearch(false); });
     clearButton.onclick = () => { input.value = ''; inputChanged(true); input.focus({preventScroll:true}); };
     closeButton.onclick = () => close(); moreButton.onclick = () => { if (!state.busy) runSearch(true); };
-    dialog.addEventListener('cancel', () => { state.resultScroll = resultsScroll.scrollTop; });
-    dialog.addEventListener('close', () => {
-      if (dialog.open) return;
-      ++state.epoch; clearTimeout(debounceTimer); viewportEvents?.abort(); cancelAnimationFrame(viewportFrame); viewportFrame = 0; updateBusy(false);
-      if (!document.querySelector('dialog[open]')) document.body.classList.remove('sheet-open');
-      releaseReadingPosition(state.restoreScroll);
-      if (state.restoreFocus && state.trigger?.isConnected) state.trigger.focus({preventScroll:true});
+    view.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !event.isComposing) { event.preventDefault(); close(); }
     });
     updateCategories();
-    return {open, close, reset};
+    return {open, close, reset, isOpen:() => state.active};
   };
 })();
