@@ -100,5 +100,57 @@
       "descent": -300,
       "lineGap": 0
     }
+  },
+  {
+    "family": "WTClearText",
+    "weight": "500",
+    "style": "normal",
+    "file": "wt-cleartext-medium.woff2",
+    "source": "User-provided JW Library Android 15.9.1 APK",
+    "sourcePath": "assets/webapp/fonts/Wt-ClearText-Medium.ttf",
+    "upstreamSha256": "b7f87006a6b3364621535c3974831dfcf4e432dfcc00fdfeeb067d66e47bd4ca",
+    "copyright": "Notice Copyright (c) 2026 Watch Tower Bible and Tract Society of Pennsylvania. All rights reserved.",
+    "localModification": {
+      "description": "Converted full TrueType face to WOFF2 without subsetting; names, copyright and glyph coverage preserved."
+    }
+  },
+  {
+    "family": "WTClearText",
+    "weight": "500",
+    "style": "italic",
+    "file": "wt-cleartext-medium-italic.woff2",
+    "source": "User-provided JW Library Android 15.9.1 APK",
+    "sourcePath": "assets/webapp/fonts/Wt-ClearText-MediumItalic.ttf",
+    "upstreamSha256": "db2e6737f1c402696c0540d33d1677a4fd72c9587691f93405407bb132c902b8",
+    "copyright": "Notice Copyright (c) 2026 Watch Tower Bible and Tract Society of Pennsylvania. All rights reserved.",
+    "localModification": {
+      "description": "Converted full TrueType face to WOFF2 without subsetting; names, copyright and glyph coverage preserved."
+    }
+  },
+  {
+    "family": "WTClearText",
+    "weight": "700",
+    "style": "normal",
+    "file": "wt-cleartext-bold.woff2",
+    "source": "User-provided JW Library Android 15.9.1 APK",
+    "sourcePath": "assets/webapp/fonts/Wt-ClearText-Bold.ttf",
+    "upstreamSha256": "0a184f389c25f13b2b5ed4f1724dea2c2c1d82c04a48b6c3970482347bdfff43",
+    "copyright": "Notice Copyright (c) 2026 Watch Tower Bible and Tract Society of Pennsylvania. All rights reserved.",
+    "localModification": {
+      "description": "Converted full TrueType face to WOFF2 without subsetting; names, copyright and glyph coverage preserved."
+    }
+  },
+  {
+    "family": "WTClearText",
+    "weight": "700",
+    "style": "italic",
+    "file": "wt-cleartext-bold-italic.woff2",
+    "source": "User-provided JW Library Android 15.9.1 APK",
+    "sourcePath": "assets/webapp/fonts/Wt-ClearText-BoldItalic.ttf",
+    "upstreamSha256": "d80b30d665d5546bda75cf3b291631e472235afc189cc3bf7effca26825f2416",
+    "copyright": "Notice Copyright (c) 2026 Watch Tower Bible and Tract Society of Pennsylvania. All rights reserved.",
+    "localModification": {
+      "description": "Converted full TrueType face to WOFF2 without subsetting; names, copyright and glyph coverage preserved."
+    }
   }
 ]

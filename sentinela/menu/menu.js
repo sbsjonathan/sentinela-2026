@@ -5,9 +5,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!barraEstudo || !mainContent) return;
 
     const FONTE_STORAGE_KEY = 'tamanho-fonte-global';
-    const FONTE_PADRAO = window.GlobalFontScale?.defaultSize || 16;
-    const FONTE_MIN = window.GlobalFontScale?.minSize || 16;
-    const FONTE_MAX = window.GlobalFontScale?.maxSize || 30;
+    const FONTE_PADRAO = 19.36;
+    const NIVEL_PADRAO = 3;
+    const NIVEL_MIN = 1;
+    const NIVEL_MAX = 11;
+    // Fallback for legacy cached articles whose shared module loads after this menu.
+    const TAMANHOS_FONTE = Array.from({ length: NIVEL_MAX }, (_, index) =>
+        Number((FONTE_PADRAO * Math.pow(30 / FONTE_PADRAO, (index + 1 - NIVEL_PADRAO) / 8)).toFixed(2))
+    );
     const urlParams = new URLSearchParams(window.location.search);
     const semanaAtual = window.semanaAtual || urlParams.get('semana') || 'Atual';
     const estudoId = window.estudoId || document.body.dataset.estudo || '';
@@ -80,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <div class="range-shell">
                 <span class="range-linha" aria-hidden="true"></span>
                 <span class="range-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                <input type="range" id="range-tamanho-fonte" min="${FONTE_MIN}" max="${FONTE_MAX}" step="1" value="16">
+                <input type="range" id="range-tamanho-fonte" aria-label="Tamanho da fonte" min="${NIVEL_MIN}" max="${NIVEL_MAX}" step="1" value="${NIVEL_PADRAO}">
               </div>
             </div>
           </div>
@@ -675,33 +680,44 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    function atualizarRangeVisual(valorAtual) {
-      const percentual = ((valorAtual - FONTE_MIN) / (FONTE_MAX - FONTE_MIN)) * 100;
+    function nivelDoTamanho(tamanho) {
+      if (window.GlobalFontScale?.levelForSize) return window.GlobalFontScale.levelForSize(tamanho);
+      return TAMANHOS_FONTE.reduce((nearest, size, index) =>
+          Math.abs(size - tamanho) < Math.abs(TAMANHOS_FONTE[nearest] - tamanho) ? index : nearest, 0) + 1;
+    }
+
+    function atualizarRangeVisual(nivel) {
+      const percentual = ((nivel - NIVEL_MIN) / (NIVEL_MAX - NIVEL_MIN)) * 100;
+      rangeTamanhoFonte.value = String(nivel);
+      rangeTamanhoFonte.setAttribute('aria-valuetext', `Nível ${nivel} de ${NIVEL_MAX}${nivel === NIVEL_PADRAO ? ', padrão' : ''}`);
       rangeTamanhoFonte.style.setProperty('--range-progress', `${percentual}%`);
       rangeTamanhoFonte.closest('.range-shell')?.style.setProperty('--range-progress', `${percentual}%`);
     }
 
-    function aplicarTamanhoFonte(novoTamanho) {
-      const tamanhoSeguro = Math.min(FONTE_MAX, Math.max(FONTE_MIN, parseInt(novoTamanho, 10) || FONTE_PADRAO));
-      if (window.GlobalFontScale?.setSize) {
-          window.GlobalFontScale.setSize(tamanhoSeguro);
+    function aplicarNivelFonte(novoNivel) {
+      const nivel = Math.min(NIVEL_MAX, Math.max(NIVEL_MIN, Math.round(Number(novoNivel)) || NIVEL_PADRAO));
+      const tamanhoSeguro = TAMANHOS_FONTE[nivel - 1];
+      if (window.GlobalFontScale?.setLevel) {
+          window.GlobalFontScale.setLevel(nivel);
       } else {
           document.documentElement.style.setProperty('--tamanho-fonte', `${tamanhoSeguro}px`);
           document.documentElement.style.setProperty('--font-base-global', `${tamanhoSeguro}px`);
-          document.documentElement.style.setProperty('--font-scale-global', String(tamanhoSeguro / FONTE_PADRAO));
+          document.documentElement.style.setProperty('--font-scale-global', String(tamanhoSeguro / 16));
+          document.documentElement.style.setProperty('--read-size', `${tamanhoSeguro}px`);
+          document.documentElement.dataset.fontSizeGlobal = String(tamanhoSeguro);
+          document.documentElement.dataset.fontLevelGlobal = String(nivel);
           try { localStorage.setItem(FONTE_STORAGE_KEY, tamanhoSeguro); } catch (error) {}
       }
-      rangeTamanhoFonte.value = String(tamanhoSeguro);
-      atualizarRangeVisual(tamanhoSeguro);
+      atualizarRangeVisual(nivel);
     }
 
     if (rangeTamanhoFonte) {
-      rangeTamanhoFonte.addEventListener('input', (event) => aplicarTamanhoFonte(event.target.value));
+      rangeTamanhoFonte.addEventListener('input', (event) => aplicarNivelFonte(event.target.value));
       ['change', 'touchend', 'pointerup', 'mouseup'].forEach((nomeEvento) => {
           rangeTamanhoFonte.addEventListener(nomeEvento, () => {
-              const valorMagnetico = Math.round(parseFloat(rangeTamanhoFonte.value) || FONTE_PADRAO);
+              const valorMagnetico = Math.round(parseFloat(rangeTamanhoFonte.value) || NIVEL_PADRAO);
               if (String(valorMagnetico) !== rangeTamanhoFonte.value) rangeTamanhoFonte.value = String(valorMagnetico);
-              aplicarTamanhoFonte(valorMagnetico);
+              aplicarNivelFonte(valorMagnetico);
           });
       });
     }
@@ -709,15 +725,13 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener('globalfont:changed', (event) => {
       const tamanho = event?.detail?.size;
       if (!tamanho || !rangeTamanhoFonte) return;
-      rangeTamanhoFonte.value = String(tamanho);
-      atualizarRangeVisual(tamanho);
+      atualizarRangeVisual(nivelDoTamanho(tamanho));
     });
 
     initTheme();
     updatePerfIcon();
     const tamanhoFonteSalvo = window.GlobalFontScale?.getSize() || FONTE_PADRAO;
     if (rangeTamanhoFonte) {
-      rangeTamanhoFonte.value = String(tamanhoFonteSalvo);
-      atualizarRangeVisual(tamanhoFonteSalvo);
+      atualizarRangeVisual(nivelDoTamanho(tamanhoFonteSalvo));
     }
 });

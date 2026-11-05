@@ -6,8 +6,8 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --font-base-default: 16;
-  --font-base-global: 16px;
-  --font-scale-global: 1;
+  --font-base-global: 19.36px;
+  --font-scale-global: 1.21;
 
   --bg-body: #f3f4f6;
   --bg-container: #ffffff;
@@ -229,7 +229,7 @@ b .bbl {
 
 .paragrafo {
     color: var(--text-main);
-    font-size: var(--font-base-global, 16px);
+    font-size: var(--font-base-global, 19.36px);
     margin-bottom: calc(24px * var(--font-scale-global));
     line-height: 1.62;
     -webkit-user-select: text;

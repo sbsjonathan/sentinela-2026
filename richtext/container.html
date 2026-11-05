@@ -13,15 +13,7 @@
   <script>
     (function() {
       try {
-        var size = localStorage.getItem('tamanho-fonte-global') || 16;
-        var safeSize = Math.min(26, Math.max(16, parseInt(size, 10)));
-        var scale = safeSize / 16;
         var root = document.documentElement;
-        root.style.setProperty('--tamanho-fonte', safeSize + 'px');
-        root.style.setProperty('--font-base-default', '16');
-        root.style.setProperty('--font-base-global', safeSize + 'px');
-        root.style.setProperty('--font-scale-global', scale);
-        root.dataset.fontSizeGlobal = safeSize;
 
         var theme = localStorage.getItem('tema-interface') || 'system';
         var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);

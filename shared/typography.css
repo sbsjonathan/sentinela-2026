@@ -1,13 +1,13 @@
 @import url('../biblia/fonts/fonts.css');
 
-/* The shared preference supplies a pixel size, starting at 16px. Authored note
+/* The shared preference supplies a pixel size, starting at 19.36px (level 3 of 11). Authored note
    formatting is left on the element instead of being rewritten. */
 html[data-font-size-global] {
-    font-size: var(--font-base-global, 16px);
+    font-size: var(--font-base-global, 19.36px);
 }
 html[data-font-size-global] body {
     font-family: "Noto Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: var(--font-base-global, 16px);
+    font-size: var(--font-base-global, 19.36px);
 }
 html[data-font-size-global] :is(input, select, textarea) {
     font-family: inherit;
@@ -18,14 +18,14 @@ html[data-font-size-global] :is(input, select, textarea) {
 html[data-font-size-global] .sentinela-bible :is(.verses, .study-reference-verse),
 html[data-font-size-global] .paragrafo,
 html[data-font-size-global] #modal-biblia-corpo p {
-    font-size: var(--font-base-global, 16px);
+    font-size: var(--font-base-global, 19.36px);
 }
 html[data-font-size-global] .sentinela-bible :is(.document, .note-body) {
     font-size: var(--font-base-global);
 }
 html[data-font-size-global] .sentinela-bible :is(.verses, .note-body),
 html[data-font-size-global] .sentinela-bible .document p {
-    font-family: "Sumana", Georgia, serif;
+    font-family: "WTClearText", Georgia, serif;
 }
 
 /* Navigation remains readable at large settings. Its existing ResizeObserver

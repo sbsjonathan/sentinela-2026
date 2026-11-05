@@ -1,7 +1,7 @@
 /* stylebbl.css - Código completo com os ajustes de espaço e cor */
 
-/* Importação das fontes (alternativa, melhor fazer no HTML) */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Sumana:wght@400;700&display=swap');
+/* Local fonts are available in downloaded/offline articles too. */
+@import url('../../biblia/fonts/fonts.css');
 
 /* --- Estilo para as referências clicáveis na página --- */
 .bbl {
@@ -102,8 +102,8 @@
 
 /* --- Estilo dos Parágrafos com os Versículos --- */
 #modal-biblia-corpo p {
-  font-family: 'Sumana', serif;
-  font-size: var(--font-base-global, 16px);
+  font-family: 'WTClearText', serif;
+  font-size: var(--font-base-global, 19.36px);
   line-height: 1.7;
   color: #555;
   margin-bottom: calc(12px * var(--font-scale-global));

@@ -10,10 +10,10 @@
   --plus-bg-active: #dededb;
   --plus-color: #7a7a76;
   --toolbar-border: rgba(0,0,0,0.08);
-  --font-base-global: 16px;
-  --font-scale-global: 1;
+  --font-base-global: 19.36px;
+  --font-scale-global: 1.21;
   --editor-body-font-size: var(--font-base-global);
-  --editor-normal-font-size: var(--font-base-global, 16px);
+  --editor-normal-font-size: var(--font-base-global, 19.36px);
   --editor-row-height: calc(28px * var(--font-scale-global));
   --editor-arrow-width: calc(35px * var(--font-scale-global));
   --editor-arrow-height: calc(28px * var(--font-scale-global));
