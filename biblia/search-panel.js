@@ -52,6 +52,7 @@
       hasMore:false, nextOffset:0, epoch:0, busy:false, responseTerms:[], trigger:null,
       savedScroll:0, savedPaddingBottom:0, resultScroll:0, restoreScroll:true, restoreFocus:true, viewportBase:0, viewportWidth:0};
     let debounceTimer, viewportFrame, viewportEvents;
+    let readingLock, readingEvents, unlockEvents, unlockObserver, unlockTimer, unlockFrame;
     dialog.classList.add('bible-search-dialog');
     dialog.setAttribute('aria-labelledby', 'search-title');
     const surface = node('div', 'search-surface');
@@ -130,10 +131,10 @@
       if (reason) card.append(node('span', 'search-result-reason', reason));
       card.onclick = () => selectResult(item); return card;
     }
-    function renderItems() {
-      const scroll = resultsScroll.scrollTop;
-      results.replaceChildren(...state.items.map(renderItem)); moreButton.hidden = !state.hasMore;
-      resultsScroll.scrollTop = scroll;
+    function renderItems(appendFrom = 0) {
+      if (appendFrom) results.append(...state.items.slice(appendFrom).map(renderItem));
+      else results.replaceChildren(...state.items.map(renderItem));
+      moreButton.hidden = !state.hasMore;
     }
     function renderSuggestions() {
       state.items = []; state.counts = {}; state.total = 0; state.hasMore = false; state.nextOffset = 0; state.responseTerms = []; state.resultScroll = 0;
@@ -163,11 +164,12 @@
         if (epoch !== state.epoch || !dialog.open || publication !== getPublication?.()) return;
         state.responseTerms = response.queryTerms || response.terms || query.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
         const nextItems = Array.isArray(response.items) ? response.items : [];
+        const appendFrom = append ? state.items.length : 0;
         state.items = append ? state.items.concat(nextItems) : nextItems;
         state.counts = response.counts || {}; state.total = Number(response.total) || 0;
         state.nextOffset = Number.isFinite(response.nextOffset) ? response.nextOffset : (append ? state.nextOffset : 0) + nextItems.length;
         state.hasMore = response.hasMore == null ? state.nextOffset < state.total : Boolean(response.hasMore);
-        renderItems(); updateCategories();
+        renderItems(appendFrom); updateCategories();
         if (state.total) showMessage(response.message || `${state.total.toLocaleString('pt-BR')} ${state.total === 1 ? 'resultado' : 'resultados'} para “${query}”.`);
         else {
           showMessage(response.message || `Nenhum resultado para “${query}”.`);
@@ -194,15 +196,17 @@
       dialog.style.setProperty('--search-viewport-left', `${Math.max(0, viewport?.offsetLeft || 0)}px`);
       dialog.style.setProperty('--search-viewport-height', `${height}px`);
       dialog.style.setProperty('--search-viewport-width', `${width}px`);
-      dialog.classList.toggle('search-keyboard-open', state.viewportBase - height > 120);
+      const keyboardOpen = state.viewportBase - height > 120;
+      dialog.classList.toggle('search-keyboard-open', keyboardOpen);
+      dialog.classList.toggle('search-compact', keyboardOpen || height < 460);
     }
     function queueViewport() { if (!viewportFrame) viewportFrame = requestAnimationFrame(measureViewport); }
     function open(trigger, {focus = true} = {}) {
       const publication = getPublication?.();
       if (state.publication !== publication) { reset(); state.publication = publication; }
       if (dialog.open&&!window.BibleDialogs?.isClosing(dialog)) { if (focus) input.focus({preventScroll:true}); return; }
-      state.trigger = trigger || document.activeElement; state.savedScroll = window.scrollY;
-      state.savedPaddingBottom = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+      state.trigger = trigger || document.activeElement;
+      lockReadingPosition();
       state.restoreScroll = true; state.restoreFocus = true;
       state.viewportBase = Math.max(innerHeight, window.visualViewport?.height || 0); state.viewportWidth = window.visualViewport?.width || innerWidth;
       document.body.classList.add('sheet-open'); if(window.BibleDialogs)window.BibleDialogs.show(dialog);else dialog.showModal(); measureViewport();
@@ -218,33 +222,95 @@
     function close({restoreScroll = true, restoreFocus = true} = {}) {
       state.restoreScroll = restoreScroll; state.restoreFocus = restoreFocus;
       state.resultScroll = resultsScroll.scrollTop;
+      ++state.epoch; clearTimeout(debounceTimer); updateBusy(false);
       if (dialog.contains(document.activeElement)) document.activeElement.blur();
       if(window.BibleDialogs)return window.BibleDialogs.close(dialog);
       if (dialog.open) dialog.close();
       return Promise.resolve(true);
     }
-    function restoreReadingPosition() {
-      // The shared menu restores its reserved space after focusout and two frames.
-      // iOS also animates the keyboard: wait for that geometry before finishing.
-      const epoch = state.epoch, top = state.savedScroll, deadline = performance.now() + 1200;
-      const events = new AbortController();
-      const cancel = () => events.abort();
-      for (const type of ['pointerdown', 'touchstart', 'wheel'])
-        document.addEventListener(type, cancel, {passive:true, signal:events.signal});
-      const restore = () => {
-        if (events.signal.aborted || dialog.open || epoch !== state.epoch) { cancel(); return; }
-        window.scrollTo(0, top);
-        const padding = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
-        const keyboardClosed = !window.visualViewport || window.visualViewport.height >= state.viewportBase - 120;
-        if (performance.now() >= deadline || keyboardClosed && padding >= state.savedPaddingBottom - 1 && Math.abs(window.scrollY - top) <= 1) cancel();
-        else requestAnimationFrame(restore);
+    function rememberStyles(element, properties) {
+      return properties.map(name => [name, element.style.getPropertyValue(name), element.style.getPropertyPriority(name)]);
+    }
+    function restoreStyles(element, properties) {
+      for (const [name, value, priority] of properties) {
+        if (value) element.style.setProperty(name, value, priority); else element.style.removeProperty(name);
+      }
+    }
+    function cancelUnlock() {
+      unlockEvents?.abort(); unlockEvents = null;
+      unlockObserver?.disconnect(); unlockObserver = null;
+      clearTimeout(unlockTimer); cancelAnimationFrame(unlockFrame); unlockFrame = 0;
+    }
+    function lockReadingPosition() {
+      cancelUnlock();
+      if (readingLock) return;
+      const root = document.documentElement, body = document.body;
+      state.savedScroll = window.scrollY;
+      state.savedPaddingBottom = parseFloat(getComputedStyle(body).paddingBottom) || 0;
+      readingLock = {
+        x:window.scrollX, y:state.savedScroll,
+        root:rememberStyles(root, ['overflow-x','overflow-y','overscroll-behavior-x','overscroll-behavior-y','scroll-behavior']),
+        body:rememberStyles(body, ['position','top','left','right','width','overflow-x','overflow-y'])
       };
-      requestAnimationFrame(restore);
+      root.style.setProperty('scroll-behavior','auto','important');
+      for (const axis of ['x','y']) {
+        root.style.setProperty('overflow-'+axis,'hidden','important');
+        root.style.setProperty('overscroll-behavior-'+axis,'none','important');
+        body.style.setProperty('overflow-'+axis,'hidden','important');
+      }
+      // overflow:hidden alone lets iOS pan the document when the keyboard opens.
+      body.style.setProperty('position','fixed','important');
+      body.style.setProperty('top',`${-readingLock.y}px`,'important');
+      body.style.setProperty('left',`${-readingLock.x}px`,'important');
+      body.style.setProperty('right','0','important');
+      body.style.setProperty('width','100%','important');
+      readingEvents = new AbortController();
+      const resumeGesture = () => { if (!dialog.open) unlockReadingPosition(); };
+      for (const type of ['pointerdown','touchstart','wheel','keydown'])
+        document.addEventListener(type, resumeGesture, {capture:true,passive:true,signal:readingEvents.signal});
+    }
+    function unlockReadingPosition() {
+      cancelUnlock();
+      const lock = readingLock; if (!lock) return;
+      readingLock = null; readingEvents?.abort(); readingEvents = null;
+      const root = document.documentElement;
+      restoreStyles(document.body, lock.body);
+      // Restore once, with smooth document scrolling disabled for this operation.
+      restoreStyles(root, lock.root.filter(([name]) => name !== 'scroll-behavior'));
+      window.scrollTo(lock.x, lock.y);
+      restoreStyles(root, lock.root.filter(([name]) => name === 'scroll-behavior'));
+    }
+    function releaseReadingPosition(waitForKeyboard) {
+      cancelUnlock();
+      if (!readingLock) return;
+      if (!waitForKeyboard) { unlockReadingPosition(); return; }
+      const ready = () => {
+        const keyboardClosed = !window.visualViewport || window.visualViewport.height >= state.viewportBase - 120;
+        const padding = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+        return keyboardClosed && padding >= state.savedPaddingBottom - 1;
+      };
+      if (ready()) { unlockReadingPosition(); return; }
+      // Keep the frozen page still while the keyboard/nav reserve settles. Events
+      // trigger one final restoration; never fight a gesture with a scroll loop.
+      unlockEvents = new AbortController();
+      const options = {passive:true, signal:unlockEvents.signal};
+      const check = () => {
+        if (unlockFrame) return;
+        unlockFrame = requestAnimationFrame(() => { unlockFrame = 0; if (!dialog.open && ready()) unlockReadingPosition(); });
+      };
+      window.visualViewport?.addEventListener('resize', check, options);
+      addEventListener('resize', check, options);
+      unlockObserver = new MutationObserver(check);
+      unlockObserver.observe(document.body, {attributes:true,attributeFilter:['class','style']});
+      unlockObserver.observe(document.documentElement, {attributes:true,attributeFilter:['style']});
+      unlockTimer = setTimeout(unlockReadingPosition, 650);
+      check();
     }
     function reset() {
       ++state.epoch; clearTimeout(debounceTimer); state.query = ''; state.category = 'all'; state.items = []; state.responseTerms = [];
       input.value = ''; clearButton.hidden = true; renderSuggestions();
     }
+    resultsScroll.addEventListener('scroll', () => { if (dialog.open && !window.BibleDialogs?.isClosing(dialog)) state.resultScroll = resultsScroll.scrollTop; }, {passive:true});
     input.addEventListener('input', () => inputChanged());
     input.addEventListener('focus', queueViewport);
     form.addEventListener('submit', event => { event.preventDefault(); runSearch(false); });
@@ -252,9 +318,10 @@
     closeButton.onclick = () => close(); moreButton.onclick = () => { if (!state.busy) runSearch(true); };
     dialog.addEventListener('cancel', () => { state.resultScroll = resultsScroll.scrollTop; });
     dialog.addEventListener('close', () => {
+      if (dialog.open) return;
       ++state.epoch; clearTimeout(debounceTimer); viewportEvents?.abort(); cancelAnimationFrame(viewportFrame); viewportFrame = 0; updateBusy(false);
       if (!document.querySelector('dialog[open]')) document.body.classList.remove('sheet-open');
-      if (state.restoreScroll) restoreReadingPosition();
+      releaseReadingPosition(state.restoreScroll);
       if (state.restoreFocus && state.trigger?.isConnected) state.trigger.focus({preventScroll:true});
     });
     updateCategories();

@@ -75,16 +75,18 @@
         }
       }
       const books = matchesBook(query);
-      const exactBook = books.length === 1 && [books[0].name,...(books[0].aliases||[])].some(alias => compact(alias) === compact(query));
-      if (exactBook && (!options.category || options.category === 'all')) {
-        const offset = Math.max(0, Number(options.offset) || 0), limit = Math.min(60, Math.max(2, Number(options.limit) || 30));
-        const result = await request({publication,query,category:'all',offset:Math.max(0,offset-1),limit:offset ? limit : limit-1}, options.onProgress);
-        const quickLink = {id:`book:${publication}:${books[0].number}`,kind:'book',title:books[0].name,
-          source:'Livro bíblico',snippet:`${books[0].chapters} capítulos · Abrir a lista de capítulos`,target:{book:Number(books[0].number),showChapters:true}};
-        const items = offset ? result.items : [quickLink,...result.items];
-        return {...result,items,total:result.total+1,counts:{...result.counts,all:result.counts.all+1},hasMore:offset+items.length<result.total+1};
-      }
-      return request({publication,query,category:options.category||'all',offset:options.offset||0,limit:options.limit||30}, options.onProgress);
+      const category=options.category||'all',offset=Math.max(0,Math.floor(Number(options.offset)||0)),limit=Math.min(60,Math.max(1,Math.floor(Number(options.limit)||30)));
+      const shortcuts=books.map(book=>({id:`book:${publication}:${book.number}`,kind:'book',title:book.name,
+        source:'Livro bíblico',snippet:`${book.chapters} capítulos · Abrir a lista de capítulos`,terms:[book.name],
+        target:{book:Number(book.number),showChapters:true}}));
+      const quickItems=category==='all'?shortcuts.slice(offset,offset+limit):[];
+      const textOffset=category==='all'?Math.max(0,offset-shortcuts.length):offset;
+      const textLimit=limit-quickItems.length;
+      // Count lexical results even when a page contains only book shortcuts.
+      const result=await request({publication,query,category,offset:textOffset,limit:Math.max(1,textLimit)},options.onProgress);
+      const items=[...quickItems,...(textLimit?result.items:[])],total=result.total+(category==='all'?shortcuts.length:0);
+      return {...result,items,total,counts:{...result.counts,all:result.counts.all+shortcuts.length,books:shortcuts.length},
+        nextOffset:offset+items.length,hasMore:offset+items.length<total};
     }
     return {search, destroy:() => stop(new Error('Busca encerrada.'))};
   };
