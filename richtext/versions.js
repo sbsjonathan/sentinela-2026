@@ -119,6 +119,28 @@
     overlay.hidden = true;
     if (trigger?.isConnected) trigger.focus({preventScroll:true});
   }
+  function updateDiagnosticActions() {
+    if (!overlay) return;
+    const active = current === '2' && window.NotesAuraDiagnostics?.enabled;
+    overlay.querySelector('#notes-start-aura-diagnostic').hidden = current !== '2' || !!active;
+    for (const id of ['copy','download','stop']) overlay.querySelector('#notes-' + id + '-aura-diagnostic').hidden = !active;
+  }
+  function startAuraDiagnostic() {
+    if (current !== '2') return;
+    close();
+    window.__NOTES_AURA_DIAGNOSTIC_REQUESTED__ = true;
+    if (window.NotesAuraDiagnostics?.enabled) return;
+    let script = document.getElementById('notes-aura-diagnostic-script');
+    if (!script) {
+      script = document.createElement('script'); script.id = 'notes-aura-diagnostic-script';
+      script.src = new URL('aura-diagnostics.js', scriptURL).href; script.async = false;
+      script.onerror = () => {
+        script.remove(); delete window.__NOTES_AURA_DIAGNOSTIC_REQUESTED__;
+        open(); message.textContent = 'Não foi possível iniciar a verificação. Tente novamente.';
+      };
+      document.head.append(script);
+    }
+  }
   function build() {
     overlay = document.createElement('div'); overlay.className = 'notes-version-overlay'; overlay.id = 'notes-versions'; overlay.hidden = true;
     overlay.innerHTML = `<section class="notes-version-card" role="dialog" aria-modal="true" aria-labelledby="notes-versions-title">
@@ -130,6 +152,10 @@
       <button type="button" id="notes-export-current" class="notes-version-export">Exportar nota desta semana</button>
       <button type="button" id="notes-export-original" class="notes-version-export" hidden>Exportar cópia anterior à v2</button>
       <button type="button" id="notes-export-recovery" class="notes-version-export" hidden>Exportar cópias preservadas</button>
+      <button type="button" id="notes-start-aura-diagnostic" class="notes-version-export" hidden>Verificar bordas da tela</button>
+      <button type="button" id="notes-copy-aura-diagnostic" class="notes-version-export" hidden>Copiar diagnóstico da aura</button>
+      <button type="button" id="notes-download-aura-diagnostic" class="notes-version-export" hidden>Baixar diagnóstico da aura</button>
+      <button type="button" id="notes-stop-aura-diagnostic" class="notes-version-export" hidden>Encerrar verificação</button>
     </section>`;
     document.body.append(overlay); message = overlay.querySelector('#notes-version-message');
     overlay.querySelector('#notes-versions-close').onclick = close;
@@ -145,6 +171,16 @@
     };
     overlay.querySelector('#notes-export-recovery').onclick = () => {
       download(JSON.stringify({type:'notes-recovery', semana:initialWeek, copies:recoveryCopies()}, null, 2), `anotacoes-recuperadas-${initialWeek}.json`);
+    };
+    overlay.querySelector('#notes-start-aura-diagnostic').onclick = startAuraDiagnostic;
+    overlay.querySelector('#notes-copy-aura-diagnostic').onclick = () => {
+      window.NotesAuraDiagnostics?.copy().then(copied => {
+        message.textContent = copied ? 'Diagnóstico copiado. Ele não contém o texto das suas notas.' : 'Não foi possível copiar. Use Baixar diagnóstico da aura.';
+      });
+    };
+    overlay.querySelector('#notes-download-aura-diagnostic').onclick = () => window.NotesAuraDiagnostics?.download();
+    overlay.querySelector('#notes-stop-aura-diagnostic').onclick = () => {
+      window.NotesAuraDiagnostics?.stop(); updateDiagnosticActions(); message.textContent = 'Verificação encerrada.';
     };
     overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
     overlay.addEventListener('keydown', event => {
@@ -163,7 +199,9 @@
     message.textContent = backupError ? 'Não foi possível guardar a cópia inicial neste dispositivo. Você pode exportar sua nota.' : '';
     overlay.hidden = false; overlay.querySelector('#notes-versions-close').focus({preventScroll:true});
     overlay.querySelector('#notes-export-recovery').hidden = !recoveryCopies().length;
+    updateDiagnosticActions();
     getBackup().then(backup => { overlay.querySelector('#notes-export-original').hidden = !backup?.raw; }).catch(() => {});
   }
+  window.addEventListener('notes:aura-diagnostics-ready', updateDiagnosticActions);
   window.NotesVersions = {current, ready, open, close, switchTo, getBackup, exportCurrent};
 })();

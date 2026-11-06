@@ -286,6 +286,32 @@
   contain: layout paint style;
 }
 
+/* The installed iPhone PWA has a second solid status-area surface. Keep its
+   opaque base, but let this v2 decoration paint above it while the aura runs.
+   The aura stays below the toolbar and Bible modal. */
+html[data-notes-version="2"].leitor-glow-active #app-solid-statusbar {
+  z-index: 95;
+}
+
+/* The local mask duplicates that solid surface. A color fade can leave its
+   composited layer covering the first aura frames in WebKit. */
+html[data-notes-version="2"].leitor-glow-active .statusbar-mask {
+  visibility: hidden;
+  transition: none;
+}
+
+/* Do not move a composited dock outside the PWA while its keyboard settles.
+   Keeping it measurable avoids changing the existing bottom-layout metrics.
+   The glow class survives the exit animation, so restoration happens afterward. */
+html[data-notes-version="2"] body.leitor-keep-toolbar .bottom-navbar,
+html[data-notes-version="2"].leitor-glow-active .bottom-navbar {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  transform: none !important;
+  transition: none !important;
+  pointer-events: none !important;
+}
+
 .leitor-fx__fog,
 .leitor-fx__smoke {
   position: absolute;

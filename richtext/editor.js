@@ -452,6 +452,8 @@ const M8_MultiSel = {
 const M11_Layout = {
   lines: 5,
   raf: 0,
+  viewportRaf: 0,
+  viewportChecks: [],
   lineHeight() {
     const sample = M1_Config.editor.querySelector('.toggle-title, .text-content, .paragraph-content');
     return parseFloat(getComputedStyle(sample || M1_Config.editor).lineHeight) || 23.2;
@@ -459,13 +461,19 @@ const M11_Layout = {
   toolbarHeight() {
     return M1_Config.toolbar.getBoundingClientRect().height || 0;
   },
+  hasEditableFocus() {
+    const editor = M1_Config.editor;
+    const active = document.activeElement;
+    return editor.isContentEditable && active?.isContentEditable &&
+      (active === editor || editor.contains(active)) &&
+      !document.body.classList.contains('leitor-keep-toolbar');
+  },
   adjustViewport() {
     const vv = window.visualViewport;
-    const active = document.activeElement;
-    const editing = active === M1_Config.editor || M1_Config.editor.contains(active);
     // Only the editor owns this layout. A modal's input must not resize the
-    // document behind it or force the native iOS viewport back to the top.
-    const height = vv && editing
+    // document behind it. A retained selection/focus in read mode is not an
+    // editable focus, even while iOS is still dismissing its keyboard.
+    const height = vv && this.hasEditableFocus()
       ? `${Math.min(innerHeight, vv.height + Math.max(0, vv.offsetTop))}px`
       : '';
     if (document.body.style.height !== height) {
@@ -473,13 +481,40 @@ const M11_Layout = {
       document.dispatchEvent(new Event('editor:viewport-layout'));
     }
   },
+  scheduleViewport() {
+    if (this.viewportRaf) return;
+    this.viewportRaf = requestAnimationFrame(() => {
+      this.viewportRaf = 0;
+      const previousHeight = document.body.getBoundingClientRect().height;
+      this.adjustViewport();
+      this.adjustPadding();
+      // Opening the keyboard may cover the caret. Its dismissal and viewport
+      // recovery must not pull the user's reading position toward a stale caret.
+      if (this.hasEditableFocus() && document.body.getBoundingClientRect().height < previousHeight - 1) {
+        this.ensureCaretVisible();
+      }
+    });
+  },
+  cancelViewportChecks() {
+    this.viewportChecks.forEach(clearTimeout);
+    this.viewportChecks = [];
+  },
+  revalidateViewport() {
+    this.cancelViewportChecks();
+    // Restore the CSS-owned page height synchronously when editing ends. The
+    // final visualViewport event is not guaranteed to arrive after focusout.
+    if (!this.hasEditableFocus()) this.adjustViewport();
+    this.scheduleViewport();
+    // iOS may settle its native viewport after blur/pageshow. These bounded
+    // checks read the current state and never infer keyboard state from selection.
+    this.viewportChecks = [150, 500].map(delay => setTimeout(() => this.scheduleViewport(), delay));
+  },
   adjustPadding() {
     const respiro = this.lineHeight() * this.lines;
     M1_Config.editor.style.paddingBottom = (respiro + this.toolbarHeight()) + 'px';
   },
   ensureCaretVisible() {
-    const active = document.activeElement;
-    if (active !== M1_Config.editor && !M1_Config.editor.contains(active)) return;
+    if (!this.hasEditableFocus()) return;
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount || !M1_Config.editor.contains(sel.anchorNode)) return;
     const range = sel.getRangeAt(0).cloneRange();
@@ -1360,11 +1395,19 @@ const M10_EditorEvents = {
       }
     });
 
-    window.addEventListener('resize', () => M11_Layout.schedule(), { passive: true });
+    document.addEventListener('focusin', () => M11_Layout.revalidateViewport());
+    document.addEventListener('focusout', () => M11_Layout.revalidateViewport());
+    window.addEventListener('pageshow', () => M11_Layout.revalidateViewport());
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') M11_Layout.revalidateViewport();
+      else M11_Layout.cancelViewportChecks();
+    });
+    window.addEventListener('pagehide', () => M11_Layout.cancelViewportChecks());
+    window.addEventListener('resize', () => M11_Layout.scheduleViewport(), { passive: true });
 
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => M11_Layout.schedule(2), { passive: true });
-      window.visualViewport.addEventListener('scroll', () => M11_Layout.schedule(2), { passive: true });
+      window.visualViewport.addEventListener('resize', () => M11_Layout.scheduleViewport(), { passive: true });
+      window.visualViewport.addEventListener('scroll', () => M11_Layout.scheduleViewport(), { passive: true });
     }
   }
 };

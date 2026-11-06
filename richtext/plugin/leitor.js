@@ -89,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function createLeitorBorderFx(anchorEl) {
     const host = document.createElement('div');
     host.className = 'leitor-fx';
+    host.setAttribute('aria-hidden', 'true');
     host.innerHTML = `<div class="leitor-fx__fog"><canvas aria-hidden="true"></canvas></div><div class="leitor-fx__smoke"><canvas aria-hidden="true"></canvas></div>`;
     document.body.appendChild(host);
     const fogCanvas = host.querySelector('.leitor-fx__fog canvas'), glowCanvas = host.querySelector('.leitor-fx__smoke canvas');
@@ -108,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const STEADY_FLUID_MS = 45;
     const STEADY_FOG_MS = 45;
     let path = null, waves = [];
+    let measureRaf = 0, settleTimers = [], destroyed = false;
 
     const rand = (lo, hi) => lo + Math.random() * (hi - lo);
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -206,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
       fluidCtx.globalCompositeOperation = 'source-over';
     }
 
-    function getButtonCenter() { const br = anchorEl.getBoundingClientRect(), fr = fogCanvas.getBoundingClientRect(); return { x: br.left + br.width * 0.5 - fr.left, y: br.top + br.height * 0.5 - fr.top }; }
+    function getButtonCenter() { const br = anchorEl.getBoundingClientRect(), fr = host.getBoundingClientRect(); return { x: br.left + br.width * 0.5 - fr.left, y: br.top + br.height * 0.5 - fr.top }; }
     function cornerRadius(bx, by) { return Math.hypot(Math.max(bx, W - bx), Math.max(by, H - by)); }
 
     function renderFog(time) {
@@ -288,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function render(time) {
+      if (!path) { raf = 0; return; }
       const dt = Math.min(0.08, Math.max(0.03, (time - (lastTime || time)) / 1000)); lastTime = time;
       glowCtx.clearRect(0, 0, W, H);
       for (const w of waves) w.pos = (w.pos + w.speed * dt + 1) % 1;
@@ -318,26 +321,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function ensureRunning() { if (raf) return; lastTime = 0; raf = requestAnimationFrame(render); }
     function resize() {
-      const vv = window.visualViewport; W = Math.round(vv ? vv.width : window.innerWidth); H = Math.round(vv ? vv.height : window.innerHeight);
-      dpr = Math.min(window.devicePixelRatio || 1, 1.5); fogDpr = Math.min(dpr, 0.9);
-      host.style.width = `${W}px`; host.style.height = `${H}px`; glowCanvas.width = Math.round(W * dpr); glowCanvas.height = Math.round(H * dpr);
-      glowCanvas.style.width = `${W}px`; glowCanvas.style.height = `${H}px`; glowCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      fogCanvas.width = Math.round(W * dpr); fogCanvas.height = Math.round(H * dpr); fogCanvas.style.width = `${W}px`; fogCanvas.style.height = `${H}px`;
+      if (destroyed) return;
+      // The decoration belongs to the PWA's fixed surface, not the reduced
+      // visual viewport above a keyboard. Measuring the same host we paint in
+      // also avoids applying WebKit's viewport offsets a second time.
+      const rect = host.getBoundingClientRect();
+      const width = Math.round(rect.width), height = Math.round(rect.height);
+      const nextDpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      if (width <= 0 || height <= 0 || (width === W && height === H && nextDpr === dpr)) return;
+      W = width; H = height; dpr = nextDpr; fogDpr = Math.min(dpr, 0.9);
+      glowCanvas.width = Math.round(W * dpr); glowCanvas.height = Math.round(H * dpr);
+      glowCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      fogCanvas.width = Math.round(W * dpr); fogCanvas.height = Math.round(H * dpr);
       fogCtx.setTransform(dpr, 0, 0, dpr, 0, 0); fogCtx.imageSmoothingEnabled = true;
-      buildPath(); initFluid(); initGrain(); buildWaves(); lastTime = 0; lastFluidPaint = 0;
+      buildPath(); initFluid(); initGrain(); buildWaves(); lastTime = 0; lastFluidPaint = 0; lastFogBlit = 0;
+      if (isEffectOn || fogAnim) ensureRunning();
+    }
+    function scheduleResize() {
+      if (destroyed || measureRaf) return;
+      measureRaf = requestAnimationFrame(() => { measureRaf = 0; resize(); });
+    }
+    function clearPendingMeasurements() {
+      if (measureRaf) cancelAnimationFrame(measureRaf);
+      measureRaf = 0;
+      settleTimers.forEach(clearTimeout); settleTimers = [];
+    }
+    function revalidateAfterTransition() {
+      clearPendingMeasurements(); scheduleResize();
+      // Native keyboard dismissal can settle after focusout or the last resize.
+      // These bounded reads do not reset canvases when their size is unchanged.
+      settleTimers = [150, 500].map(delay => setTimeout(scheduleResize, delay));
+    }
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') revalidateAfterTransition();
     }
     function setEnabled(next) {
-      if (next) { isEffectOn = true; glowAlpha = 0; boomAnim = null; fogAnim = { dir: 'on', startTime: performance.now(), duration: 350 }; host.classList.add('is-mounted'); document.documentElement.classList.add('leitor-glow-active'); ensureRunning(); return; }
+      if (next) { resize(); revalidateAfterTransition(); isEffectOn = true; glowAlpha = 0; boomAnim = null; fogAnim = { dir: 'on', startTime: performance.now(), duration: 350 }; host.classList.add('is-mounted'); document.documentElement.classList.add('leitor-glow-active'); ensureRunning(); return; }
       if (!isEffectOn && !fogAnim) return; boomAnim = null; fogAnim = { dir: 'off', startTime: performance.now(), duration: 300 }; ensureRunning();
     }
     function forceOff() {
       isEffectOn = false; glowAlpha = 0; fogAnim = null; boomAnim = null; lastFogBlit = 0; host.classList.remove('is-mounted'); document.documentElement.classList.remove('leitor-glow-active'); glowCtx.clearRect(0, 0, W, H); fogCtx.clearRect(0, 0, W, H);
       if (raf) { cancelAnimationFrame(raf); raf = 0; } lastTime = 0;
     }
+    function onPageHide() { clearPendingMeasurements(); forceOff(); }
     function destroy() {
-      forceOff(); window.removeEventListener('resize', resize); window.visualViewport?.removeEventListener('resize', resize); window.visualViewport?.removeEventListener('scroll', resize); host.remove();
+      onPageHide(); destroyed = true; observer?.disconnect();
+      window.removeEventListener('resize', scheduleResize);
+      window.removeEventListener('orientationchange', revalidateAfterTransition);
+      window.visualViewport?.removeEventListener('resize', scheduleResize);
+      window.visualViewport?.removeEventListener('scroll', scheduleResize);
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('pageshow', revalidateAfterTransition);
+      document.removeEventListener('focusout', revalidateAfterTransition);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      document.removeEventListener('editor:viewport-layout', scheduleResize);
+      host.remove();
     }
-    window.addEventListener('resize', resize); window.visualViewport?.addEventListener('resize', resize); window.visualViewport?.addEventListener('scroll', resize); window.addEventListener('pagehide', forceOff);
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(scheduleResize) : null;
+    observer?.observe(host);
+    window.addEventListener('resize', scheduleResize, { passive: true });
+    window.addEventListener('orientationchange', revalidateAfterTransition, { passive: true });
+    window.visualViewport?.addEventListener('resize', scheduleResize, { passive: true });
+    window.visualViewport?.addEventListener('scroll', scheduleResize, { passive: true });
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', revalidateAfterTransition);
+    document.addEventListener('focusout', revalidateAfterTransition);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    document.addEventListener('editor:viewport-layout', scheduleResize);
     resize(); return { setEnabled, forceOff, destroy };
   }
 
@@ -347,6 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const version = ++modeVersion;
     editor.setAttribute('contenteditable', 'false'); editor.classList.add('is-read-only');
     document.body.classList.add('leitor-keep-toolbar'); document.body.classList.add('editor-has-focus');
+    M11_Layout.revalidateViewport?.();
     window.M4_Caret?.updateFocus?.();
     if (window.M12_History) window.M12_History._leitorPaused = true;
     leitorBtn.classList.add('is-active'); leitorBtn.setAttribute('aria-pressed', 'true');
@@ -368,6 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const replacement = removeAllLinks(reference); leitorFx?.setEnabled(false);
     editor.setAttribute('contenteditable', 'true'); editor.classList.remove('is-read-only');
     document.body.classList.remove('leitor-keep-toolbar');
+    M11_Layout.revalidateViewport?.();
     if (window.M12_History) window.M12_History._leitorPaused = false;
     leitorBtn.classList.remove('is-active'); leitorBtn.setAttribute('aria-pressed', 'false');
     setToolbarLocked(false); setTimeout(() => window.M4_Caret?.updateFocus?.(), 0);
@@ -471,6 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const resetArtifacts = () => {
     leitorFx?.forceOff(); editor.setAttribute('contenteditable', 'true'); editor.classList.remove('is-read-only'); document.body.classList.remove('leitor-keep-toolbar');
+    M11_Layout.revalidateViewport?.();
     leitorBtn.classList.remove('is-active'); leitorBtn.setAttribute('aria-pressed', 'false'); setToolbarLocked(false);
     if (window.M12_History) window.M12_History._leitorPaused = false; window.M4_Caret?.updateFocus?.();
     editor.querySelectorAll('.bbl').forEach(s => s.replaceWith(document.createTextNode(s.textContent))); allEditables().forEach(el => el.normalize());
