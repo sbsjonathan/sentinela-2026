@@ -66,9 +66,17 @@
   function syncViewport() {
     const modal = byId('modal-biblia'); if (!current || !modal) return;
     const view = window.visualViewport;
-    modal.classList.toggle('is-compact', (view?.height || innerHeight) < 420);
-    modal.style.setProperty('--notes-bible-viewport-height', (view?.height || innerHeight) + 'px');
-    modal.style.setProperty('--notes-bible-viewport-top', (view?.offsetTop || 0) + 'px');
+    const surface = window.NotesViewport?.enabled ? window.NotesViewport.measure() : null;
+    let height = view?.height || innerHeight, top = view?.offsetTop || 0;
+    // The backdrop must reach the same bottom as the border after dismissal.
+    // Keep the reduced visual viewport while a keyboard or pinch zoom needs it.
+    if (surface && (!view || Math.abs(view.scale - 1) < 0.01) &&
+        surface.height - (height + Math.max(0, top)) <= 100) {
+      height = surface.height; top = 0;
+    }
+    modal.classList.toggle('is-compact', height < 420);
+    modal.style.setProperty('--notes-bible-viewport-height', height + 'px');
+    modal.style.setProperty('--notes-bible-viewport-top', top + 'px');
   }
   function setError(message) {
     if (!current) return;
@@ -275,6 +283,7 @@
   }
   function normalizeBblLinks(root = document) { root.querySelectorAll('.bbl').forEach(setupBblLinkListeners); }
   window.addEventListener('resize', syncViewport, {passive:true});
+  document.addEventListener('notes:surface-resize', syncViewport);
   window.visualViewport?.addEventListener('resize', syncViewport, {passive:true});
   window.visualViewport?.addEventListener('scroll', syncViewport, {passive:true});
   window.addEventListener('notes:restored', () => { if (current?.trigger && !current.trigger.isConnected) fecharModal({restoreFocus:false}); });

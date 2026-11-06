@@ -322,10 +322,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function ensureRunning() { if (raf) return; lastTime = 0; raf = requestAnimationFrame(render); }
     function resize() {
       if (destroyed) return;
-      // The decoration belongs to the PWA's fixed surface, not the reduced
-      // visual viewport above a keyboard. Measuring the same host we paint in
-      // also avoids applying WebKit's viewport offsets a second time.
-      const rect = host.getBoundingClientRect();
+      // PWA dimensions come from the independent full-surface measurement,
+      // not a fixed inset box that can itself be shortened after the keyboard.
+      const rect = window.NotesViewport?.enabled
+        ? window.NotesViewport.measure() : host.getBoundingClientRect();
       const width = Math.round(rect.width), height = Math.round(rect.height);
       const nextDpr = Math.min(window.devicePixelRatio || 1, 1.5);
       if (width <= 0 || height <= 0 || (width === W && height === H && nextDpr === dpr)) return;
@@ -375,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.removeEventListener('focusout', revalidateAfterTransition);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       document.removeEventListener('editor:viewport-layout', scheduleResize);
+      document.removeEventListener('notes:surface-resize', scheduleResize);
       host.remove();
     }
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(scheduleResize) : null;
@@ -388,6 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('focusout', revalidateAfterTransition);
     document.addEventListener('visibilitychange', onVisibilityChange);
     document.addEventListener('editor:viewport-layout', scheduleResize);
+    document.addEventListener('notes:surface-resize', scheduleResize);
     resize(); return { setEnabled, forceOff, destroy };
   }
 

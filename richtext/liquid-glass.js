@@ -306,11 +306,17 @@
     let raf = 0;
 
     function resize() {
-      dpr = Math.max(1, Math.min(MAX_DPR, window.devicePixelRatio || 1));
-      window.__liquidGlassDpr = dpr;
+      const nextDpr = Math.max(1, Math.min(MAX_DPR, window.devicePixelRatio || 1));
       const vv = window.visualViewport;
-      viewportWidth = Math.round(vv ? vv.width : window.innerWidth);
-      viewportHeight = Math.round(vv ? vv.height : window.innerHeight);
+      const reserved = document.body.classList.contains('leitor-keep-toolbar') || document.body.classList.contains('zombie-toolbar-active');
+      const surface = window.NotesViewport?.enabled
+        ? reserved ? window.NotesViewport.measure() : document.querySelector('.app')?.getBoundingClientRect()
+        : null;
+      const width = Math.round(surface?.width || (vv ? vv.width : window.innerWidth));
+      const height = Math.round(surface?.height || (vv ? vv.height : window.innerHeight));
+      if (viewportWidth === width && viewportHeight === height && dpr === nextDpr) return;
+      dpr = nextDpr; viewportWidth = width; viewportHeight = height;
+      window.__liquidGlassDpr = dpr;
 
       fx.width = Math.round(viewportWidth * dpr);
       fx.height = Math.round(viewportHeight * dpr);
@@ -429,6 +435,12 @@
     const events =['scroll', 'input', 'keyup', 'mouseup', 'touchmove', 'touchend'];
     events.forEach(name => editorScroll.addEventListener(name, requestRender, { passive: true }));
     editor.addEventListener('input', requestRender);
+    if (window.NotesViewport?.enabled) {
+      const syncSurface = () => { resize(); requestRender(); };
+      document.addEventListener('notes:surface-resize', syncSurface);
+      document.addEventListener('editor:viewport-layout', syncSurface);
+      new MutationObserver(syncSurface).observe(document.body, {attributes:true, attributeFilter:['class']});
+    }
     window.addEventListener('resize', () => {
       resize();
       requestRender();

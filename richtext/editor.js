@@ -468,29 +468,57 @@ const M11_Layout = {
       (active === editor || editor.contains(active)) &&
       !document.body.classList.contains('leitor-keep-toolbar');
   },
-  adjustViewport() {
+  viewportState() {
+    const surface = window.NotesViewport;
+    const measuredHeight = surface?.enabled ? surface.measure().height : innerHeight;
+    const fullHeight = Number.isFinite(measuredHeight) && measuredHeight > 0 ? measuredHeight : innerHeight;
     const vv = window.visualViewport;
-    // Only the editor owns this layout. A modal's input must not resize the
-    // document behind it. A retained selection/focus in read mode is not an
-    // editable focus, even while iOS is still dismissing its keyboard.
-    const height = vv && this.hasEditableFocus()
-      ? `${Math.min(innerHeight, vv.height + Math.max(0, vv.offsetTop))}px`
-      : '';
+    const unzoomed = !vv || Math.abs(vv.scale - 1) < 0.01;
+    const visualBottom = vv ? Math.min(fullHeight, vv.height + Math.max(0, vv.offsetTop)) : fullHeight;
+    const editing = this.hasEditableFocus();
+    const active = document.activeElement;
+    const externalInput = !!active && !M1_Config.editor.contains(active) &&
+      (active.isContentEditable || active.matches?.('input, textarea, select'));
+    // As in v1, a small stale inset after dismissal is not a keyboard. Focus
+    // may remain inside contenteditable after iOS has already hidden it.
+    const viewportOccluded = unzoomed && fullHeight - visualBottom > 100;
+    return {fullHeight, visualBottom, editing, externalInput, unzoomed,
+      viewportOccluded, keyboardOpen:editing && viewportOccluded, managed:!!surface?.enabled};
+  },
+  adjustViewport() {
+    const state = this.viewportState();
+    // A modal's input owns its own viewport. The editor uses the full app
+    // surface unless an actual editable focus also has a keyboard-sized gap.
+    const height = state.keyboardOpen ? `${state.visualBottom}px` : state.managed ? `${state.fullHeight}px` : '';
     if (document.body.style.height !== height) {
       document.body.style.height = height;
       document.dispatchEvent(new Event('editor:viewport-layout'));
     }
+    return state;
+  },
+  recoverPageOrigin(state) {
+    // Notes scroll inside #editorScroll. Only the unintended outer-page pan
+    // is reset after dismissal; a modal input or pinch zoom must retain it.
+    if (!state.managed || !state.unzoomed || state.viewportOccluded || state.externalInput) return;
+    const root = document.scrollingElement;
+    if (!scrollX && !scrollY && !root?.scrollLeft && !root?.scrollTop) return;
+    const scroller = M1_Config.scroll;
+    const top = scroller.scrollTop, left = scroller.scrollLeft;
+    window.scrollTo(0, 0);
+    if (scroller.scrollTop !== top) scroller.scrollTop = top;
+    if (scroller.scrollLeft !== left) scroller.scrollLeft = left;
   },
   scheduleViewport() {
     if (this.viewportRaf) return;
     this.viewportRaf = requestAnimationFrame(() => {
       this.viewportRaf = 0;
       const previousHeight = document.body.getBoundingClientRect().height;
-      this.adjustViewport();
+      const state = this.adjustViewport();
       this.adjustPadding();
+      this.recoverPageOrigin(state);
       // Opening the keyboard may cover the caret. Its dismissal and viewport
       // recovery must not pull the user's reading position toward a stale caret.
-      if (this.hasEditableFocus() && document.body.getBoundingClientRect().height < previousHeight - 1) {
+      if (state.keyboardOpen && document.body.getBoundingClientRect().height < previousHeight - 1) {
         this.ensureCaretVisible();
       }
     });
@@ -1404,6 +1432,10 @@ const M10_EditorEvents = {
     });
     window.addEventListener('pagehide', () => M11_Layout.cancelViewportChecks());
     window.addEventListener('resize', () => M11_Layout.scheduleViewport(), { passive: true });
+    window.addEventListener('scroll', () => {
+      if (window.NotesViewport?.enabled) M11_Layout.scheduleViewport();
+    }, { passive: true });
+    document.addEventListener('notes:surface-resize', () => M11_Layout.scheduleViewport());
 
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => M11_Layout.scheduleViewport(), { passive: true });

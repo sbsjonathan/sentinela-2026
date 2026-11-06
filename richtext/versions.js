@@ -3,34 +3,27 @@
   'use strict';
   const current = document.documentElement.dataset.notesVersion === '1' ? '1' : '2';
   const preferenceKey = 'sentinela-notes-version';
-  const recoveryKey = 'sentinela-notes-recovery';
-  const recoveryRelease = '2026.11.06.3';
+  const choiceKey = 'sentinela-notes-version-choice';
   const parameters = new URLSearchParams(location.search);
   const requested = parameters.get('versao');
-  const experimentalRequested = requested === '2' && parameters.get('experimental') === '1';
   const scriptURL = new URL(document.currentScript.src);
   const entry = version => new URL(version === '1' ? 'container-v1.html' : 'container.html', scriptURL);
   function destination(version) {
     const url = entry(version); url.search = location.search; url.hash = location.hash;
     url.searchParams.set('versao', version);
-    if (version === '2') url.searchParams.set('experimental', '1');
-    else url.searchParams.delete('experimental');
+    url.searchParams.delete('experimental');
     return url;
   }
-  let preferred, recovered = false;
+  let preferred;
   try {
-    preferred = localStorage.getItem(preferenceKey);
-    recovered = localStorage.getItem(recoveryKey) === recoveryRelease;
+    preferred = localStorage.getItem(choiceKey);
   } catch (_) {}
-  // This release returns previous v2 sessions to the preserved editor once.
-  // Only the menu's new explicit opt-in can bypass recovery, including when
-  // preferences cannot be stored. Old versao=2 links do not opt in again.
-  const recovering = !recovered && !experimentalRequested;
-  const chosen = recovering ? '1' : experimentalRequested ? '2' :
-    requested === '1' || current === '1' ? '1' : recovered && preferred === '2' ? '2' : '1';
+  // The previous release assigned v1 automatically. That assignment is not a
+  // user preference. Resume v2 by default; keep explicit links and menu choices.
+  const chosen = ['1', '2'].includes(requested) ? requested : current === '1' ? '1' :
+    ['1', '2'].includes(preferred) ? preferred : '2';
   try {
     localStorage.setItem(preferenceKey, chosen);
-    localStorage.setItem(recoveryKey, recoveryRelease);
   } catch (_) {}
   if (chosen !== current) { location.replace(destination(chosen)); return; }
 
@@ -105,7 +98,10 @@
   }
   async function switchTo(version) {
     if (!['1','2'].includes(String(version))) return false;
-    if (String(version) === current) { close(); return true; }
+    if (String(version) === current) {
+      try { localStorage.setItem(choiceKey, current); } catch (_) {}
+      close(); return true;
+    }
     const store = window.cacheRichText;
     await store?.ready;
     if (!store) return false;
@@ -129,7 +125,7 @@
     }
     try {
       localStorage.setItem(preferenceKey, String(version));
-      localStorage.setItem(recoveryKey, recoveryRelease);
+      localStorage.setItem(choiceKey, String(version));
     } catch (_) {}
     location.assign(destination(String(version)));
     return true;
@@ -145,8 +141,8 @@
       <header><h2 id="notes-versions-title">Anotações · versão ${current}</h2><button type="button" id="notes-versions-close" aria-label="Fechar opções">×</button></header>
       <div class="notes-version-body">
       <p>Alternar a versão mantém suas anotações.</p>
-      <button type="button" id="notes-version-1" class="notes-version-choice"><strong>Versão 1 · padrão</strong><span>Página anterior preservada</span></button>
-      <button type="button" id="notes-version-2" class="notes-version-choice"><strong>Versão 2 · experimental</strong><span>Em revisão. Pode apresentar falhas no PWA.</span></button>
+      <button type="button" id="notes-version-2" class="notes-version-choice"><strong>Versão 2 · atual</strong><span>Edição e leitura com borda animada</span></button>
+      <button type="button" id="notes-version-1" class="notes-version-choice"><strong>Versão 1</strong><span>Página anterior preservada</span></button>
       <p id="notes-version-message" role="status"></p>
       <button type="button" id="notes-export-current" class="notes-version-export">Exportar nota desta semana</button>
       <button type="button" id="notes-export-original" class="notes-version-export" hidden>Exportar cópia anterior à v2</button>
