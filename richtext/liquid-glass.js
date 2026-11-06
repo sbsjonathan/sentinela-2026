@@ -119,11 +119,11 @@
     return `${fontStyle}${fontVariant}${fontWeight} ${fontSize}px ${fontFamily}`;
   }
 
-  function isVisibleRect(rect, viewportHeight) {
-    return rect && rect.width >= 0 && rect.height >= 0 && rect.bottom >= 0 && rect.top <= viewportHeight;
+  function isVisibleRect(rect, frame) {
+    return rect && rect.width >= 0 && rect.height >= 0 && rect.bottom >= frame.top && rect.top <= frame.bottom;
   }
 
-  function collectRenderedTextFragments(rootEl, viewportHeight) {
+  function collectRenderedTextFragments(rootEl, frame) {
     const fragments =[];
     const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
@@ -132,7 +132,7 @@
         const editable = node.parentElement.closest('.editable');
         if (!editable) return NodeFilter.FILTER_REJECT;
         const editableRect = editable.getBoundingClientRect();
-        if (!isVisibleRect(editableRect, viewportHeight)) return NodeFilter.FILTER_REJECT;
+        if (!isVisibleRect(editableRect, frame)) return NodeFilter.FILTER_REJECT;
         return NodeFilter.FILTER_ACCEPT;
       }
     });
@@ -171,7 +171,7 @@
           }
         }
 
-        if (!isVisibleRect(rect, viewportHeight)) continue;
+        if (!isVisibleRect(rect, frame)) continue;
         if (rect.width === 0 || rect.height === 0) continue;
 
         const keyTop = Math.round(rect.top * 4) / 4;
@@ -211,8 +211,8 @@
     return fragments;
   }
 
-  function drawActualText(ctx, rootEl, dpr, viewportHeight) {
-    const fragments = collectRenderedTextFragments(rootEl, viewportHeight);
+  function drawActualText(ctx, rootEl, dpr, frame) {
+    const fragments = collectRenderedTextFragments(rootEl, frame);
     fragments.forEach(fragment => {
       ctx.save();
       ctx.font = fragment.font;
@@ -226,7 +226,7 @@
     });
   }
 
-  function drawWorld(worldCtx, viewportWidth, viewportHeight, dpr, refs) {
+  function drawWorld(worldCtx, viewportWidth, viewportHeight, dpr, refs, frame) {
     const { editorScroll, editor } = refs;
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim() || getComputedStyle(document.body).backgroundColor || '#fbfbfa';
     const iconColor = getComputedStyle(document.documentElement).getPropertyValue('--arrow-color').trim() || '#6f6f6f';
@@ -236,10 +236,15 @@
     worldCtx.fillStyle = bg;
     worldCtx.fillRect(0, 0, viewportWidth * dpr, viewportHeight * dpr);
 
+    // DOM rectangles are in client coordinates. During iOS keyboard panning,
+    // this absolute canvas can start above the client origin. Sample the world
+    // in the same local coordinates used to paint the reflective pill below.
+    worldCtx.save();
+    worldCtx.translate(-frame.left * dpr, -frame.top * dpr);
     const rows = Array.from(editor.querySelectorAll('.row'));
     rows.forEach(row => {
       const rowRect = row.getBoundingClientRect();
-      if (!isVisibleRect(rowRect, viewportHeight) || rowRect.height <= 0) return;
+      if (!isVisibleRect(rowRect, frame) || rowRect.height <= 0) return;
 
       if (row.parentElement?.classList.contains('is-focused') && !row.closest('.node-paragraph')) {
         worldCtx.save();
@@ -252,7 +257,7 @@
       const arrow = row.querySelector('.toggle-arrow');
       if (arrow) {
         const arrowRect = arrow.getBoundingClientRect();
-        if (isVisibleRect(arrowRect, viewportHeight)) {
+        if (isVisibleRect(arrowRect, frame)) {
           drawTriangle(worldCtx, {
             left: arrowRect.left * dpr,
             top: arrowRect.top * dpr,
@@ -265,7 +270,7 @@
       const plus = row.querySelector('.text-plus');
       if (plus && plus.getClientRects().length > 0 && !plus.disabled && row.parentElement?.classList.contains('is-focused')) {
         const plusRect = plus.getBoundingClientRect();
-        if (isVisibleRect(plusRect, viewportHeight)) {
+        if (isVisibleRect(plusRect, frame)) {
           drawPlus(worldCtx, {
             left: plusRect.left * dpr,
             top: plusRect.top * dpr,
@@ -276,12 +281,14 @@
       }
     });
 
-    drawActualText(worldCtx, editor, dpr, viewportHeight);
+    drawActualText(worldCtx, editor, dpr, frame);
+    worldCtx.restore();
 
     const scrollRect = editorScroll.getBoundingClientRect();
-    if (scrollRect.top > 0) {
+    const maskHeight = clamp(scrollRect.top - frame.top, 0, viewportHeight);
+    if (maskHeight > 0) {
       worldCtx.fillStyle = bg;
-      worldCtx.fillRect(0, 0, viewportWidth * dpr, scrollRect.top * dpr);
+      worldCtx.fillRect(0, 0, viewportWidth * dpr, maskHeight * dpr);
     }
   }
 
@@ -304,6 +311,7 @@
     let viewportHeight = 0;
     let dirty = true;
     let raf = 0;
+    let lastOrigin = null;
 
     function resize() {
       const nextDpr = Math.max(1, Math.min(MAX_DPR, window.devicePixelRatio || 1));
@@ -329,14 +337,14 @@
       dirty = true;
     }
 
-    function drawGlass() {
+    function drawGlass(frame) {
       ctx.clearRect(0, 0, fx.width, fx.height);
 
       const pillRect = pill.getBoundingClientRect();
       if (pillRect.width <= 0 || pillRect.height <= 0) return;
 
-      const bx = Math.round(pillRect.left * dpr);
-      const by = Math.round(pillRect.top * dpr);
+      const bx = Math.round((pillRect.left - frame.left) * dpr);
+      const by = Math.round((pillRect.top - frame.top) * dpr);
       const bw = Math.max(1, Math.round(pillRect.width * dpr));
       const bh = Math.max(1, Math.round(pillRect.height * dpr));
       const safeX = clamp(bx, 0, Math.max(0, world.width - bw));
@@ -407,15 +415,18 @@
     let idleFrames = 0;
 
     function renderFrame() {
+      const frame = fx.getBoundingClientRect();
+      if (!lastOrigin || frame.left !== lastOrigin.left || frame.top !== lastOrigin.top) dirty = true;
+      lastOrigin = {left:frame.left, top:frame.top};
       if (dirty) {
-        drawWorld(worldCtx, viewportWidth, viewportHeight, dpr, refs);
+        drawWorld(worldCtx, viewportWidth, viewportHeight, dpr, refs, frame);
         dirty = false;
         idleFrames = 0; // Reseta o contador de inatividade
       } else {
         idleFrames++;
       }
 
-      drawGlass();
+      drawGlass(frame);
 
       // O PULO DO GATO: Se o usuário parar de digitar/rolar a tela 
       // por mais de 30 quadros (meio segundo), o motor DESLIGA sozinho!
@@ -435,6 +446,10 @@
     const events =['scroll', 'input', 'keyup', 'mouseup', 'touchmove', 'touchend'];
     events.forEach(name => editorScroll.addEventListener(name, requestRender, { passive: true }));
     editor.addEventListener('input', requestRender);
+    window.addEventListener('scroll', requestRender, {passive:true});
+    [toolbar, pill].forEach(element => element.addEventListener('transitionend', event => {
+      if (event.target === element) requestRender();
+    }));
     if (window.NotesViewport?.enabled) {
       const syncSurface = () => { resize(); requestRender(); };
       document.addEventListener('notes:surface-resize', syncSurface);
