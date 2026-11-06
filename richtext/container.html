@@ -1,14 +1,16 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-notes-version="2">
 <head>
   <meta charset="UTF-8">
+  <script src="versions.js"></script>
+  <link rel="stylesheet" href="versions.css">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
     <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
   <link id="sentinela-statusbar-style" rel="stylesheet" href="../shared/statusbar.css">
   <script id="sentinela-statusbar-script" src="../shared/statusbar.js"></script>
-  <title>d16 - Editor Modular</title>
+  <title>Anotações · versão 2</title>
 
   <script>
     (function() {
@@ -64,7 +66,7 @@
         <div class="navbar-icon icon-bible"></div>
         <span class="navbar-label">Bíblia</span>
     </a>
-    <a href="#" class="navbar-item active" data-page="notes" onclick="irParaAnotacoes(event)">
+    <a href="#" class="navbar-item active" data-page="notes" onclick="NotesVersions.open(event)">
         <div class="navbar-icon icon-notes"></div>
         <span class="navbar-label">Anotações</span>
     </a>

@@ -13,6 +13,10 @@ class CacheRichText {
     this.revision = 0;
     this.current = null;
     this.lastWrittenKey = null;
+    this.lastStorageRaw = null;
+    this.lastSaveError = null;
+    this.conflict = null;
+    this.sessionId = Math.random().toString(36).slice(2, 10);
     this.metrics = { restores: 0, snapshots: 0, writes: 0 };
     this.ready = new Promise(resolve => { this.resolveReady = resolve; });
     this.exporAPI();
@@ -107,20 +111,137 @@ class CacheRichText {
     this.current = { key, payload, revision: ++this.revision };
     return this.current;
   }
+  readStorage() { return localStorage.getItem(this.obterChaveCache()); }
+  reportSaveError(error) {
+    this.lastSaveError = error?.message || 'Não foi possível salvar neste aparelho.';
+    window.dispatchEvent(new CustomEvent('notes:save-error', { detail: { message: this.lastSaveError } }));
+  }
+  preserveConflict(snapshot, raw) {
+    const other = this.parse(raw) || { html: '', formato: 'legacy-html' };
+    if (!this.conflict || this.conflict.externalRaw !== raw) {
+      this.conflict = {
+        id: `richtext_recovery_${this.semanaAtual}_${Date.now()}-${this.sessionId}`,
+        semana: this.semanaAtual, createdAt: Date.now(), externalRaw: raw,
+        external: other, local: snapshot.payload, saved: false, exported: false
+      };
+    } else this.conflict.local = snapshot.payload;
+    this.conflict.exported = this.conflict.exportedLocalKey === snapshot.key && this.conflict.exportedExternalRaw === raw;
+    try {
+      localStorage.setItem(this.conflict.id, JSON.stringify({
+        type: 'notes-concurrent-edit', semana: this.semanaAtual, createdAt: this.conflict.createdAt,
+        local: this.conflict.local, external: this.conflict.external
+      }));
+      this.conflict.saved = true;
+    } catch (error) { this.conflict.saved = false; this.reportSaveError(error); }
+    window.dispatchEvent(new CustomEvent('notes:conflict', { detail: this.conflict }));
+    return null;
+  }
+  acceptExternal(raw, data = this.parse(raw)) {
+    this.lastStorageRaw = raw;
+    if (!data) return false;
+    const applied = this.applyContent(data, { external: true });
+    if (applied) {
+      this.lastSaveError = null;
+      window.dispatchEvent(new CustomEvent('notes:external-updated', { detail: this.current }));
+    }
+    return applied;
+  }
+  checkExternal(snapshot, raw) {
+    if (this.conflict) return this.preserveConflict(snapshot, raw);
+    if (raw === this.lastStorageRaw) return snapshot;
+    const data = this.parse(raw);
+    if (data && this.contentKey(data) === snapshot.key) {
+      this.lastStorageRaw = raw; this.lastWrittenKey = snapshot.key;
+      if (data.localRevision) snapshot.payload.localRevision = data.localRevision;
+      else delete snapshot.payload.localRevision;
+      return snapshot;
+    }
+    const previous = this.parse(this.lastStorageRaw);
+    const concurrentWrite = previous?.writerSession === this.sessionId && data &&
+      Object.prototype.hasOwnProperty.call(data, 'previousLocalRevision') && data.previousLocalRevision !== (previous.localRevision || null);
+    if (data && snapshot.key === this.lastWrittenKey && !concurrentWrite) {
+      this.acceptExternal(raw, data);
+      return this.current;
+    }
+    return this.preserveConflict(snapshot, raw);
+  }
   flush() {
     clearTimeout(this.timeout); this.timeout = 0;
     if (this.isApplyingCache) return this.current;
-    const snapshot = this.snapshot();
-    if (!snapshot || snapshot.key === this.lastWrittenKey) return snapshot;
+    let snapshot = this.snapshot();
+    if (!snapshot) return null;
     try {
-      localStorage.setItem(this.obterChaveCache(), JSON.stringify(snapshot.payload));
-      this.lastWrittenKey = snapshot.key;
+      snapshot = this.checkExternal(snapshot, this.readStorage());
+      if (!snapshot) return null;
+      if (snapshot.key === this.lastWrittenKey) { this.lastSaveError = null; return snapshot; }
+      snapshot.payload.previousLocalRevision = this.parse(this.lastStorageRaw)?.localRevision || null;
+      snapshot.payload.writerSession = this.sessionId;
+      const raw = JSON.stringify(snapshot.payload);
+      localStorage.setItem(this.obterChaveCache(), raw);
+      this.lastStorageRaw = raw; this.lastWrittenKey = snapshot.key; this.lastSaveError = null;
       this.metrics.writes++;
+      if (snapshot.acknowledgeAfterWrite) { delete snapshot.acknowledgeAfterWrite; this.acknowledge(snapshot); }
       window.dispatchEvent(new CustomEvent('notes:stored', { detail: snapshot }));
-    } catch (error) {
-      window.dispatchEvent(new CustomEvent('notes:save-error', { detail: { message: error.message } }));
+      return snapshot;
+    } catch (error) { this.reportSaveError(error); return null; }
+  }
+  isStored(snapshot) {
+    if (!snapshot || this.conflict || this.lastSaveError) return false;
+    try {
+      const raw = this.readStorage();
+      if (raw !== this.lastStorageRaw) return false;
+      return snapshot.key === this.lastWrittenKey;
+    } catch (_) { return false; }
+  }
+  resolveConflict(choice) {
+    if (!['local', 'external'].includes(choice) || !this.conflict) return false;
+    // Preserve any typing performed while the comparison was open.
+    const current = this.snapshot();
+    let raw;
+    try { raw = this.readStorage(); } catch (error) { this.reportSaveError(error); return false; }
+    const changedAgain = raw !== this.conflict.externalRaw;
+    this.preserveConflict(current, raw);
+    if (changedAgain) return false;
+    const conflict = this.conflict;
+    if (!conflict.saved && !conflict.exported) return false;
+    this.conflict = null; this.lastStorageRaw = raw;
+    let snapshot;
+    if (choice === 'external') {
+      if (!this.acceptExternal(raw, conflict.external)) { this.conflict = conflict; return false; }
+      snapshot = this.current;
+    } else {
+      // The user selected this copy after both versions were preserved.
+      this.lastWrittenKey = this.contentKey(conflict.external);
+      snapshot = this.flush();
+      if (!snapshot) { this.conflict = conflict; return false; }
     }
-    return snapshot;
+    window.dispatchEvent(new CustomEvent('notes:conflict-resolved', { detail: snapshot }));
+    return true;
+  }
+  listRecovery() {
+    const entries = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key?.startsWith(`richtext_recovery_${this.semanaAtual}_`)) continue;
+        try { entries.push({ id: key, ...JSON.parse(localStorage.getItem(key)) }); } catch (_) {}
+      }
+    } catch (_) {}
+    return entries.sort((a, b) => b.createdAt - a.createdAt);
+  }
+  downloadRecovery() {
+    const snapshot = this.snapshot();
+    const data = this.conflict
+      ? { type: 'notes-concurrent-edit', semana: this.semanaAtual, local: snapshot.payload, external: this.conflict.external }
+      : { type: 'notes-backup', semana: this.semanaAtual, payload: snapshot.payload };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a'); link.href = url; link.download = `anotacoes-${this.semanaAtual}-${Date.now()}.json`;
+    document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (this.conflict) {
+      this.conflict.exported = true; this.conflict.exportedLocalKey = snapshot.key;
+      this.conflict.exportedExternalRaw = this.conflict.externalRaw;
+    }
+    return true;
   }
   salvarCache() {
     // The live document is authoritative: never pair stale supplied HTML with a
@@ -135,8 +256,12 @@ class CacheRichText {
   }
   acknowledge(snapshot = this.current) {
     const token = snapshot?.payload?.localRevision;
-    if (!token) return;
-    try { localStorage.setItem(this.syncKey(), token); } catch (_) {}
+    if (!token || this.conflict) return;
+    try {
+      const stored = this.parse(this.readStorage());
+      if (stored?.localRevision && stored.localRevision !== token) return;
+      localStorage.setItem(this.syncKey(), token);
+    } catch (_) {}
   }
   hasPending(snapshot = this.snapshot()) {
     const token = snapshot?.payload?.localRevision;
@@ -163,9 +288,9 @@ class CacheRichText {
     }
     this.garantirRaiz(); return true;
   }
-  applyContent(raw, { remote = false, initial = false } = {}) {
+  applyContent(raw, { remote = false, initial = false, external = false } = {}) {
     const data = this.parse(raw);
-    if (!data || !this.editor) return false;
+    if (!data || !this.editor || (this.conflict && remote)) return false;
     this.isApplyingCache = true;
     clearTimeout(this.timeout); this.timeout = 0;
     this.observer?.disconnect();
@@ -177,13 +302,13 @@ class CacheRichText {
       M11_Layout?.schedule(2);
       this.maybeDirty = true;
       const snapshot = this.snapshot();
-      if (initial) {
+      if (initial || external) {
         snapshot.payload.timestamp = Number(data.timestamp) || Date.now();
         if (typeof data.localRevision === 'string') snapshot.payload.localRevision = data.localRevision;
         else delete snapshot.payload.localRevision;
         this.lastWrittenKey = snapshot.key;
       }
-      if (remote) this.acknowledge(snapshot);
+      if (remote) snapshot.acknowledgeAfterWrite = true;
       const history = window.M12_History;
       if (history) { clearTimeout(history.timer); cancelAnimationFrame(history.raf); history.timer = 0; history.stack = []; history.index = -1; history.commit(true); }
       this.metrics.restores++;
@@ -192,7 +317,10 @@ class CacheRichText {
     } finally {
       this.isApplyingCache = false;
       this.observe();
-      if (applied && remote) this.flush();
+      if (applied && remote) {
+        const saved = this.flush();
+        if (saved) this.acknowledge(saved);
+      }
     }
   }
   aplicarCacheSalvo() { return this.applyContent(this.carregarDados(), { initial: true }); }
@@ -207,7 +335,8 @@ class CacheRichText {
     }
     this.editor = editor;
     window.semanaAtual = this.semanaAtual;
-    if (!this.aplicarCacheSalvo()) {
+    try { this.lastStorageRaw = this.readStorage(); } catch (error) { this.reportSaveError(error); }
+    if (!this.applyContent(this.parse(this.lastStorageRaw), { initial: true })) {
       this.garantirRaiz(); const initial = this.snapshot();
       delete initial.payload.localRevision; this.lastWrittenKey = initial.key;
     }
@@ -219,6 +348,10 @@ class CacheRichText {
     editor.addEventListener('blur', () => this.flush(), true);
     for (const event of ['pagehide', 'beforeunload', 'blur']) window.addEventListener(event, () => this.flush());
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') this.flush(); });
+    window.addEventListener('storage', event => {
+      if (event.storageArea === localStorage && event.key === this.obterChaveCache()) this.flush();
+    });
+    window.addEventListener('focus', () => this.flush());
     this.resolveReady(this);
   }
   exporAPI() {
@@ -229,7 +362,10 @@ class CacheRichText {
       semanaAtual: () => this.semanaAtual, snapshot: () => this.snapshot(), contentKey: payload => this.contentKey(payload),
       parse: raw => this.parse(raw), applyContent: (raw, options) => this.applyContent(raw, options),
       hasPending: snapshot => this.hasPending(snapshot), acknowledge: snapshot => this.acknowledge(snapshot),
-      setDelay: value => { this.delay = value; }, stats: () => ({ ...this.metrics })
+      isStored: snapshot => this.isStored(snapshot), getConflict: () => this.conflict,
+      resolveConflict: choice => this.resolveConflict(choice), listRecovery: () => this.listRecovery(), downloadRecovery: () => this.downloadRecovery(),
+      canLeave: () => { const saved = this.flush(); return !!saved && !this.conflict && !this.lastSaveError && saved.key === this.lastWrittenKey; },
+      setDelay: value => { this.delay = value; }, stats: () => ({ ...this.metrics, saveError: this.lastSaveError, conflict: !!this.conflict })
     };
   }
 }

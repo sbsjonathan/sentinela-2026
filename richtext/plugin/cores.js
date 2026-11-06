@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetIndicator = resetBtn.querySelector('.reset-indicator');
 
   let pickerMode = 'text';
+  let pickerDirty = false, viewportFrame = 0;
   
   const getDefaultTextColor = () => getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#37352f';
   
@@ -41,7 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
   const toHex2 = n => n.toString(16).padStart(2, '0').toUpperCase();
   const hexToRgb = hex => {
-    const h = hex.replace('#', '');
+    let h = String(hex).replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
     return[parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
   };
   const rgbToHex = rgb => {
@@ -134,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return rgbToHex(normalized) || normalized;
   };
   const setColorState = (r, g, b, source) => {
+    if (overlay?.classList.contains('open') && source !== 'init') pickerDirty = true;
     pickerR = clamp(r); pickerG = clamp(g);
     pickerB = clamp(b);
 
@@ -198,8 +201,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const defaultView = document.getElementById('picker-view-spectrum');
     if (defaultView) defaultView.classList.add('active');
 
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', 'Cores');
     const closePicker = () => applyColorAndClose();
-    document.getElementById('picker-close')?.addEventListener('click', closePicker);
+    const closeControl = document.getElementById('picker-close');
+    closeControl?.setAttribute('role', 'button');
+    closeControl?.setAttribute('aria-label', 'Fechar cores');
+    if (closeControl) closeControl.tabIndex = 0;
+    closeControl?.addEventListener('click', closePicker);
+    closeControl?.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); closePicker(); }
+    });
+    overlay.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !event.isComposing) { event.preventDefault(); closePicker(); }
+    });
+    overlay.addEventListener('focusin', queuePickerViewport);
     overlay.addEventListener('touchstart', e => { if (e.target === overlay) { e.preventDefault(); applyColorAndClose(); } }, { passive: false });
     overlay.addEventListener('click', e => { if (e.target === overlay) applyColorAndClose(); });
     overlay.querySelectorAll('.picker-tab').forEach(tab => {
@@ -398,7 +415,12 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   
   const applyColorAndClose = () => {
+    if (!overlay.classList.contains('open')) return;
+    const shouldApply = pickerDirty;
+    pickerDirty = false;
+    if (overlay.contains(document.activeElement)) document.activeElement.blur();
     overlay.classList.remove('open');
+    if (!shouldApply) { M4_Caret.restR(); queueSyncUI(); return; }
     if (!ensureSelection()) return;
 
     const editable = M2_Query.curEd();
@@ -508,11 +530,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   
+  function syncPickerViewport() {
+    viewportFrame = 0;
+    if (!overlay?.classList.contains('open')) return;
+    const viewport = window.visualViewport;
+    overlay.style.setProperty('--picker-viewport-height', `${viewport?.height || innerHeight}px`);
+    overlay.style.setProperty('--picker-viewport-width', `${viewport?.width || innerWidth}px`);
+    overlay.style.setProperty('--picker-viewport-top', `${viewport?.offsetTop || 0}px`);
+    overlay.style.setProperty('--picker-viewport-left', `${viewport?.offsetLeft || 0}px`);
+    const active = document.activeElement;
+    const card = overlay.querySelector('.picker-card');
+    if (card && active?.matches('input') && card.contains(active)) {
+      // Scroll only the picker content. Never move the document while iOS pans
+      // its viewport to keep an input above the keyboard.
+      const bounds = card.getBoundingClientRect();
+      const header = card.querySelector('.picker-header').getBoundingClientRect();
+      const field = active.getBoundingClientRect();
+      if (field.bottom > bounds.bottom - 10) card.scrollTop += field.bottom - (bounds.bottom - 10);
+      else if (field.top < header.bottom + 10) card.scrollTop -= header.bottom + 10 - field.top;
+    }
+  }
+  function queuePickerViewport() {
+    if (overlay?.classList.contains('open') && !viewportFrame) viewportFrame = requestAnimationFrame(syncPickerViewport);
+  }
+
   const openPicker = (mode) => {
     pickerMode = mode;
     M4_Caret.saveR();
+    const colors = getColorsAtCaret();
+    const current = mode === 'text' ? colors.text || getDefaultTextColor() : colors.bg || '#ffffff';
+    const hex = normalizeColor(current);
+    const initial = /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(hex || '') ? hexToRgb(hex) : [55, 53, 47];
+    selectedCell?.classList.remove('selected'); selectedCell = null;
+    if (selectedSwatch) { selectedSwatch.classList.remove('selected'); selectedSwatch.style.boxShadow = ''; selectedSwatch = null; }
+    setColorState(...initial, 'init');
+    pickerDirty = false;
     document.activeElement?.blur();
     overlay.classList.add('open');
+    overlay.querySelector('.picker-card').scrollTop = 0;
+    syncPickerViewport();
+    document.getElementById('picker-close')?.focus({preventScroll:true});
     requestAnimationFrame(() => {
       if (!spectrumDrawn && document.getElementById('picker-view-spectrum')?.classList.contains('active')) {
         drawSpectrum(); spectrumDrawn = true;
@@ -612,6 +669,9 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   initModalUI();
+  window.addEventListener('resize', queuePickerViewport, {passive:true});
+  window.visualViewport?.addEventListener('resize', queuePickerViewport, {passive:true});
+  window.visualViewport?.addEventListener('scroll', queuePickerViewport, {passive:true});
   setColorState(255, 59, 48, 'init');
   bindTapIntent(textBtn, () => openPicker('text'));
   bindTapIntent(bgBtn, () => openPicker('bg'));

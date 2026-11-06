@@ -406,6 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       editor.addEventListener('paste', () => {
         if (this.restoring) return;
+        this.beforeChange();
         this.afterChange(3);
       }, true);
 
@@ -414,7 +415,12 @@ document.addEventListener('DOMContentLoaded', () => {
         this.flush();
       }, true);
 
-      document.addEventListener('keydown', e => {
+      editor.addEventListener('keydown', e => {
+        // Inputs in dialogs have their own native undo history. Only handle a
+        // shortcut whose actual focus is inside the editable note.
+        if (e.defaultPrevented || e.isComposing || !editor.isContentEditable) return;
+        const active = document.activeElement;
+        if (!editor.contains(active) || active.matches?.('input, textarea, select')) return;
         const mod = e.metaKey || e.ctrlKey;
         if (!mod) return;
         const key = (e.key || '').toLowerCase();

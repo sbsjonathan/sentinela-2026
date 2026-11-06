@@ -86,7 +86,7 @@ const bindTapIntent = (el, handler, { delay = 240, slop = 10, preventFocus = tru
     const t = Array.from(e.changedTouches).find(t => pointerId === null || t.identifier === pointerId);
     if (!t) return;
     track(t.clientX, t.clientY);
-    if (moved) e.preventDefault();
+    if (moved && preventFocus) e.preventDefault();
   }, { passive: false });
 
   el.addEventListener('touchcancel', reset, { passive: false });
@@ -101,6 +101,7 @@ const bindTapIntent = (el, handler, { delay = 240, slop = 10, preventFocus = tru
   el.addEventListener('click', e => {
     e.preventDefault();
     e.stopPropagation();
+    if (e.detail === 0 && canRun()) handler(e);
   });
 };
 
@@ -118,6 +119,7 @@ const bindTapIntent = (el, handler, { delay = 240, slop = 10, preventFocus = tru
   // ── Dropdown ─────────────────────────────────────────────────────────────
   // Appendado ao body para escapar do overflow:hidden do pill-container
   const dropdown = document.createElement('div');
+  dropdown.id = 'notes-font-menu';
   dropdown.className = 'font-dropdown';
   dropdown.setAttribute('role', 'listbox');
   dropdown.setAttribute('aria-label', 'Tamanho da fonte');
@@ -127,6 +129,8 @@ const bindTapIntent = (el, handler, { delay = 240, slop = 10, preventFocus = tru
     </button>
   `).join('');
   document.body.appendChild(dropdown);
+  fontBtn.setAttribute('aria-controls', dropdown.id);
+  fontBtn.setAttribute('aria-expanded', 'false');
 
   let isOpen = false;
 
@@ -197,19 +201,32 @@ const bindTapIntent = (el, handler, { delay = 240, slop = 10, preventFocus = tru
 
   // ── Posicionamento do dropdown ────────────────────────────────────────────
   const positionDropdown = () => {
-    const rect    = fontBtn.getBoundingClientRect();
-    const dropW   = 168;
-    const spacing = 10;
-
-    // Centralizado no botão, abrindo para cima
-    let left = rect.left + rect.width / 2 - dropW / 2;
-    // Clamp para não sair da viewport
-    left = Math.max(8, Math.min(left, window.innerWidth - dropW - 8));
-
-    dropdown.style.left   = `${left}px`;
-    dropdown.style.bottom = `${window.innerHeight - rect.top + spacing}px`;
-    dropdown.style.width  = `${dropW}px`;
+    const viewport = window.visualViewport;
+    const visibleTop = Math.max(0, viewport?.offsetTop || 0);
+    const visibleLeft = Math.max(0, viewport?.offsetLeft || 0);
+    const visibleHeight = viewport?.height || innerHeight;
+    const visibleWidth = viewport?.width || innerWidth;
+    const rect = fontBtn.getBoundingClientRect();
+    const dropW = Math.min(168, Math.max(1, visibleWidth - 16));
+    const available = Math.max(1, visibleHeight - 16);
+    dropdown.style.width = `${dropW}px`;
+    dropdown.style.maxHeight = `${available}px`;
+    const dropH = Math.min(dropdown.scrollHeight, available);
+    const left = Math.max(visibleLeft + 8, Math.min(rect.left + rect.width / 2 - dropW / 2, visibleLeft + visibleWidth - dropW - 8));
+    const top = Math.max(visibleTop + 8, Math.min(rect.top - dropH - 10, visibleTop + visibleHeight - dropH - 8));
+    dropdown.style.left = `${left}px`;
+    dropdown.style.top = `${top}px`;
+    dropdown.style.bottom = 'auto';
   };
+  let positionFrame = 0;
+  const queuePosition = () => {
+    if (!isOpen || positionFrame) return;
+    positionFrame = requestAnimationFrame(() => { positionFrame = 0; if (isOpen) positionDropdown(); });
+  };
+  window.addEventListener('resize', queuePosition, {passive:true});
+  window.visualViewport?.addEventListener('resize', queuePosition, {passive:true});
+  window.visualViewport?.addEventListener('scroll', queuePosition, {passive:true});
+  document.addEventListener('editor:viewport-layout', queuePosition);
 
   // ── Abrir / fechar ────────────────────────────────────────────────────────
   const openDropdown = () => {
@@ -225,6 +242,7 @@ const bindTapIntent = (el, handler, { delay = 240, slop = 10, preventFocus = tru
     dropdown.classList.remove('is-open');
     isOpen = false;
     fontBtn.setAttribute('aria-expanded', 'false');
+    cancelAnimationFrame(positionFrame); positionFrame = 0;
   };
 
   // ── Aplicar tamanho ───────────────────────────────────────────────────────
@@ -280,13 +298,18 @@ dropdown.querySelectorAll('.font-option').forEach(opt => {
     if (e) e.preventDefault();
     closeDropdown();
     applySize(opt.dataset.size);
-  });
+  }, {preventFocus:false});
 });
 
   // ── Fecha ao clicar fora ──────────────────────────────────────────────────
   document.addEventListener('pointerdown', e => {
     if (isOpen && !fontBtn.contains(e.target) && !dropdown.contains(e.target)) {
       closeDropdown();
+    }
+  });
+  document.addEventListener('keydown', e => {
+    if (isOpen && e.key === 'Escape') {
+      e.preventDefault(); closeDropdown(); M4_Caret.restR();
     }
   });
 

@@ -32,6 +32,7 @@ class UnifiedLoadManager {
         // An unsent local revision is authoritative. Send it instead of replacing
         // it with an older server document during startup or reconnection.
         const before = this.store.flush();
+        if (!before || this.store.getConflict?.()) return;
         if (this.store.hasPending(before)) {
             await window.AutoSaveManager?.ready;
             return window.AutoSaveManager?.forceAutoSave();
@@ -42,7 +43,7 @@ class UnifiedLoadManager {
             try {
                 const raw = await window.SupabaseSync.carregarRichtextAnotacoes(this.currentSemana);
                 const current = this.store.snapshot();
-                if (requestUser !== localStorage.getItem('supabase_user')) return;
+                if (requestUser !== localStorage.getItem('supabase_user') || this.store.getConflict?.()) return;
                 if (current.revision !== before.revision || current.key !== before.key || this.store.hasPending(current)) {
                     this.showFeedback('Alterações locais preservadas', 'local');
                     window.AutoSaveManager?.forceAutoSave(); return;
@@ -51,7 +52,7 @@ class UnifiedLoadManager {
                     this.showFeedback('Salvo localmente', 'local');
                     if (this.editor.textContent.trim()) {
                         await window.AutoSaveManager?.ready;
-                        window.AutoSaveManager?.uploadCurrent();
+                        await window.AutoSaveManager?.uploadCurrent();
                     }
                     return;
                 }
@@ -62,7 +63,7 @@ class UnifiedLoadManager {
                 }
                 window.AutoSaveManager?.acknowledgeRemote(this.store.snapshot());
                 this.showFeedback('✅ Sincronizado', 'success');
-            } catch (_) { this.showFeedback('❌ Erro de Sincronização', 'error'); }
+            } catch (_) { this.showFeedback('Não foi possível ler a nuvem. Sua cópia local foi mantida.', 'error'); }
         })();
         try { await this.syncing; } finally { this.syncing = null; }
     }

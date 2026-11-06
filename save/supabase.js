@@ -116,17 +116,13 @@ class SupabaseSync {
     }
 
     async carregarRichtextAnotacoes(semana) {
-        await this.ensureInitialized();
+        const initialized = await this.ensureInitialized();
         this.checkExistingSession();
-        if (!this.currentUser || !this.isOnline) return null;
-
-        try {
-            const { data, error } = await this.supabase.from('richtext_anotacoes').select('conteudo_html').eq('usuario_id', this.currentUser.id).eq('semana', semana).eq('tipo', 'richtext').maybeSingle();
-            if (error && error.code !== 'PGRST116') throw error;
-            return data?.conteudo_html || null;
-        } catch (error) {
-            return null;
-        }
+        // null means a successful query with no document, never a failed read.
+        if (!initialized || !this.currentUser || !this.isOnline) throw new Error('Não foi possível consultar a nuvem.');
+        const { data, error } = await this.supabase.from('richtext_anotacoes').select('conteudo_html').eq('usuario_id', this.currentUser.id).eq('semana', semana).eq('tipo', 'richtext').maybeSingle();
+        if (error) throw error;
+        return data?.conteudo_html || null;
     }
     
     async salvarRichtextAnotacoes(semana, conteudo) {
@@ -134,12 +130,16 @@ class SupabaseSync {
         this.checkExistingSession();
         if (!this.currentUser || !this.isOnline) return { success: false, error: 'Não conectado' };
 
+        const userId = this.currentUser.id;
         try {
-            const { data: existing } = await this.supabase.from('richtext_anotacoes').select('id').eq('usuario_id', this.currentUser.id).eq('semana', semana).eq('tipo', 'richtext').maybeSingle();
+            const { data: existing, error: readError } = await this.supabase.from('richtext_anotacoes').select('id').eq('usuario_id', userId).eq('semana', semana).eq('tipo', 'richtext').maybeSingle();
+            if (readError) throw readError;
+            this.checkExistingSession();
+            if (this.currentUser?.id !== userId) throw new Error('A conta mudou durante o salvamento.');
             
             const { data, error } = existing
-                ? await this.supabase.from('richtext_anotacoes').update({ conteudo_html: conteudo }).eq('id', existing.id).select().single()
-                : await this.supabase.from('richtext_anotacoes').insert({ usuario_id: this.currentUser.id, semana, tipo: 'richtext', conteudo_html: conteudo }).select().single();
+                ? await this.supabase.from('richtext_anotacoes').update({ conteudo_html: conteudo }).eq('id', existing.id).eq('usuario_id', userId).select().single()
+                : await this.supabase.from('richtext_anotacoes').insert({ usuario_id: userId, semana, tipo: 'richtext', conteudo_html: conteudo }).select().single();
 
             if (error) throw error;
             return { success: true, data };

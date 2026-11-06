@@ -461,27 +461,25 @@ const M11_Layout = {
   },
   adjustViewport() {
     const vv = window.visualViewport;
-    if (!vv) return;
-    
-    // A MÁGICA: No iOS PWA, ao fechar o teclado, o visualViewport.height 
-    // pode vir encurtado, causando o Navbar a flutuar num falso chão.
-    // Comparamos com a tela inteira (innerHeight). Se for perto, o teclado
-    // fechou, então damos "100%" pro Navbar colar no chão de verdade.
-    const isKeyboardOpen = (window.innerHeight - vv.height) > 100;
-    
-    if (isKeyboardOpen) {
-        document.body.style.height = vv.height + 'px';
-    } else {
-        document.body.style.height = '100%';
+    const active = document.activeElement;
+    const editing = active === M1_Config.editor || M1_Config.editor.contains(active);
+    // Only the editor owns this layout. A modal's input must not resize the
+    // document behind it or force the native iOS viewport back to the top.
+    const height = vv && editing
+      ? `${Math.min(innerHeight, vv.height + Math.max(0, vv.offsetTop))}px`
+      : '';
+    if (document.body.style.height !== height) {
+      document.body.style.height = height;
+      document.dispatchEvent(new Event('editor:viewport-layout'));
     }
-    
-    window.scrollTo(0, 0);
   },
   adjustPadding() {
     const respiro = this.lineHeight() * this.lines;
     M1_Config.editor.style.paddingBottom = (respiro + this.toolbarHeight()) + 'px';
   },
   ensureCaretVisible() {
+    const active = document.activeElement;
+    if (active !== M1_Config.editor && !M1_Config.editor.contains(active)) return;
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount || !M1_Config.editor.contains(sel.anchorNode)) return;
     const range = sel.getRangeAt(0).cloneRange();
@@ -715,11 +713,52 @@ const M10_EditorEvents = {
     }
     return true;
   },
+  insertPlainText(text) {
+    const selection = M2_Query.selObj();
+    let range = M2_Query.curRange();
+    if (!selection || !range || !M1_Config.editor.contains(range.commonAncestorContainer)) return false;
+    if (!range.collapsed && !this.flattenDeleteSelection()) return false;
+
+    range = M2_Query.curRange();
+    const editable = M2_Query.curEd();
+    let ref = M2_Query.curNode();
+    if (!range || !editable || !ref) return false;
+    const lines = String(text).split(/\r\n?|\n/);
+    // The browser already knows how to insert line breaks inside a list item.
+    // Keep that operation inside its list instead of creating sibling blocks.
+    if (lines.length === 1 || M2_Query.closest(range.startContainer, 'li')) {
+      document.execCommand('insertText', false, String(text));
+      M4_Caret.saveR();
+      return true;
+    }
+
+    const tailRange = document.createRange();
+    tailRange.setStart(range.startContainer, range.startOffset);
+    tailRange.setEnd(editable, editable.childNodes.length);
+    const tail = tailRange.extractContents();
+    const container = ref.parentElement;
+    const parentLevel = container === M1_Config.editor ? null : M2_Query.getLvl(container.closest('.node-toggle'));
+    if (lines[0]) document.execCommand('insertText', false, lines[0]);
+
+    let lastEditable = editable;
+    for (const line of lines.slice(1)) {
+      const next = parentLevel === null ? M5_Factory.para(line) : M5_Factory.text(line, parentLevel + 1);
+      ref.after(next); ref = next; lastEditable = M2_Query.getEdFor(next);
+    }
+    // The original suffix belongs after the last pasted line. Place the caret
+    // before that suffix so subsequent typing continues at the paste boundary.
+    const caret = document.createRange();
+    caret.selectNodeContents(lastEditable); caret.collapse(false);
+    lastEditable.appendChild(tail);
+    selection.removeAllRanges(); selection.addRange(caret);
+    M4_Caret.saveR(); M4_Caret.updateFocus(); M11_Layout.schedule(2);
+    return true;
+  },
   bind() {
     
     document.addEventListener('touchmove', (e) => {
       const isAllowedArea = e.target.closest(
-        '.editor-scroll, .picker-overlay, .leitor-container, .bbl-container,[id*="bbl"], [class*="modal"],[class*="sheet"],[class*="overlay"]'
+        '.editor-scroll, .font-dropdown, #notes-save-status, .picker-overlay, .leitor-container, .bbl-container,[id*="bbl"], [class*="modal"],[class*="sheet"],[class*="overlay"]'
       );
       if (!isAllowedArea) {
         e.preventDefault();
@@ -894,51 +933,27 @@ const M10_EditorEvents = {
 
     M1_Config.editor.addEventListener('beforeinput', e => {
       const s = M2_Query.selObj();
-      const ed = M2_Query.curEd();
+      let ed = M2_Query.curEd();
       if (!s) return;
 
-      if (!s.isCollapsed && (e.inputType.includes('delete') || e.inputType.startsWith('insert'))) {
-        const ns = M8_MultiSel.getNodes();
-        if (ns.length > 1) { 
-          e.preventDefault();
-          const r = s.getRangeAt(0);
-          const sEd = M2_Query.closest(r.startContainer, '.editable') || M2_Query.getEdFor(ns[0]);
-          const eEd = M2_Query.closest(r.endContainer, '.editable') || M2_Query.getEdFor(ns[ns.length - 1]);
-          let st = '', et = '';
-
-          if (sEd && sEd.contains(r.startContainer)) {
-            const rs = document.createRange();
-            rs.setStart(sEd, 0);
-            rs.setEnd(r.startContainer, r.startOffset);
-            st = rs.toString();
+      if (!s.isCollapsed && e.cancelable && (e.inputType.includes('delete') || e.inputType.startsWith('insert'))) {
+        const range = M2_Query.curRange();
+        if (range && this.selectionIsStructural(range) && this.flattenDeleteSelection()) {
+          // Keep the DOM fragments outside the selection, including their
+          // formatting and surviving toggle children. The cut path uses the
+          // same structural deletion, so typing and pasting agree with it.
+          ed = M2_Query.curEd();
+          if (e.inputType !== 'insertParagraph') {
+            e.preventDefault();
+            let data = e.data;
+            if (e.inputType === 'insertFromPaste' && e.dataTransfer) data = e.dataTransfer.getData('text/plain');
+            if (e.inputType === 'insertLineBreak') document.execCommand('insertLineBreak');
+            else if (data && e.inputType.startsWith('insert')) this.insertPlainText(data);
+            M3_TextModel.syncAll();
+            return;
           }
-
-          if (eEd && eEd.contains(r.endContainer)) {
-            const re = document.createRange();
-            re.setStart(r.endContainer, r.endOffset);
-            re.setEnd(eEd, eEd.childNodes.length);
-            et = re.toString();
-          }
-
-          const tEd = M2_Query.getEdFor(ns[0]);
-          if (tEd) tEd.textContent = st + et;
-          ns.slice(1).forEach(n => n.remove());
-
-          if (tEd) {
-            const nr = document.createRange();
-            if (tEd.firstChild?.nodeType === 3) nr.setStart(tEd.firstChild, Math.min(st.length, tEd.firstChild.length));
-            else nr.setStart(tEd, 0);
-            nr.collapse(true);
-            s.removeAllRanges();
-            s.addRange(nr);
-          }
-
-          let d = e.data;
-          if (e.inputType === 'insertFromPaste' && e.dataTransfer) d = e.dataTransfer.getData('text/plain');
-          if (d && e.inputType.startsWith('insert')) document.execCommand('insertText', false, d);
-
-          M3_TextModel.syncAll();
-          return;
+          // Enter continues through the existing block/list handling with the
+          // now-collapsed selection, rather than only deleting the selection.
         }
       }
 
@@ -1336,26 +1351,9 @@ const M10_EditorEvents = {
 
         if (plain) {
           e.preventDefault();
-          const lines = plain.split(/\r?\n/);
-
-          if (lines.length > 1) {
-            let ref = M2_Query.curNode();
-            let cont = ref ? ref.parentElement : M1_Config.editor;
-            let pLvl = cont === M1_Config.editor ? null : M2_Query.getLvl(cont.closest('.node-toggle'));
-
-            lines.forEach((l, i) => {
-              if (i === 0) {
-                document.execCommand('insertText', false, l);
-              } else {
-                const newNode = pLvl === null ? M5_Factory.para(l) : M5_Factory.text(l, pLvl + 1);
-                if (ref) ref.after(newNode);
-                else cont.appendChild(newNode);
-                ref = newNode;
-              }
-            });
-          } else {
-            document.execCommand('insertText', false, plain);
-          }
+          window.M12_History?.beforeChange?.();
+          this.insertPlainText(plain);
+          window.M12_History?.afterChange?.(2);
 
           M3_TextModel.syncAll();
         }

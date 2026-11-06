@@ -19,7 +19,10 @@ class AutoSaveManager {
         if (!this.store.hasPending(initial)) this.lastCloudKey = initial.key;
         this.lastSavedContent = JSON.stringify(initial.payload);
         window.addEventListener('notes:stored', event => this.acceptSnapshot(event.detail));
-        window.addEventListener('notes:save-error', () => this.showErrorFeedback());
+        window.addEventListener('notes:save-error', () => this.triggerFeedbackEvent('Não foi possível salvar neste aparelho. Mantenha esta página aberta ou baixe uma cópia.', 'error', 0));
+        window.addEventListener('notes:conflict', () => { this.pending = null; });
+        window.addEventListener('notes:external-updated', () => { this.pending = null; this.showLocalSaveFeedback(); });
+        window.addEventListener('notes:conflict-resolved', event => this.acceptSnapshot(event.detail));
         const retry = () => { this.checkLoginStatus(); this.executeAutoSave('resume'); };
         window.addEventListener('online', retry);
         window.addEventListener('pageshow', retry);
@@ -41,7 +44,7 @@ class AutoSaveManager {
     parseSavedContent(raw) { return this.store?.parse(raw); }
     applySavedContent(raw) { return this.store?.applyContent(raw, { remote: true }); }
     acknowledgeRemote(snapshot) {
-        if (!snapshot) return;
+        if (!snapshot || !this.store.isStored(snapshot)) return;
         this.lastCloudKey = snapshot.key;
         this.lastSavedContent = JSON.stringify(snapshot.payload);
         this.store.acknowledge(snapshot);
@@ -51,13 +54,13 @@ class AutoSaveManager {
         // A legacy local document has no revision token. If the server has no
         // document yet, still preserve the old behavior of uploading that copy.
         const snapshot = this.store?.flush();
-        if (!snapshot) return;
+        if (!snapshot || !this.store.isStored(snapshot)) return;
         this.lastCloudKey = null;
         this.pending = snapshot;
         return this.drain();
     }
     acceptSnapshot(snapshot) {
-        if (!snapshot) return;
+        if (!snapshot || !this.store.isStored(snapshot)) return;
         this.lastSavedContent = JSON.stringify(snapshot.payload);
         if (!this.store.hasPending(snapshot)) {
             this.lastCloudKey = snapshot.key;
@@ -68,18 +71,30 @@ class AutoSaveManager {
         return this.drain();
     }
     async drain() {
-        if (this.sending || this.isPaused || navigator.onLine === false || !this.checkLoginStatus()) return this.sending;
+        if (this.sending || this.isPaused || this.store.getConflict?.() || navigator.onLine === false || !this.checkLoginStatus()) return this.sending;
         if (!this.pending || typeof window.SupabaseSync?.salvarRichtextAnotacoes !== 'function') return;
         this.saveInProgress = true;
         let failed = false;
         this.sending = (async () => {
-            while (this.pending && !this.isPaused && navigator.onLine !== false && this.checkLoginStatus()) {
+            while (this.pending && !this.isPaused && !this.store.getConflict?.() && navigator.onLine !== false && this.checkLoginStatus()) {
                 const next = this.pending; this.pending = null;
+                if (!this.store.isStored(next)) continue;
                 if (next.key === this.lastCloudKey && !this.store.hasPending(next)) continue;
                 this.showSavingFeedback();
                 try {
-                    const result = await window.SupabaseSync.salvarRichtextAnotacoes(this.currentSemana, JSON.stringify(next.payload));
-                    if (result?.success === false) throw new Error(result.error || 'Falha na sincronização.');
+                    const user = localStorage.getItem('supabase_user');
+                    const send = async () => {
+                        if (!this.store.isStored(next) || user !== localStorage.getItem('supabase_user')) return null;
+                        return window.SupabaseSync.salvarRichtextAnotacoes(this.currentSemana, JSON.stringify(next.payload));
+                    };
+                    // Serialize uploads by week across v2 tabs when Web Locks is
+                    // available; recheck the stored revision after acquiring it.
+                    const result = navigator.locks?.request
+                        ? await navigator.locks.request('notes-cloud-' + this.currentSemana, send)
+                        : await send();
+                    if (!result) continue;
+                    if (result.success === false) throw new Error(result.error || 'Falha na sincronização.');
+                    if (user !== localStorage.getItem('supabase_user') || !this.store.isStored(next)) continue;
                     this.lastCloudKey = next.key;
                     this.store.acknowledge(next);
                     this.showSavedFeedback();
@@ -103,7 +118,7 @@ class AutoSaveManager {
     executeAutoSave() {
         if (!this.store || !this.editor) return Promise.resolve();
         const snapshot = this.store.flush();
-        if (snapshot && this.store.hasPending(snapshot)) this.pending = snapshot;
+        if (snapshot && this.store.isStored(snapshot) && this.store.hasPending(snapshot)) this.pending = snapshot;
         return this.drain();
     }
     onContentChange() { return this.executeAutoSave('input'); }
@@ -118,10 +133,10 @@ class AutoSaveManager {
     triggerFeedbackEvent(message, type, duration = null) {
         window.dispatchEvent(new CustomEvent('editor:save-status', { detail: { message, type, duration } }));
     }
-    showSavingFeedback() { this.triggerFeedbackEvent('☁️ Salvando...', 'saving'); }
-    showSavedFeedback() { this.triggerFeedbackEvent('✅ Salvo na nuvem', 'success', 3000); }
-    showLocalSaveFeedback() { this.triggerFeedbackEvent('💾 Salvo localmente', 'local', 2000); }
-    showErrorFeedback() { this.triggerFeedbackEvent('❌ Não foi possível concluir o salvamento', 'error', 4000); }
+    showSavingFeedback() { this.triggerFeedbackEvent('Sincronizando…', 'saving'); }
+    showSavedFeedback() { this.triggerFeedbackEvent('Salvo na nuvem', 'success', 1800); }
+    showLocalSaveFeedback() { this.triggerFeedbackEvent('Salvo neste aparelho', 'local', 1600); }
+    showErrorFeedback() { this.triggerFeedbackEvent('Salvo neste aparelho. A sincronização será tentada novamente quando houver conexão.', 'error', 0); }
     forceAutoSave() { return this.executeAutoSave('force'); }
     pauseAutoSave() { this.isPaused = true; this.triggerFeedbackEvent('⏸️ Sincronização pausada', 'local', 2000); }
     resumeAutoSave() { this.isPaused = false; return this.executeAutoSave('resume'); }
