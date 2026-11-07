@@ -1,4 +1,4 @@
-/* A full PWA surface is independent of WebKit's post-keyboard fixed inset box. */
+/* Use the current PWA viewport, independently of a stale post-keyboard fixed box. */
 (() => {
   'use strict';
   const root = document.documentElement;
@@ -32,6 +32,10 @@
     // chase its dimensions or offset. An orientation/width change still needs
     // a fresh surface, even if the user remains zoomed in.
     if (window.visualViewport && Math.abs(visualViewport.scale - 1) > 0.01 && size && width === size.width) return {...size};
+    // iOS can reserve the status bar outside the web view: 100lvh/100vh
+    // still report the physical 932px while innerHeight/100dvh report 873px.
+    // The dynamic unit also retains the layout height while the keyboard
+    // occludes visualViewport, without relying on a stale fixed inset box.
     const height = Math.round(Math.max(innerHeight, units?.height || 0));
     if (width > 0 && height > 0 && (!size || width !== size.width || height !== size.height)) {
       size = {width, height};
@@ -63,9 +67,10 @@
       if (enabled) {
         probe = document.createElement('div');
         probe.id = 'notes-surface-units'; probe.setAttribute('aria-hidden', 'true');
-        // Explicit viewport units, not inset:0, keep this measurement independent
-        // from the fixed containing block that can end above the visible bottom.
-        probe.style.cssText = 'position:fixed;left:-10000px;top:0;width:100vw;height:100vh;width:100lvw;height:100lvh;visibility:hidden;pointer-events:none;contain:strict';
+        // Dynamic viewport units follow the space allocated to the web app.
+        // Keep the probe independent of inset:0, which can remain too short
+        // after keyboard dismissal on other iOS installations.
+        probe.style.cssText = 'position:fixed;left:-10000px;top:0;width:100vw;height:0;width:100lvw;height:100dvh;visibility:hidden;pointer-events:none;contain:strict';
         document.body.append(probe);
         root.dataset.notesSurface = 'pwa';
         const toolbar = document.getElementById('kbdToolbar');
