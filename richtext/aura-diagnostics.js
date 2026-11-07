@@ -3,14 +3,15 @@
   'use strict';
   const root = document.documentElement;
   if (root.dataset.notesVersion !== '2' || window.NotesAuraDiagnostics?.enabled) return;
-  if (!window.__NOTES_AURA_DIAGNOSTIC_REQUESTED__ && new URLSearchParams(location.search).get('diagnostico') !== 'aura') return;
+  if (!window.__NOTES_AURA_DIAGNOSTIC_REQUESTED__ && new URLSearchParams(location.search).get('diagnostico') !== 'aura' && new URLSearchParams(location.search).get('diagnostico') !== 'navbar') return;
 
-  const VERSION = '2026.11.06.2', LIMIT = 120;
+  const VERSION = '2026.11.07.2', LIMIT = 120;
   const sourceURL = new URL(document.currentScript.src);
-  const manualStart = !!window.__NOTES_AURA_DIAGNOSTIC_REQUESTED__;
+  const manualStart = !!window.__NOTES_AURA_DIAGNOSTIC_REQUESTED__ && !window.NotesNavbarDiagnostics?.enabled;
   const startedAt = new Date().toISOString(), started = performance.now();
   const listeners = [], timers = new Set(), samples = [], reasons = new Set();
   let enabled = true, baseline = null, dropped = 0, probe, observer, notice;
+  let unitsProbe;
   let frame = 0, throttle = 0, settled = 0, lastCapture = -100;
   let cache = {status:'pending', shells:[], modules:[]};
   const number = value => Number.isFinite(value) ? Math.round(value * 1000) / 1000 : null;
@@ -31,14 +32,18 @@
     const node = typeof selector === 'string' ? document.querySelector(selector) : selector;
     if (!node) return null;
     const style = getComputedStyle(node);
-    const keys = ['position','display','visibility','opacity','zIndex','transform','overflow','overflowY','height','paddingTop','paddingBottom','backgroundColor','filter','backdropFilter','webkitBackdropFilter','transitionProperty','transitionDuration'];
+    const keys = ['position','display','visibility','opacity','zIndex','transform','overflow','overflowY','height','paddingTop','paddingBottom','backgroundColor','filter','backdropFilter','webkitBackdropFilter','transitionProperty','transitionDuration','top','bottom','left','right','width','boxSizing','paddingLeft','paddingRight'];
     const result = {rect:rect(node), style:Object.fromEntries(keys.map(key => [key,style[key] || ''])),
-      clientHeight:node.clientHeight, scrollHeight:node.scrollHeight, scrollTop:number(node.scrollTop)};
+      offsetHeight:node.offsetHeight, clientHeight:node.clientHeight, scrollHeight:node.scrollHeight, scrollTop:number(node.scrollTop)};
     if (node instanceof HTMLCanvasElement) result.bitmap = {width:node.width, height:node.height};
     return result;
   }
   function snapshot(reason, eventFocus) {
     const vv = window.visualViewport, safe = probe && getComputedStyle(probe);
+    const navbar = document.querySelector('.bottom-navbar'), navBox = rect(navbar);
+    const visualBottom = vv ? vv.offsetTop + vv.height : innerHeight;
+    const rootStyle = getComputedStyle(root);
+    const surfaceKeys = ['--notes-surface-width','--notes-surface-height','--notes-toolbar-height','--navbar-real-height','--navbar-safe-bottom'];
     return {
       atMs:number(performance.now() - started), reason,
       lifecycle:{visibility:document.visibilityState, persisted:reason.includes('persisted')},
@@ -51,6 +56,13 @@
         scrollX:number(scrollX), scrollY:number(scrollY), visual:vv ? Object.fromEntries(['width','height','offsetTop','offsetLeft','pageTop','pageLeft','scale'].map(key => [key,number(vv[key])])) : null},
       safeAreas:safe ? {top:parseFloat(safe.paddingTop), right:parseFloat(safe.paddingRight), bottom:parseFloat(safe.paddingBottom), left:parseFloat(safe.paddingLeft)} : null,
       fixedEdges:rect(probe),
+      units:unitsProbe ? Object.fromEntries([...unitsProbe.children].map(node => [node.dataset.unit,number(node.getBoundingClientRect().height)])) : null,
+      surface:{enabled:!!window.NotesViewport?.enabled, css:Object.fromEntries(surfaceKeys.map(key => [key,rootStyle.getPropertyValue(key).trim()]))},
+      navbarPosition:{mode:root.dataset.notesNavbarTest === 'native' ? 'native-bottom' : 'current',
+        hiddenByApp:!!navbar?.classList.contains('hidden'),
+        bottomMinusVisualBottom:navBox ? number(navBox.bottom - visualBottom) : null,
+        bottomMinusInnerHeight:navBox ? number(navBox.bottom - innerHeight) : null,
+        bottomMinusFixedBottom:navBox && probe ? number(navBox.bottom - probe.getBoundingClientRect().bottom) : null},
       elements:{root:element(root), body:element(document.body), app:element('.app'), scroller:element('#editorScroll'),
         aura:element('.leitor-fx'), fog:element('.leitor-fx__fog canvas'), glow:element('.leitor-fx__smoke canvas'),
         navbar:element('.bottom-navbar'), toolbar:element('#kbdToolbar'), statusbar:element('#app-solid-statusbar'), mask:element('.statusbar-mask')}
@@ -96,10 +108,10 @@
       if (!window.caches) { cache = {status:'unavailable'}; return; }
       const names = await caches.keys();
       const modules = [];
-      for (const path of ['plugin/leitor.js','editor.js']) {
+      for (const path of ['viewport.js','viewport.css','aura-diagnostics.js','navbar-diagnostics.js','../navbar/navbar-unified.js','../navbar/navbar-unified.css','plugin/leitor.js','editor.js']) {
         const response = await caches.match(new URL(path, sourceURL).href);
         const version = response?.headers.get('x-sentinela-app-version');
-        modules.push({path, present:!!response, version:version && /^\d{4}\.\d{2}\.\d{2}\.\d+$/.test(version) ? version : null});
+        modules.push({path, present:!!response, receiptHash:response?.headers.get('x-sentinela-sha256') || null, version:version && /^\d{4}\.\d{2}\.\d{2}\.\d+$/.test(version) ? version : null});
       }
       cache = {status:'read-existing', shells:names.filter(name => /^sentinela-integrado-shell-v\d+$/.test(name)), modules};
     } catch (_) { cache = {status:'unavailable'}; }
@@ -135,7 +147,7 @@
   function stop() {
     enabled = false; timers.forEach(clearTimeout); timers.clear(); cancelAnimationFrame(frame);
     listeners.forEach(([target,name,handler,options]) => target?.removeEventListener(name,handler,options));
-    observer?.disconnect(); probe?.remove(); notice?.remove();
+    observer?.disconnect(); probe?.remove(); unitsProbe?.remove(); notice?.remove();
     delete window.__NOTES_AURA_DIAGNOSTIC_REQUESTED__;
     document.getElementById('notes-aura-diagnostic-script')?.remove();
   }
@@ -144,6 +156,15 @@
     probe = document.createElement('div'); probe.id = 'notes-aura-diagnostic-probe'; probe.setAttribute('aria-hidden','true');
     probe.style.cssText = 'position:fixed;inset:0;box-sizing:border-box;visibility:hidden;pointer-events:none;overflow:hidden;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
     document.body.append(probe);
+    unitsProbe = document.createElement('div');
+    unitsProbe.id = 'notes-diagnostic-units';
+    unitsProbe.style.cssText = 'position:fixed;top:0;left:-10000px;width:1px;height:0;visibility:hidden;pointer-events:none';
+    for (const unit of ['vh','svh','lvh','dvh']) {
+      const node = document.createElement('div'); node.dataset.unit = unit;
+      node.style.cssText = `position:absolute;top:0;width:1px;height:100${unit}`;
+      unitsProbe.append(node);
+    }
+    document.body.append(unitsProbe);
     // A manual start closes the version menu before the first measurement.
     frame = requestAnimationFrame(() => {
       frame = 0; capture('baseline-before-menu');
@@ -164,6 +185,7 @@
     listen(window,'pageshow',event => recheck(event.persisted ? 'pageshow-persisted' : 'pageshow'));
     listen(window,'pagehide',event => capture(event.persisted ? 'pagehide-persisted' : 'pagehide'));
     listen(document,'visibilitychange',() => { capture('visibilitychange'); if (!document.hidden) recheck('visible-resume'); });
+    listen(document,'notes:surface-resize',() => queue('notes-surface-resize'));
     listen(document,'editor:viewport-layout',() => queue('editor-layout'));
     observer = new MutationObserver(() => queue('layout-state'));
     const config = {attributes:true, attributeFilter:['class','style','data-theme','data-performance-mode','data-native-statusbar']};

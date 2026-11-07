@@ -53,10 +53,11 @@
 <script id="sentinela-typography-script" src="../shared/typography.js"></script>
 <link id="sentinela-typography-style" rel="stylesheet" href="../shared/typography.css">
 <script>
-  if (new URLSearchParams(location.search).get('diagnostico') === 'aura') {
+  const diagnosticMode = new URLSearchParams(location.search).get('diagnostico');
+  if (['aura','navbar'].includes(diagnosticMode)) {
     const diagnostic = document.createElement('script');
-    diagnostic.id = 'notes-aura-diagnostic-script';
-    diagnostic.src = 'aura-diagnostics.js';
+    diagnostic.id = diagnosticMode === 'navbar' ? 'notes-navbar-diagnostic-script' : 'notes-aura-diagnostic-script';
+    diagnostic.src = diagnosticMode === 'navbar' ? 'navbar-diagnostics.js' : 'aura-diagnostics.js';
     diagnostic.async = false;
     diagnostic.onerror = () => diagnostic.remove();
     document.head.append(diagnostic);

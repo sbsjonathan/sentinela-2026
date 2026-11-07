@@ -144,6 +144,7 @@
       <button type="button" id="notes-version-2" class="notes-version-choice"><strong>Versão 2 · atual</strong><span>Edição e leitura com borda animada</span></button>
       <button type="button" id="notes-version-1" class="notes-version-choice"><strong>Versão 1</strong><span>Página anterior preservada</span></button>
       <p id="notes-version-message" role="status"></p>
+      <button type="button" id="notes-diagnose-navbar" class="notes-version-export" ${current === '2' ? '' : 'hidden'}>Verificar barra inferior</button>
       <button type="button" id="notes-export-current" class="notes-version-export">Exportar nota desta semana</button>
       <button type="button" id="notes-export-original" class="notes-version-export" hidden>Exportar cópia anterior à v2</button>
       <button type="button" id="notes-export-recovery" class="notes-version-export" hidden>Exportar cópias preservadas</button>
@@ -157,6 +158,15 @@
       button.onclick = () => switchTo(version);
     }
     overlay.querySelector('#notes-export-current').onclick = exportCurrent;
+    overlay.querySelector('#notes-diagnose-navbar').onclick = () => {
+      if (window.NotesNavbarDiagnostics?.enabled) { close(); window.NotesNavbarDiagnostics.show(); return; }
+      if (document.getElementById('notes-navbar-diagnostic-script')) return;
+      close();
+      const script = document.createElement('script'); script.id = 'notes-navbar-diagnostic-script';
+      script.src = new URL('navbar-diagnostics.js',scriptURL).href;
+      script.onerror = () => { script.remove(); open(); message.textContent = 'Não foi possível abrir a verificação. Tente novamente.'; };
+      document.head.append(script);
+    };
     overlay.querySelector('#notes-export-original').onclick = async () => {
       const backup = await getBackup().catch(() => null);
       if (backup?.raw) download(backup.raw, `anotacoes-antes-v2-${initialWeek}.json`);

@@ -716,7 +716,7 @@ document.addEventListener('touchend', function (event) {
 // Reopening an installed iPhone app may resume the page without another load event.
 (function manageAppUpdates() {
     if (!('serviceWorker' in navigator)) return;
-    const release = '2026.11.07.1';
+    const release = '2026.11.07.2';
     const root = getProjectRootURL();
     let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
     const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);
@@ -738,7 +738,14 @@ document.addEventListener('touchend', function (event) {
         statusbarDiagnose.href = new URL('diagnostico-statusbar.html', root).href;
         statusbarDiagnose.textContent = 'Diagnóstico da barra superior';
         versionNode.style.cssText = 'font-size:12px;margin:12px 0;color:inherit;opacity:.7';
-        offlineSection.append(versionNode, update, statusbarDiagnose, diagnose);
+        const notesDiagnose = document.createElement('a');
+        notesDiagnose.className = 'btn btn-secondary';
+        const notesDiagnosticURL = new URL('richtext/container.html?versao=2&diagnostico=navbar', root);
+        const diagnosticWeek = window.getGlobalWeek?.();
+        if (diagnosticWeek) notesDiagnosticURL.searchParams.set('semana', diagnosticWeek);
+        notesDiagnose.href = notesDiagnosticURL.href;
+        notesDiagnose.textContent = 'Diagnóstico da barra de Anotações';
+        offlineSection.append(versionNode, update, notesDiagnose, statusbarDiagnose, diagnose);
     }
     function askVersion(worker) {
         return new Promise(resolve => {
