@@ -168,9 +168,9 @@ function referenceOrigin(id,verse){
  // Read clean publication text, not the chapter DOM with its note markers.
  const number=verse??state.data?.blocks?.flatMap(block=>block.parts).find(part=>part.note?.id===id)?.verse;
  const source=state.data?.verses?.find(item=>number!=null?Number(item.number)===Number(number):item.notes?.some(note=>note.id===id));
- return source?.text?{reference:`${nameOf(state.book)} ${state.chapter}:${source.number}`,text:source.text}:null;
+ return source?.text?{verse:source.number,text:source.text}:null;
 }
-function showNoteOrigin(origin){ui['note-origin'].textContent=origin?`${origin.reference} — ${origin.text}`:'';ui['note-origin'].hidden=!origin;}
+function showNoteOrigin(origin){ui['note-origin'].textContent=origin?`${origin.verse} ${origin.text}`:'';ui['note-origin'].hidden=!origin;}
 function noteLoading(title){showNoteOrigin(null);ui['note-title'].textContent=title;ui['note-kind'].textContent='';ui['note-kind'].hidden=true;ui['note-body'].textContent='Carregando…';ui['note-links'].replaceChildren();ui['open-reference'].hidden=true;ui['note-back'].hidden=!noteHistory.length;}
 function pushNote(){if(currentNote)noteHistory.push({...currentNote,scroll:ui['note-dialog'].scrollTop});}
 function noteLabel(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/gi,'').toLowerCase();}

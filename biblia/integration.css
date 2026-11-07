@@ -60,4 +60,4 @@ body.reference-reading,html.article-study-opening body{background:#fafafa}
 
 /* The source quote scrolls above the sticky title/close row, keeping long
    verses readable without taking over the sheet or adding another scroller. */
-.note-origin{margin:12px 0 2px;color:#6d6872;font-family:"WTClearText",Georgia,serif;font-size:clamp(12px,calc(12px * var(--font-scale-global,1)),16px);font-weight:500;font-style:italic;line-height:1.45;overflow-wrap:anywhere}
+.note-origin{margin:12px 0 2px;color:var(--purple);font-family:"WTClearText",Georgia,serif;font-size:clamp(12px,calc(12px * var(--font-scale-global,1)),16px);font-weight:500;font-style:italic;line-height:1.45;overflow-wrap:anywhere}
