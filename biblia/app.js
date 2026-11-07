@@ -109,7 +109,7 @@ async function showChapters(book,direction='forward'){
  try{const chapters=chapterNumbers(book)||await rpc('chapters',{publication:state.publication,book:Number(book)});if(epoch!==state.epoch)return;paintChapters(book,chapters);window.scrollTo(0,0);window.BibleMotion?.transition(ui['chapter-panel'],direction);}catch(e){notice(e.message,true);}
 }
 function showReading(restore=false,direction='forward'){screen('reading',`${nameOf(state.book)} ${state.chapter}`,editionName(),true);if(restore)window.scrollTo(0,state.readingScroll);readAlong?.refresh();window.BibleMotion?.transition(ui.reader,restore?'back':direction);}
-function noteButton(note,verse,text){const b=button(text??note.label??'*',note.kind==='study'?'study-word':'note-marker '+note.kind,e=>openNote(note.id,e.currentTarget));b.dataset.noteId=note.id;b.setAttribute('aria-label',`${note.title||'Nota'} — ${nameOf(state.book)} ${state.chapter}:${verse}`);return b;}
+function noteButton(note,verse,text){const b=button(text??note.label??'*',note.kind==='study'?'study-word':'note-marker '+note.kind,e=>openNote(note.id,e.currentTarget,verse));b.dataset.noteId=note.id;b.setAttribute('aria-label',`${note.title||'Nota'} — ${nameOf(state.book)} ${state.chapter}:${verse}`);return b;}
 function renderVerses(data){
  const f=document.createDocumentFragment(),seen=new Set();
  if(data.blocks?.length){for(const block of data.blocks){const p=document.createElement(block.type==='heading'?'h3':'p');p.className=block.type==='heading'?'bible-heading':'bible-paragraph';if(block.type==='poetry')p.classList.add('poetry');if(block.indent)p.classList.add('indented');if(block.superscription)p.classList.add('superscription');
@@ -164,7 +164,14 @@ async function openSearchResult(item){
 }
 
 function closeNotes(){++noteEpoch;return closeDialog(ui['note-dialog']);}
-function noteLoading(title){ui['note-title'].textContent=title;ui['note-kind'].textContent='';ui['note-kind'].hidden=true;ui['note-body'].textContent='Carregando…';ui['note-links'].replaceChildren();ui['open-reference'].hidden=true;ui['note-back'].hidden=!noteHistory.length;}
+function referenceOrigin(id,verse){
+ // Read clean publication text, not the chapter DOM with its note markers.
+ const number=verse??state.data?.blocks?.flatMap(block=>block.parts).find(part=>part.note?.id===id)?.verse;
+ const source=state.data?.verses?.find(item=>number!=null?Number(item.number)===Number(number):item.notes?.some(note=>note.id===id));
+ return source?.text?{reference:`${nameOf(state.book)} ${state.chapter}:${source.number}`,text:source.text}:null;
+}
+function showNoteOrigin(origin){ui['note-origin'].textContent=origin?`${origin.reference} — ${origin.text}`:'';ui['note-origin'].hidden=!origin;}
+function noteLoading(title){showNoteOrigin(null);ui['note-title'].textContent=title;ui['note-kind'].textContent='';ui['note-kind'].hidden=true;ui['note-body'].textContent='Carregando…';ui['note-links'].replaceChildren();ui['open-reference'].hidden=true;ui['note-back'].hidden=!noteHistory.length;}
 function pushNote(){if(currentNote)noteHistory.push({...currentNote,scroll:ui['note-dialog'].scrollTop});}
 function noteLabel(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/gi,'').toLowerCase();}
 function appendPassage(container,data){
@@ -206,6 +213,7 @@ function renderNote(note){
  const epoch=++noteEpoch;
  const update=()=>{
   currentNote=note;
+  showNoteOrigin(note.kind==='reference'?note.origin:null);
   const title=note.kind==='study'&&/^\d+:\d+(?:[-–]\d+)?$/.test(note.title||'')?`${nameOf(state.book)} ${note.title}`:note.title||'Nota';
   const kind=({footnote:'Nota de rodapé',study:'Nota de estudo',reference:'Referências cruzadas',extract:'Glossário',passage:'Passagem bíblica'})[note.kind]||'Nota';
   ui['note-title'].textContent=title;ui['note-kind'].textContent=kind;ui['note-kind'].hidden=noteLabel(kind)===noteLabel(title);
@@ -222,8 +230,8 @@ function renderNote(note){
  if(window.BibleDialogs?.resize)window.BibleDialogs.resize(ui['note-dialog'],update);else update();
  window.BibleMotion?.content(ui['note-body']);
 }
-async function openNote(id,trigger){noteTrigger=trigger;noteHistory=[];currentNote=null;document.body.classList.add('sheet-open');showDialog(ui['note-dialog']);await fetchNote(id);}
-async function fetchNote(id){const epoch=++noteEpoch;noteLoading('Nota');try{const note=await rpc('note',{publication:state.publication,id});if(epoch!==noteEpoch||!ui['note-dialog'].open)return;renderNote(note);}catch(e){if(epoch===noteEpoch&&ui['note-dialog'].open){ui['note-body'].textContent=e.message;ui['note-title'].textContent='Não foi possível abrir a nota';}}}
+async function openNote(id,trigger,verse){const origin=referenceOrigin(id,verse);noteTrigger=trigger;noteHistory=[];currentNote=null;document.body.classList.add('sheet-open');showDialog(ui['note-dialog']);await fetchNote(id,origin);}
+async function fetchNote(id,origin=referenceOrigin(id)){const epoch=++noteEpoch;noteLoading('Nota');try{const note=await rpc('note',{publication:state.publication,id});if(epoch!==noteEpoch||!ui['note-dialog'].open)return;renderNote({...note,origin:note.kind==='reference'?origin:null});}catch(e){if(epoch===noteEpoch&&ui['note-dialog'].open){ui['note-body'].textContent=e.message;ui['note-title'].textContent='Não foi possível abrir a nota';}}}
 async function openNestedNote(id){pushNote();await fetchNote(id);}
 async function openPassage(link){
  pushNote();const epoch=++noteEpoch;noteLoading(link.label||'Passagem bíblica');
