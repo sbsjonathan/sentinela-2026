@@ -158,6 +158,10 @@ async function urlExiste(url) {
     }
 }
 
+// Distances are measured in document CSS pixels, identically in both readers.
+const NAVBAR_HIDE_DISTANCE = 100;
+const NAVBAR_SHOW_DISTANCE = 40;
+
 class UnifiedNavbar {
     constructor() {
         this.navbar = null;
@@ -174,6 +178,11 @@ class UnifiedNavbar {
         this._imageViewerSuspended = false;
         this._imageViewerReleaseFrame = 0;
         this._lastToolbarReserved = false;
+        this._scrollListeners = [];
+        this._scrollAnchor = 0;
+        this._scrollIntentUntil = 0;
+        this._articleMenuOpen = false;
+        this._paragraphNavigationActive = false;
         
         this.init();
     }
@@ -191,6 +200,7 @@ class UnifiedNavbar {
         this._referenceContextHandler = () => {
             this.currentPage = this.detectCurrentPage();
             this.updateActiveState();
+            this.resetScrollTracking();
         };
         document.addEventListener('sentinela:reference-context', this._referenceContextHandler);
         this.finishInitialPaint();
@@ -207,7 +217,9 @@ class UnifiedNavbar {
 
     detectCurrentPage() {
         if (document.body.dataset.studyReferenceContext === 'article') return 'watchtower';
-        const path = window.location.pathname.toLowerCase();
+        // Ignore the repository name (for example /sentinela-2026/save/...).
+        const rootPath = new URL(getProjectRootURL()).pathname;
+        const path = ('/' + window.location.pathname.slice(rootPath.length)).toLowerCase();
         if (path.includes('index.html') || path === '/' || path.endsWith('/')) return 'home';
         if (path.includes('biblia') || path.includes('livro') || path.includes('capitulo')) return 'bible';
         if (path.includes('richtext') || path.includes('anotacoes') || path.includes('container')) return 'notes';
@@ -326,31 +338,118 @@ class UnifiedNavbar {
     }
 
     setupScrollBehavior() {
-        window.addEventListener('scroll', () => this.onScroll(), { passive: true });
+        const listen = (target, type, handler, options = { passive: true }) => {
+            target.addEventListener(type, handler, options);
+            this._scrollListeners.push([target, type, handler, options]);
+        };
+        const arm = () => {
+            if (!this.canAutoHide() || this.scrollTrackingPaused()) return;
+            if (Math.abs(this.documentScrollPosition().max - this._scrollMax) > 1) this.resetScrollTracking();
+            this._scrollIntentUntil = performance.now() + 1000;
+        };
+        // Scroll restoration, focus, paragraph links and layout changes also
+        // dispatch scroll. Only a reading gesture may collapse the dock.
+        listen(window, 'wheel', event => {
+            if (!event.ctrlKey && Math.abs(event.deltaY) > Math.abs(event.deltaX)) arm();
+        });
+        let touch = null;
+        listen(document, 'touchstart', event => {
+            this._scrollIntentUntil = 0;
+            touch = event.touches.length === 1 ? event.touches[0] : null;
+        });
+        listen(document, 'touchmove', event => {
+            if (!touch || event.touches.length !== 1) return;
+            const point = event.touches[0];
+            if (Math.abs(point.clientY - touch.clientY) > Math.abs(point.clientX - touch.clientX)) arm();
+        });
+        listen(document, 'pointerdown', () => { this._scrollIntentUntil = 0; });
+        listen(document, 'keydown', event => {
+            const target = event.target;
+            if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ||
+                target?.closest?.('input, textarea, select, button, [contenteditable="true"]')) return;
+            if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) arm();
+        });
+        listen(window, 'scroll', () => this.onScroll());
+        listen(window, 'scrollend', () => { this._scrollIntentUntil = 0; });
+        for (const type of ['resize', 'orientationchange', 'pageshow']) {
+            listen(window, type, () => this.resetScrollTracking());
+        }
+        listen(document, 'visibilitychange', () => this.resetScrollTracking());
+        listen(document, 'sentinela:article-menu-state', ({ detail }) => {
+            this._articleMenuOpen = Boolean(detail?.open);
+            if (this._articleMenuOpen) this.showNavbar();
+            this.resetScrollTracking();
+        });
+        listen(document, 'sentinela:paragraph-navigation', ({ detail }) => {
+            this._paragraphNavigationActive = Boolean(detail?.active);
+            this.resetScrollTracking();
+        });
+        this.resetScrollTracking();
+    }
+
+    canAutoHide() {
+        return ['bible', 'watchtower'].includes(this.currentPage) &&
+            !document.body.classList.contains('assembly-home');
+    }
+
+    scrollTrackingPaused() {
+        return this.isKeyboardOpen || this.isToolbarReservedMode() || this._imageViewerSnapshot ||
+            this._articleMenuOpen || this._paragraphNavigationActive ||
+            document.body.style.position === 'fixed' || Boolean(document.querySelector('dialog[open]'));
+    }
+
+    documentScrollPosition() {
+        const scroller = document.scrollingElement || document.documentElement;
+        const max = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+        // Safari's elastic overscroll must not look like a reversed gesture.
+        return { y: Math.max(0, Math.min(window.scrollY, max)), max };
+    }
+
+    resetScrollTracking() {
+        const { y, max } = this.documentScrollPosition();
+        this.lastScrollY = this._scrollAnchor = y;
+        this._scrollMax = max;
+        this._scrollIntentUntil = 0;
     }
 
     onScroll() {
-        if (this.isKeyboardOpen || this._imageViewerSnapshot) return;
-        const currentScrollY = window.scrollY;
-        // A scroll-lock restoration may dispatch again at the same position.
-        if (Math.abs(currentScrollY - this.lastScrollY) < 1) return;
-        if (currentScrollY > this.lastScrollY && currentScrollY > 10) {
-            this.hideNavbar('scroll');
-        } else {
-            this.showNavbar();
+        const { y, max } = this.documentScrollPosition();
+        if (!this.canAutoHide() || this.scrollTrackingPaused() ||
+            Math.abs(max - this._scrollMax) > 1 || performance.now() > this._scrollIntentUntil) {
+            this.resetScrollTracking();
+            return;
         }
-        this.lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
+        if (Math.abs(y - this.lastScrollY) < 1) return;
+        this.lastScrollY = y;
+        // Continue accepting the inertial tail of the same touch/wheel gesture.
+        this._scrollIntentUntil = performance.now() + 1000;
+        if (y <= 8) {
+            this.showNavbar();
+            this._scrollAnchor = y;
+        } else if (this.isHidden) {
+            this._scrollAnchor = Math.max(this._scrollAnchor, y);
+            if (this._scrollAnchor - y >= NAVBAR_SHOW_DISTANCE) {
+                this.showNavbar();
+                this._scrollAnchor = y;
+            }
+        } else {
+            this._scrollAnchor = Math.min(this._scrollAnchor, y);
+            if (y - this._scrollAnchor >= NAVBAR_HIDE_DISTANCE) {
+                this.hideNavbar('scroll');
+                this._scrollAnchor = y;
+            }
+        }
     }
 
     hideNavbar(reason = 'scroll') {
         if (this._imageViewerSnapshot) return;
-        if (reason === 'scroll' && document.body.hasAttribute('data-bible-reader')) return;
-        if (reason === 'scroll' && !document.documentElement.dataset.programYear && ['home', 'notes', 'save'].includes(this.currentPage)) {
-            return;
-        }
+        // Home, Save and Notes remain available during document scrolling.
+        // Editing still follows the keyboard independently of this policy.
+        if (reason === 'scroll' && (!this.canAutoHide() || this.scrollTrackingPaused())) return;
         if (!this.isHidden && this.navbar) {
             this.navbar.classList.add('hidden');
             this.isHidden = true;
+            this.syncBottomMetrics();
         }
     }
 
@@ -363,6 +462,7 @@ class UnifiedNavbar {
         if (this.isHidden && this.navbar) {
             this.navbar.classList.remove('hidden');
             this.isHidden = false;
+            this.syncBottomMetrics();
         }
     }
 
@@ -395,6 +495,9 @@ class UnifiedNavbar {
             const wasToolbarReserved = this._lastToolbarReserved;
             this.isKeyboardOpen = this.keyboardOpenByViewport();
             this._lastToolbarReserved = this.isToolbarReservedMode();
+            if (wasKeyboardOpen !== this.isKeyboardOpen || wasToolbarReserved !== this._lastToolbarReserved) {
+                this.resetScrollTracking();
+            }
             if (this.isKeyboardOpen || this._lastToolbarReserved) {
                 this.hideNavbar('keyboard');
             } else if (wasKeyboardOpen || wasToolbarReserved) {
@@ -416,9 +519,11 @@ class UnifiedNavbar {
 
         document.addEventListener('focusin', (e) => {
             const tag = e.target.tagName;
-            if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) {
+            const textInput = tag === 'INPUT' && !['range', 'color', 'radio', 'checkbox', 'button', 'submit', 'reset', 'file', 'image', 'hidden'].includes(e.target.type);
+            if (textInput || tag === 'TEXTAREA' || e.target.isContentEditable) {
                 this.editableFocado = true;
                 this.isKeyboardOpen = true;
+                this.resetScrollTracking();
                 this.hideNavbar('keyboard');
                 this.syncBottomMetrics();
             }
@@ -474,7 +579,7 @@ class UnifiedNavbar {
             this.isHidden = this.isKeyboardOpen || this._lastToolbarReserved ||
                 (snapshot.hidden && !snapshot.keyboardOpen && !snapshot.toolbarReserved);
             this.navbar?.classList.toggle('hidden', this.isHidden);
-            this.lastScrollY = Math.max(0, window.scrollY);
+            this.resetScrollTracking();
             this._imageViewerSuspended = false;
             this.syncBottomMetrics(true);
             // Body/viewport observers and the restored scroll can arrive in the
@@ -483,7 +588,7 @@ class UnifiedNavbar {
                 this._imageViewerReleaseFrame = requestAnimationFrame(() => {
                     this._imageViewerReleaseFrame = 0;
                     if (this._imageViewerSnapshot !== snapshot || this._imageViewerSuspended) return;
-                    this.lastScrollY = Math.max(0, window.scrollY);
+                    this.resetScrollTracking();
                     this.navbar?.classList.remove('image-viewer-suspended');
                 });
             });
@@ -497,7 +602,7 @@ class UnifiedNavbar {
                 this._imageViewerReleaseFrame = requestAnimationFrame(() => {
                     this._imageViewerReleaseFrame = 0;
                     if (this._imageViewerSnapshot !== snapshot || this._imageViewerSuspended) return;
-                    this.lastScrollY = Math.max(0, window.scrollY);
+                    this.resetScrollTracking();
                     this._imageViewerSnapshot = null;
                     this.navbar?.classList.remove('image-viewer-suspended');
                     this.syncBottomUI();
@@ -548,9 +653,15 @@ class UnifiedNavbar {
     setActivePage(page) {
         this.currentPage = page;
         this.updateActiveState();
+        this.resetScrollTracking();
+        if (!this.canAutoHide()) this.showNavbar();
     }
 
     destroy() {
+        for (const [target, type, handler, options] of this._scrollListeners) {
+            target.removeEventListener(type, handler, options);
+        }
+        this._scrollListeners = [];
         if (this._resizeObserver) {
             this._resizeObserver.disconnect();
             this._resizeObserver = null;
@@ -632,6 +743,12 @@ async function irParaSentinela(event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
+    }
+    // The active article icon opens its controls; Bible references keep their return route.
+    if (!document.body.hasAttribute('data-bible-reader') &&
+        document.querySelector('main .paragrafo') && window.SentinelaArticleMenu?.toggle) {
+        window.SentinelaArticleMenu.toggle();
+        return false;
     }
     if (document.body.dataset.studyReferenceContext === 'article') {
         document.dispatchEvent(new Event('sentinela:return-to-article'));
@@ -716,7 +833,7 @@ document.addEventListener('touchend', function (event) {
 // Reopening an installed iPhone app may resume the page without another load event.
 (function manageAppUpdates() {
     if (!('serviceWorker' in navigator)) return;
-    const release = '2026.11.07.4';
+    const release = '2026.11.13.1';
     const root = getProjectRootURL();
     let registration, checking, lastCheck = 0, refreshing = false, navigating = false;
     const pageRelease = document.querySelector('meta[name="app-version"]')?.content || (isIndexPageNavbar() ? 'legacy' : release);
@@ -729,23 +846,8 @@ document.addEventListener('touchend', function (event) {
         update.className = 'btn btn-secondary';
         update.href = new URL('atualizar.html', root).href;
         update.textContent = 'Verificar atualização';
-        const diagnose = document.createElement('a');
-        diagnose.className = 'btn btn-secondary';
-        diagnose.href = new URL('index.html?diagnostico=1', root).href;
-        diagnose.textContent = 'Diagnóstico da tela inicial';
-        const statusbarDiagnose = document.createElement('a');
-        statusbarDiagnose.className = 'btn btn-secondary';
-        statusbarDiagnose.href = new URL('diagnostico-statusbar.html', root).href;
-        statusbarDiagnose.textContent = 'Diagnóstico da barra superior';
         versionNode.style.cssText = 'font-size:12px;margin:12px 0;color:inherit;opacity:.7';
-        const notesDiagnose = document.createElement('a');
-        notesDiagnose.className = 'btn btn-secondary';
-        const notesDiagnosticURL = new URL('richtext/container.html?versao=2&diagnostico=navbar', root);
-        const diagnosticWeek = window.getGlobalWeek?.();
-        if (diagnosticWeek) notesDiagnosticURL.searchParams.set('semana', diagnosticWeek);
-        notesDiagnose.href = notesDiagnosticURL.href;
-        notesDiagnose.textContent = 'Diagnóstico da barra de Anotações';
-        offlineSection.append(versionNode, update, notesDiagnose, statusbarDiagnose, diagnose);
+        offlineSection.append(versionNode, update);
     }
     function askVersion(worker) {
         return new Promise(resolve => {

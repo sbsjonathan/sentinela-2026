@@ -16,7 +16,7 @@ app=[]
 for f in root.rglob('*'):
     if not f.is_file(): continue
     p=f.relative_to(root).as_posix()
-    if p in exclude or p.startswith('biblia/bundled/') or '/testes/' in p or p.startswith('.') or f.suffix not in extensions: continue
+    if p in exclude or p.startswith('biblia/bundled/') or '/testes/' in p or p.startswith(('.', 'tests/', 'scripts/')) or f.suffix not in extensions: continue
     app.append(p)
 shell=[
     'index.html','atualizar.html','home-layout.js','main.js','styles.css','manifest.json',
@@ -33,8 +33,11 @@ shell=[
     'biblia/vendor/sql-wasm.js','biblia/vendor/sql-wasm.wasm','biblia/vendor/fflate.js',
     'biblia/fonts/fonts.css',
 ]
-shell+=['sentinela/style.css','sentinela/imagem.js','sentinela/imagem/swiper-zoom.js','sentinela/imagem/swiper-zoom.css','worker/worker.html','worker/worker.js','sentinela/biblia/scriptbbl.js','sentinela/biblia/stylebbl.css','shared/typography.js','shared/typography.css','shared/statusbar.js','shared/statusbar.css','shared/statusbar-diagnostics.js','shared/statusbar-diagnostics.css','shared/statusbar-diagnostics-data.js','diagnostico-statusbar.html','diagnostico-pwa/index.html','diagnostico-pwa/manifest.json','diagnostico-pwa/teste.js','diagnostico-pwa/teste.css','biblia/dialog-motion.js','biblia/interaction-motion.js','biblia/interaction-motion.css','sentinela/menu/menu.js']
-shell+=['sentinela/clickable/'+name for name in ['clickable.js','clickable.css','agente_perguntas.js','agente_recap.js','agente-obj.js','agente-sub.js']]
+shell+=['sentinela/style.css','sentinela/imagem.js','sentinela/imagem/swiper-zoom.js','sentinela/imagem/swiper-zoom.css','worker/worker.html','worker/worker.js','sentinela/biblia/scriptbbl.js','sentinela/biblia/stylebbl.css','shared/typography.js','shared/typography.css','shared/statusbar.js','shared/statusbar.css','shared/statusbar-diagnostics.js','shared/statusbar-diagnostics.css','shared/statusbar-diagnostics-data.js','diagnostico-statusbar.html','diagnostico-pwa/index.html','diagnostico-pwa/manifest.json','diagnostico-pwa/teste.js','diagnostico-pwa/teste.css','biblia/dialog-motion.js','biblia/interaction-motion.js','biblia/interaction-motion.css','sentinela/menu/menu.js','sentinela/menu/menu.css']
+shell+=['sentinela/clickable/'+name for name in ['clickable.js','clickable.css','agente_perguntas.js','agente_recap.js','agente-obj.js','agente-sub.js','perguntas-highlights.js']]
+shell+=['sentinela/mark.js']
+# Tutor and context parser upgrade atomically for downloaded articles.
+shell+=['sentinela/clickable/agente-modal/'+name for name in ['agente-modal.js','agente-modal.css','agente-contexto.js']]
 # Notes code and its persistence bridge must upgrade atomically with the new shell.
 shell+=sorted(f.relative_to(root).as_posix() for d in ['richtext','save','richtext-v1','save-v1'] for f in (root/d).rglob('*') if f.is_file() and f.suffix in {'.html','.css','.js'})
 shell+=sorted(f.relative_to(root).as_posix() for f in (root/'biblia/fonts').glob('*.woff2'))

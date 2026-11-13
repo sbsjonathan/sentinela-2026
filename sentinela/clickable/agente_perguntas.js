@@ -1,11 +1,24 @@
 (function () {
+  const scriptURL = document.currentScript?.src || new URL('../clickable/agente_perguntas.js', location.href).href;
+  let highlightsModule;
+  const loadHighlights = () => highlightsModule || (highlightsModule = import(new URL('perguntas-highlights.js', scriptURL).href).catch(error => {
+    highlightsModule = null;
+    throw error;
+  }));
+  const pendingQuestions = new Map();
+  // Literal selection remains independent of explanatory prose.
+  const HIGHLIGHT_CONFIG = {
+    model: 'gemini-3.5-flash-lite',
+    maxAttempts: 2,
+    maxInputChars: 24000,
+    maxOutputTokens: 1536
+  };
   const DEFAULT_CONFIG = {
     enabled: true,
     workerUrl: 'https://gem.jonjonathan2-0.workers.dev',
     modelFallbacks: [
-      'gemini-3.1-flash-lite-preview',
-      'gemini-3-flash-preview',
-      'gemini-2.5-flash'
+      'gemini-3.5-flash-lite',
+      'gemini-3.1-flash-lite'
     ],
     timeoutMs: 22000,
     maxInputChars: 12000,
@@ -67,59 +80,31 @@
     return html;
   }
 
-  function stripSelectionArtifacts(text) {
-    return normalizeSpaces(String(text || '').replace(/[“”]/g, '"').replace(/[‘’´`]/g, "'").replace(/[–—−]/g, '-'));
-  }
-
-  function normalizeForMatch(text) {
-    return normalizeSpaces(stripSelectionArtifacts(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
-  }
-
   function safeJSONParse(text) {
-    if (!text) return null;
-    let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-    const start = cleaned.indexOf('{');
-    const end = cleaned.lastIndexOf('}');
+    if (typeof text !== 'string' || !text.trim()) return null;
+    const cleaned = text.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    // A valid top-level array must not be sliced into its first/last objects.
+    try { return JSON.parse(cleaned); } catch (_) {}
+    const start = cleaned.search(/[\[{]/);
+    const end = cleaned.lastIndexOf(cleaned[start] === '[' ? ']' : '}');
     if (start >= 0 && end >= start) {
-      let jsonStr = cleaned.slice(start, end + 1);
-      jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
-      try {
-        return JSON.parse(jsonStr);
-      } catch (e) {
-        return null;
-      }
+      try { return JSON.parse(cleaned.slice(start, end + 1)); } catch (_) {}
     }
     return null;
   }
 
-  function boundedLevenshtein(a, b, maxDistance) {
-    const left = normalizeSpaces(a || '');
-    const right = normalizeSpaces(b || '');
-    if (left === right) return 0;
-    const limit = Math.max(0, Number(maxDistance) || 0);
-    let aText = left;
-    let bText = right;
-    let aLen = aText.length;
-    let bLen = bText.length;
-    if (Math.abs(aLen - bLen) > limit) return limit + 1;
-    if (aLen > bLen) {[aText, bText] =[bText, aText];[aLen, bLen] = [bLen, aLen];}
-    let prev = new Array(bLen + 1).fill(limit + 1);
-    let curr = new Array(bLen + 1).fill(limit + 1);
-    for (let j = 0; j <= Math.min(bLen, limit); j += 1) prev[j] = j;
-    for (let i = 1; i <= aLen; i += 1) {
-      curr.fill(limit + 1);
-      const from = Math.max(1, i - limit);
-      const to = Math.min(bLen, i + limit);
-      if (from === 1) curr[0] = i;
-      let rowMin = limit + 1;
-      for (let j = from; j <= to; j += 1) {
-        const cost = aText.charCodeAt(i - 1) === bText.charCodeAt(j - 1) ? 0 : 1;
-        curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
-        if (curr[j] < rowMin) rowMin = curr[j];
-      }
-      if (rowMin > limit) return limit + 1;[prev, curr] = [curr, prev];
-    }
-    return prev[bLen];
+  function parseQuestionPayload(text, extractive) {
+    const parsed = safeJSONParse(text);
+    const parts = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.sub_questions) ? parsed.sub_questions :
+      parsed && typeof parsed === 'object' && (extractive ? Array.isArray(parsed.highlights) : typeof parsed.natural_answer === 'string') ? [parsed] : null;
+    if (!parts?.length || parts.length > 12 || parts.some(part => {
+      if (!part || typeof part !== 'object' || Array.isArray(part) || typeof part.question !== 'string') return true;
+      if (!extractive) return typeof part.natural_answer !== 'string' || !part.natural_answer.trim() || typeof part.literal_smooth !== 'string';
+      return !Array.isArray(part.highlights) || part.highlights.some(highlight => !highlight ||
+        !Number.isInteger(Number(highlight.paragraph_number)) || Number(highlight.paragraph_number) < 1 ||
+        typeof highlight.literal_text !== 'string' || !highlight.literal_text.trim());
+    })) throw new Error('A IA devolveu uma resposta incompleta.');
+    return {sub_questions: parts};
   }
 
   function isConfigured() {
@@ -167,46 +152,6 @@
 
   function ensureResponseDiv(idRespostaIA) {
     return document.getElementById(idRespostaIA);
-  }
-
-  function getQuestionElement(idPergunta) {
-    return document.getElementById(idPergunta);
-  }
-
-  function extractQuestionText(questionElement) {
-    if (!questionElement) return '';
-    const clone = questionElement.cloneNode(true);
-    clone.querySelectorAll('.anotacao, .comentarios, .btn-gerar-ia').forEach((el) => el.remove());
-    return normalizeSpaces(clone.textContent || '');
-  }
-
-  function extractParagraphText(paragraphElement) {
-    const clone = paragraphElement.cloneNode(true);
-    clone.querySelectorAll('.anotacao, .comentarios, button, script, style').forEach((el) => el.remove());
-    return normalizeSpaces(clone.textContent || '');
-  }
-
-  function getParagraphNumber(paragraphElement) {
-    const text = normalizeSpaces(paragraphElement?.querySelector('span')?.textContent || '');
-    const match = text.match(/\d+/);
-    return match ? Number(match[0]) : null;
-  }
-
-  function getBundle(idPergunta) {
-    const questionElement = getQuestionElement(idPergunta);
-    if (!questionElement) return null;
-    const paragraphs = Array.from(document.querySelectorAll(`.paragrafo[data-question-id="${CSS.escape(idPergunta)}"]`)).map((el) => ({
-      id: el.id,
-      number: getParagraphNumber(el),
-      text: extractParagraphText(el),
-      element: el
-    }));
-    return {
-      idPergunta,
-      questionElement,
-      questionText: extractQuestionText(questionElement),
-      paragraphs
-    };
   }
 
   function findAssociatedImage(bundle) {
@@ -377,20 +322,6 @@
     return output.join('\n\n');
   }
 
-  function getHexKey(id) {
-    const key = String(id).toLowerCase();
-    if (['a', '1'].includes(key)) return 'a';
-    if (['b', '2'].includes(key)) return 'b';
-    if (['c', '3'].includes(key)) return 'c';
-    return 'a';
-  }
-
-  function getPartColor(hexKey) {
-    if (hexKey === 'b') return 'green';
-    if (hexKey === 'c') return 'blue';
-    return 'yellow';
-  }
-
   function renderResponseHTML(parsed) {
     const lines = [];
     lines.push('<div class="ia-tabs-container">');
@@ -449,6 +380,8 @@
       lines.push('</div>');
     }
 
+    if (parsed.highlightWarning) lines.push(`<div class="ia-inline-note" role="status">${escapeHTML(parsed.highlightWarning)}</div>`);
+
     if (parsed.model && typeof window.DEBUG_G !== 'undefined') {
       lines.push(`<div class="ia-inline-note ia-status-ok" style="margin-top: 4px;">Modelo: ${escapeHTML(parsed.model)}</div>`);
     }
@@ -457,347 +390,36 @@
     return lines.join('');
   }
 
-  function collectRawCharMap(root) {
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-      acceptNode(node) {
-        if (!node.nodeValue) return NodeFilter.FILTER_REJECT;
-        if (!node.nodeValue.trim() && !/\s/.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
-        const parent = node.parentElement;
-        if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest('script, style, button, .anotacao, .comentarios')) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      }
-    });
-    const raw = [];
-    let node;
-    while ((node = walker.nextNode())) {
-      for (let i = 0; i < node.nodeValue.length; i += 1) raw.push({ node, offset: i, ch: node.nodeValue[i] });
-    }
-    return raw;
-  }
-
-  function buildNormalizedIndex(root) {
-    const raw = collectRawCharMap(root);
-    const normChars = [];
-    const normMap = [];
-    let lastWasSpace = true;
-    raw.forEach((item, rawIndex) => {
-      let ch = item.ch.replace(/\u00A0/g, ' ').replace(/[“”]/g, '"').replace(/[‘’´`]/g, "'").replace(/[–—−]/g, '-');
-      ch = ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-      if (!ch) return;
-      if (/\s/.test(ch)) {
-        if (lastWasSpace) { if (normMap.length) normMap[normMap.length - 1].rawEnd = rawIndex + 1; return; }
-        normChars.push(' ');
-        normMap.push({ rawStart: rawIndex, rawEnd: rawIndex + 1 });
-        lastWasSpace = true; return;
-      }
-      lastWasSpace = false;
-      normChars.push(ch);
-      normMap.push({ rawStart: rawIndex, rawEnd: rawIndex + 1 });
-    });
-    while (normChars.length && normChars[0] === ' ') { normChars.shift(); normMap.shift(); }
-    while (normChars.length && normChars[normChars.length - 1] === ' ') { normChars.pop(); normMap.pop(); }
-    return { raw, normText: normChars.join(''), normMap };
-  }
-
-  function findAllOccurrences(haystack, needle) {
-    const positions = [];
-    if (!needle) return positions;
-    let start = 0;
-    while (start < haystack.length) {
-      const idx = haystack.indexOf(needle, start);
-      if (idx === -1) break;
-      positions.push(idx);
-      start = idx + 1;
-    }
-    return positions;
-  }
-
-  function chooseAnchoredWindow(index, startAnchor, endAnchor, fallbackLength) {
-    const startNorm = normalizeForMatch(startAnchor || '');
-    const endNorm = normalizeForMatch(endAnchor || '');
-    const text = index.normText;
-    if (!text) return null;
-    const starts = startNorm ? findAllOccurrences(text, startNorm) : [];
-    const ends = endNorm ? findAllOccurrences(text, endNorm) : [];
-    let best = null;
-
-    if (starts.length && ends.length) {
-      starts.forEach((s) => {
-        ends.forEach((e) => {
-          if (e < s) return;
-          const endPos = e + endNorm.length;
-          const width = endPos - s;
-          if (width < Math.max(4, Math.round((fallbackLength || 10) * 0.45))) return;
-          if (!best || width < best.width) best = { start: s, end: endPos, width };
-        });
-      });
-      if (best) return { start: best.start, end: best.end };
-    }
-
-    if (starts.length) {
-      const s = starts[0];
-      return { start: s, end: Math.min(text.length, s + Math.max(fallbackLength, startNorm.length + 40)) };
-    }
-
-    if (ends.length) {
-      const e = ends[0] + endNorm.length;
-      return { start: Math.max(0, e - Math.max(fallbackLength, endNorm.length + 40)), end: e };
-    }
-
-    return null;
-  }
-
-  function scoreTokenOverlap(a, b) {
-    const left = new Set(normalizeForMatch(a).split(' ').filter((w) => w.length >= 3));
-    const right = new Set(normalizeForMatch(b).split(' ').filter((w) => w.length >= 3));
-    if (!left.size || !right.size) return 0;
-    let shared = 0;
-    left.forEach((w) => { if (right.has(w)) shared += 1; });
-    return shared / Math.max(left.size, right.size);
-  }
-
-  function fuzzyFindInIndex(index, excerpt, anchorStart, anchorEnd) {
-    const excerptNorm = normalizeForMatch(excerpt || '');
-    if (!excerptNorm) return null;
-    const text = index.normText;
-    if (!text) return null;
-
-    const exactIdx = text.indexOf(excerptNorm);
-    if (exactIdx >= 0) return { startNorm: exactIdx, endNorm: exactIdx + excerptNorm.length, score: 0, mode: 'exact' };
-
-    const anchored = chooseAnchoredWindow(index, anchorStart, anchorEnd, excerptNorm.length);
-    if (anchored) {
-      const anchoredSlice = text.slice(anchored.start, anchored.end);
-      if (anchoredSlice && scoreTokenOverlap(anchoredSlice, excerptNorm) >= 0.35) {
-        return { startNorm: anchored.start, endNorm: anchored.end, score: 0.6, mode: 'anchored' };
-      }
-    }
-
-    const threshold = Math.max(2, Math.min(18, Math.round(Math.max(8, excerptNorm.length) * 0.18)));
-    const minLen = Math.max(1, excerptNorm.length - threshold);
-    const maxLen = Math.min(text.length, excerptNorm.length + threshold);
-    const startBound = anchored ? Math.max(0, anchored.start - threshold * 3) : 0;
-    const endBound = anchored ? Math.min(text.length, anchored.end + threshold * 3) : text.length;
-
-    let best = null;
-    for (let start = startBound; start < endBound; start += 1) {
-      for (let len = minLen; len <= maxLen; len += 1) {
-        const end = start + len;
-        if (end > endBound) break;
-        const candidate = text.slice(start, end);
-        const distance = boundedLevenshtein(candidate, excerptNorm, threshold);
-        if (distance > threshold) continue;
-        const overlap = scoreTokenOverlap(candidate, excerptNorm);
-        const score = distance - overlap;
-        if (!best || score < best.score || (score === best.score && candidate.length > (best.endNorm - best.startNorm))) {
-          best = { startNorm: start, endNorm: end, score, mode: 'fuzzy' };
-        }
-      }
-    }
-    return best;
-  }
-
-  function normSpanToRaw(index, startNorm, endNorm) {
-    if (!index.normMap.length) return null;
-    const safeStart = Math.max(0, Math.min(index.normMap.length - 1, startNorm));
-    const safeEnd = Math.max(safeStart + 1, Math.min(index.normMap.length, endNorm));
-    return { rawStart: index.normMap[safeStart].rawStart, rawEnd: index.normMap[safeEnd - 1].rawEnd };
-  }
-
-  function isolateTextNodeSegment(node, start, end) {
-    let working = node;
-    let localStart = start;
-    let localEnd = end;
-    if (localStart > 0) { working = working.splitText(localStart); localEnd -= localStart; localStart = 0; }
-    if (localEnd < working.nodeValue.length) working.splitText(localEnd);
-    const txt = working.nodeValue;
-    const leftTrim = (txt.match(/^\s+/) || [''])[0].length;
-    const rightTrim = (txt.match(/\s+$/) || [''])[0].length;
-    if (leftTrim + rightTrim >= txt.length) return null;
-    if (leftTrim > 0) working = working.splitText(leftTrim);
-    if (rightTrim > 0 && working.nodeValue.length > rightTrim) working.splitText(working.nodeValue.length - rightTrim);
-    return working;
-  }
-
-  function createHighlightOnRange(scope, rawStart, rawEnd, color, metadata) {
-    const range = document.createRange();
-    const index = buildNormalizedIndex(scope);
-    if (!index.raw.length) return false;
-    const startRef = index.raw[rawStart];
-    const endRef = index.raw[Math.max(rawStart, rawEnd - 1)];
-    if (!startRef || !endRef) return false;
-    range.setStart(startRef.node, startRef.offset);
-    range.setEnd(endRef.node, endRef.offset + 1);
-
-    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, null);
-    const nodes = [];
-    let node;
-    while ((node = walker.nextNode())) { if (range.intersectsNode(node)) nodes.push(node); }
-
-    let created = false;
-    const animClass = color === 'yellow' ? 'ia-highlight' : 'ia-highlight-b';
-
-    nodes.forEach((textNode) => {
-      let start = textNode === range.startContainer ? range.startOffset : 0;
-      let end = textNode === range.endContainer ? range.endOffset : textNode.nodeValue.length;
-      if (start >= end) return;
-      const segmentNode = isolateTextNodeSegment(textNode, start, end);
-      if (!segmentNode || !segmentNode.nodeValue) return;
-
-      if (segmentNode.parentNode?.tagName === 'MARK') {
-         if (segmentNode.parentNode.dataset.iaOwner === metadata.ownerId) {
-             segmentNode.parentNode.dataset.iaMode = 'adopted';
-             created = true;
-             return;
-         }
-      }
-
-      const mark = document.createElement('mark');
-      mark.className = `hl-color-${color} ${animClass}`;
-      mark.dataset.hlId = metadata.groupId;
-      mark.dataset.iaOwner = metadata.ownerId;
-      mark.dataset.iaGroup = metadata.groupId;
-      mark.dataset.iaPart = metadata.partKey;
-      mark.dataset.iaMode = 'owned';
-      
-      segmentNode.parentNode.replaceChild(mark, segmentNode);
-      mark.appendChild(segmentNode);
-      created = true;
-    });
-
-    if (created && window.CacheAnotacao && scope.id) { window.CacheAnotacao.salvar(scope.id, scope.innerHTML); }
-    return created;
-  }
-
-  function unwrapMark(mark) {
-    const parent = mark.parentNode;
-    if (!parent) return;
-    while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
-    mark.remove();
-    parent.normalize();
-  }
-
-  function clearIAHighlights(ownerId, bundle) {
-    const marks = Array.from(document.querySelectorAll(`mark[data-ia-owner="${CSS.escape(ownerId)}"]`));
-    const touched = new Set();
-    marks.forEach((mark) => {
-      const scope = mark.closest('.paragrafo');
-      if (scope) touched.add(scope);
-      if (mark.dataset.iaMode === 'owned') { unwrapMark(mark); return; }
-      delete mark.dataset.iaOwner; delete mark.dataset.iaGroup; delete mark.dataset.iaPart; delete mark.dataset.iaMode;
-    });
-    if (window.CacheAnotacao) { touched.forEach((scope) => { if (scope?.id) window.CacheAnotacao.salvar(scope.id, scope.innerHTML); }); }
-    if (bundle?.paragraphs) { bundle.paragraphs.forEach((p) => p.element?.normalize?.()); }
-  }
-
-  function pickBestParagraph(highlight, bundle) {
-    const preferred = Number(highlight.paragraph_number);
-    const paragraphs = bundle.paragraphs.slice();
-    if (Number.isFinite(preferred)) {
-      paragraphs.sort((a, b) => (a.number === preferred ? -1 : b.number === preferred ? 1 : 0));
-    }
-
-    let best = null;
-    paragraphs.forEach((paragraph) => {
-      const index = buildNormalizedIndex(paragraph.element);
-      const match = fuzzyFindInIndex(index, highlight.literal_text, highlight.anchor_start, highlight.anchor_end);
-      if (!match) return;
-      const rawSpan = normSpanToRaw(index, match.startNorm, match.endNorm);
-      if (!rawSpan) return;
-      const literalNorm = normalizeForMatch(highlight.literal_text);
-      const candidateNorm = index.normText.slice(match.startNorm, match.endNorm);
-      const overlap = scoreTokenOverlap(candidateNorm, literalNorm);
-      const score = Number(match.score || 0) - overlap - (paragraph.number === preferred ? 0.25 : 0);
-      if (!best || score < best.score) { best = { paragraph, rawSpan, score, mode: match.mode }; }
-    });
-    return best;
-  }
-
-  function sanitizeModelPayload(payload) {
-    const subs = Array.isArray(payload?.sub_questions) ? payload.sub_questions : [];
-    if (subs.length === 0) {
-      subs.push({ id: "1", title: "Resposta", natural_answer: "Erro ao estruturar a resposta.", literal_smooth: "", highlights: [] });
-    }
-    const parts = subs.map(sub => {
-      const hexKey = getHexKey(sub.id);
-      return {
-        id: String(sub.id || '1'),
-        hexKey: hexKey,
-        title: String(sub.title || 'Resposta'),
-        natural_answer: normalizeSpaces(sub.natural_answer || ''),
-        literal_smooth: normalizeSpaces(sub.literal_smooth || ''),
-        highlights: Array.isArray(sub.highlights) ? sub.highlights.map(h => ({
-          paragraph_number: Number(h?.paragraph_number),
-          literal_text: normalizeSpaces(h?.literal_text || ''),
-          anchor_start: normalizeSpaces(h?.anchor_start || ''),
-          anchor_end: normalizeSpaces(h?.anchor_end || '')
-        })).filter(h => h.literal_text) : []
-      };
-    });
-    return { parts, model: String(payload?.model || '') };
-  }
-
-  function applyLiteralHighlights(ownerId, parsed, bundle) {
-    clearIAHighlights(ownerId, bundle);
-    const appliedParts = (parsed.parts || []).map((part) => {
-      const color = getPartColor(part.hexKey);
-      const appliedHighlights = [];
-      (part.highlights || []).forEach((highlight, index) => {
-        const best = pickBestParagraph(highlight, bundle);
-        if (!best) return;
-        const groupId = `${ownerId}-${part.hexKey}-${index}-${Math.random().toString(36).slice(2, 8)}`;
-        const created = createHighlightOnRange(best.paragraph.element, best.rawSpan.rawStart, best.rawSpan.rawEnd, color, {
-          ownerId, groupId, partKey: part.hexKey
-        });
-        if (!created) return;
-        appliedHighlights.push(Object.assign({}, highlight, { appliedParagraph: best.paragraph.number, appliedMode: best.mode }));
-      });
-      return Object.assign({}, part, { highlights: appliedHighlights });
-    });
-    return Object.assign({}, parsed, { parts: appliedParts });
-  }
-
   function buildPrompt(bundle) {
-    const context = bundle.paragraphs.map((p) => `PARÁGRAFO ${p.number}: ${p.text}`).join('\n\n');
+    // Complete source evidence, independent of written answers and model reasoning.
     return [
-      'Você é um assistente cirúrgico que responde perguntas do artigo A Sentinela usando APENAS o contexto fornecido.',
-      'RETORNE EXCLUSIVAMENTE UM JSON VÁLIDO. NÃO USE MARKDOWN (```json). ESCAPE ASPAS DUPLAS CORRETAMENTE COM \\".',
-      '',
-      'Regras Importantes:',
-      '1) Analise a Pergunta. Se ela for dividida em (a) e (b), crie 2 itens no array "sub_questions" com id "a" e "b" (titles: "Parte A", "Parte B").',
-      '2) Se a pergunta NÃO tiver letras, mas contiver mais de uma pergunta (ex: "O que é X? Por que é assim?"), crie 2 itens com id "1" e "2" (titles curtos e contextuais baseados nas perguntas).',
-      '3) Se for uma pergunta simples, crie apenas 1 item com id "1" (title: "Resposta").',
-      '4) Para cada item:',
-      '   - "natural_answer": A resposta conversacional em pt-BR.',
-      '   - "literal_smooth": O trecho literal do artigo adaptado muito sutilmente no início para ter fluidez na leitura (sem usar frases formais como "O artigo diz que"). Ex: se o texto original for "pois eles oravam", ajuste para "Sabe-se que eles oravam". Mantenha 95% do texto exato.',
-      '   - "highlights": O trecho EXATO (literal_text) sem nenhuma modificação, copiado do artigo para ancorar o marca-texto.',
-      '5) Nunca cite nada fora do contexto.',
-      '',
-      `Pergunta: ${bundle.questionText}`,
-      '',
+      "Extraia somente os trechos literais que, juntos, respondem à pergunta por completo. Retorne JSON, sem resumo ou comentários.",
+      "Formato: {\"sub_questions\":[{\"question\":\"pergunta original ou cláusula independente literal\",\"highlights\":[{\"paragraph_number\":1,\"literal_text\":\"cópia contínua exata da fonte\"}]}]}.",
+      "Uma pergunta pode ter vários fatos e parágrafos. Vírgulas, enumerações e perguntas no corpo do texto não criam sub_questions. Separe apenas solicitações independentes ou partes (a)/(b)/(c).",
+      "Leia todos os parágrafos antes de selecionar. Em uma sequência de acontecimentos, mantenha a decisão que inicia a sequência, cada ação e a explicação que acrescenta agente, motivo, alvo ou desfecho. Um anúncio e uma explicação complementar não são duplicatas.",
+      "Inclua o nome do acontecimento e sua ação completa, com complementos e resultados coordenados necessários. Não corte a explicação após metade da ação. Copie a oração completa quando toda ela responde, incluindo suas ligações curtas. Separe trechos distantes, sem paráfrase, reticências ou referências de apoio.",
+      "Texto entre aspas pode ser a própria resposta; não o descarte por ser citação. Exclua introduções vagas, perguntas retóricas, indicação bibliográfica, exemplos dispensáveis e roteiro repetitivo.",
+      "Exemplo de cobertura: pergunta \"Que acontecimentos são esperados?\"; fonte \"Haverá mudanças. A prefeitura autorizará a entrada. Os bombeiros entrarão na área. O relatório explica: ‘Por causa da fumaça, eles retirarão as famílias e os animais.’ Por fim, virá a reconstrução. Equipes removerão os escombros e reconstruirão as casas.\"; selecione \"A prefeitura autorizará a entrada.\", \"Os bombeiros entrarão na área.\", \"Por causa da fumaça, eles retirarão as famílias e os animais.\" e \"Por fim, virá a reconstrução. Equipes removerão os escombros e reconstruirão as casas.\". A retirada acrescenta causa e alvo; a entrada não a substitui.",
+      "Para \"O que estudaremos?\", selecione o assunto e todos os temas propostos, mesmo em forma de perguntas. Exemplo: \"Estudaremos X e suas aplicações hoje e no futuro. Mas antes, faremos uma visão geral de X.\" → somente \"Estudaremos X e suas aplicações hoje e no futuro.\". A última frase apenas repete o roteiro.",
+      "Confira se cada informação pedida aparece nos trechos selecionados e se nenhum desfecho foi cortado. Se não houver resposta na fonte, retorne highlights: [].",
+      'PERGUNTA: ' + JSON.stringify(bundle.questionText),
+      'PARÁGRAFOS: ' + JSON.stringify(bundle.paragraphs.map(p => ({n: p.number, text: p.text})))
+    ].join('\n');
+  }
+
+  function buildNaturalPrompt(bundle) {
+    // Keep the pre-existing conversational and literal reading tabs. They no
+    // longer ask for redundant marker quotes/anchors or control source colors.
+    return [
+      'Responda à pergunta do artigo usando APENAS o contexto fornecido. Retorne exclusivamente JSON válido.',
+      'Separe as partes (a)/(b)/(c) ou solicitações independentes em sub_questions. Uma pergunta simples tem só um item. question é a cláusula literal da pergunta.',
+      'natural_answer: A resposta conversacional em pt-BR.',
+      'literal_smooth: O trecho literal do artigo adaptado muito sutilmente no início para ter fluidez na leitura (sem usar frases formais como "O artigo diz que"). Ex: se o texto original for "pois eles oravam", ajuste para "Sabe-se que eles oravam". Mantenha 95% do texto exato.',
+      'Nunca cite nada fora do contexto.',
+      'Formato: {"sub_questions":[{"id":"1","title":"Resposta","question":"pergunta literal","natural_answer":"resposta humana natural","literal_smooth":"trecho fluido"}]}',
+      'Pergunta: ' + bundle.questionText,
       'Contexto:',
-      context,
-      '',
-      'Esquema JSON obrigatório:',
-      JSON.stringify({
-        "sub_questions": [
-          {
-            "id": "a ou 1",
-            "title": "Parte A ou Título Contextual",
-            "natural_answer": "Resposta humana natural",
-            "literal_smooth": "Trecho amaciado sutilmente no começo",
-            "highlights": [
-              {
-                "paragraph_number": 0,
-                "literal_text": "texto exato copiado do paragrafo",
-                "anchor_start": "primeiras palavras exatas",
-                "anchor_end": "ultimas palavras exatas"
-              }
-            ]
-          }
-        ]
-      }, null, 2)
+      bundle.paragraphs.map(p => `PARÁGRAFO ${p.number}: ${p.text}`).join('\n\n')
     ].join('\n');
   }
 
@@ -836,7 +458,7 @@
     ].join('\n');
   }
 
-  async function requestGemini(prompt, modelName, imagePart = null, isJson = true) {
+  async function requestGemini(prompt, modelName, imagePart = null, isJson = true, extractive = false) {
     const cooldown = getActiveCooldown(modelName);
     if (cooldown.until) throw new Error(`Modelo em cooldown (${Math.ceil((Math.max(0, cooldown.until - Date.now())) / 1000)}s).`);
 
@@ -846,15 +468,19 @@
     try {
       const url = String(CONFIG.workerUrl || '').trim();
       const body = {
-        prompt: prompt.slice(0, Number(CONFIG.maxInputChars) || 12000),
+        prompt: extractive ? prompt : prompt.slice(0, Number(CONFIG.maxInputChars) || 12000),
         modelName: modelName,
         imagePart: imagePart,
         isJson: isJson,
-        generationConfig: {
+        generationConfig: extractive ? {
+          maxOutputTokens: HIGHLIGHT_CONFIG.maxOutputTokens,
+          thinkingConfig: {thinkingLevel: 'minimal'}
+        } : {
           temperature: Number(CONFIG.temperature) || 0.15,
           topP: Number(CONFIG.topP) || 0.85,
           topK: Number(CONFIG.topK) || 24,
-          maxOutputTokens: Number(CONFIG.maxOutputTokens) || 2500
+          maxOutputTokens: Number(CONFIG.maxOutputTokens) || 2500,
+          ...(/^gemini-3\.[15]-flash-lite$/.test(modelName) ? {thinkingConfig: {thinkingLevel: 'minimal'}} : {})
         }
       };
 
@@ -870,25 +496,32 @@
       if (!response.ok) {
         const message = data?.error || `Erro ${response.status}`;
         if (response.status === 429 || /quota|rate/i.test(message)) setCooldown(modelName, extractRetryAfterMs(message, response.headers), 'rate_limit');
-        throw new Error(message);
+        throw Object.assign(new Error(message), {status: response.status});
       }
 
-      if (!data.text) throw new Error('A IA não retornou conteúdo utilizável.');
+      if (typeof data.text !== 'string' || !data.text.trim()) throw new Error('A IA não retornou conteúdo utilizável.');
       return data.text;
     } finally {
       clearTimeout(timeoutId);
     }
   }
 
-  async function requestWithFallback(prompt, imagePart = null, isJson = true) {
-    const models = Array.isArray(CONFIG.modelFallbacks) && CONFIG.modelFallbacks.length ? CONFIG.modelFallbacks.slice() : DEFAULT_CONFIG.modelFallbacks.slice();
+  async function requestWithFallback(prompt, imagePart = null, isJson = true, extractive = false) {
+    if (extractive && prompt.length > HIGHLIGHT_CONFIG.maxInputChars) throw new Error('Este trecho é grande demais para uma marcação segura. Abra uma pergunta menor.');
+    // Keep extraction on the model validated for source coverage. A transient
+    // failure may retry once; do not silently switch to a different selector.
+    const models = extractive ? Array(HIGHLIGHT_CONFIG.maxAttempts).fill(HIGHLIGHT_CONFIG.model) : Array.isArray(CONFIG.modelFallbacks) && CONFIG.modelFallbacks.length ? CONFIG.modelFallbacks.slice() : DEFAULT_CONFIG.modelFallbacks.slice();
     let lastError = null;
     for (const model of models) {
       try {
-        const text = await requestGemini(prompt, model, imagePart, isJson);
-        return { text, model };
+        const text = await requestGemini(prompt, model, imagePart, isJson, extractive);
+        // HTTP 200 is not sufficient: truncated/malformed output must use the
+        // fallback before any response or source marks are replaced.
+        const payload = isJson ? parseQuestionPayload(text, extractive) : null;
+        return { text, model, payload };
       } catch (error) {
         lastError = error;
+        if (extractive && ((error.status >= 400 && error.status < 500) || getActiveCooldown(model).until)) break;
       }
     }
     throw lastError || new Error('Falha ao consultar a IA.');
@@ -905,7 +538,15 @@
     if (button) button.disabled = false;
   }
 
-  async function gerarRespostaIA(idPergunta, iaWrapper, idRespostaIA) {
+  function gerarRespostaIA(idPergunta, iaWrapper, idRespostaIA) {
+    if (pendingQuestions.has(idPergunta)) return pendingQuestions.get(idPergunta);
+    const task = generateQuestion(idPergunta, iaWrapper, idRespostaIA)
+      .finally(() => pendingQuestions.delete(idPergunta));
+    pendingQuestions.set(idPergunta, task);
+    return task;
+  }
+
+  async function generateQuestion(idPergunta, iaWrapper, idRespostaIA) {
     const responseDiv = ensureResponseDiv(idRespostaIA);
     const button = iaWrapper?.querySelector?.('.btn-gerar-ia');
 
@@ -913,38 +554,71 @@
     if (!CONFIG.enabled) { responseDiv.innerHTML = '<div class="ia-inline-note ia-status-error">Agente desativado.</div>'; return; }
     if (!isConfigured()) { responseDiv.innerHTML = '<div class="ia-inline-note ia-status-error">Configure a URL do seu Worker no arquivo.</div>'; return; }
 
-    const bundle = getBundle(idPergunta);
+    let highlighter, bundle;
+    try {
+      highlighter = await loadHighlights();
+      bundle = highlighter.buildSource(idPergunta);
+    } catch (_) {
+      responseDiv.innerHTML = '<div class="ia-inline-note ia-status-error">Não foi possível carregar o marcador. Atualize a página e tente novamente.</div>';
+      return;
+    }
     if (!bundle || !bundle.paragraphs.length) { responseDiv.innerHTML = '<div class="ia-inline-note ia-status-error">Parágrafos não encontrados.</div>'; return; }
 
     const imageInfo = findAssociatedImage(bundle);
     const bibleLinks = findBibleLinks(bundle);
 
+    const previousResponse = responseDiv.querySelector('.ia-tabs-container') ? responseDiv.innerHTML : '';
     setLoading(iaWrapper, button, responseDiv, 'Analisando o artigo para gerar a resposta...');
 
     let textParsed = null;
+    let highlightResult = null;
+    let lastRenderedHTML = '';
+    const renderCurrentResponse = () => {
+      if (!textParsed || window.sentinelaSync?.localClearInProgress) return;
+      textParsed.highlightWarning = highlightResult?.highlightWarning || '';
+      const html = renderResponseHTML(textParsed);
+      if (html === lastRenderedHTML) return;
+      const tabs = [...responseDiv.querySelectorAll('.ia-tab-content')];
+      const selectedTab = tabs.findIndex(tab => tab.classList.contains('active'));
+      const scrollTop = responseDiv.scrollTop;
+      responseDiv.innerHTML = html;
+      if (selectedTab > 0 && responseDiv.querySelectorAll('.ia-tab-content')[selectedTab]) {
+        responseDiv.querySelectorAll('.ia-tab-content').forEach((tab, index) => tab.classList.toggle('active', index === selectedTab));
+        responseDiv.querySelectorAll('.ia-tab-btn').forEach((tab, index) => tab.classList.toggle('active', index === selectedTab));
+      }
+      responseDiv.scrollTop = scrollTop;
+      lastRenderedHTML = html;
+      if (window.CacheAnotacao) window.CacheAnotacao.salvar(idRespostaIA, html);
+    };
+    // Apply source marks as soon as the small extraction request finishes,
+    // independently of the natural answer, Bible or image requests.
+    const highlightJob = (async () => {
+      try {
+        const result = await requestWithFallback(buildPrompt(bundle), null, true, true);
+        if (window.sentinelaSync?.localClearInProgress) return;
+        highlightResult = highlighter.applyHighlights(idPergunta, {parts: result.payload.sub_questions, model: result.model}, bundle);
+      } catch (_) {
+        highlightResult = {highlightWarning: 'Não foi possível atualizar os destaques. As marcações anteriores foram mantidas.'};
+      }
+      renderCurrentResponse();
+    })();
     try {
-      const prompt = buildPrompt(bundle);
-      const result = await requestWithFallback(prompt, null, true);
-      textParsed = safeJSONParse(result.text);
-      if (!textParsed) throw new Error('Ocorreu um erro ao formatar os dados. Tente novamente.');
-
-      textParsed.model = result.model;
-      const sanitized = sanitizeModelPayload(textParsed);
-      textParsed = applyLiteralHighlights(idPergunta, sanitized, bundle);
+      const result = await requestWithFallback(buildNaturalPrompt(bundle), null, true);
+      if (window.sentinelaSync?.localClearInProgress) return;
+      textParsed = highlighter.validateQuestionParts(result.payload.sub_questions, bundle.questionText);
       textParsed.model = result.model;
       textParsed.has_image = !!imageInfo;
       textParsed.has_bible = bibleLinks.length > 0;
-
-      const html = renderResponseHTML(textParsed);
-      responseDiv.innerHTML = html;
-      if (window.CacheAnotacao) window.CacheAnotacao.salvar(idRespostaIA, html);
+      renderCurrentResponse();
     } catch (error) {
-      responseDiv.innerHTML = `<div class="ia-inline-note ia-status-error">${escapeHTML(error?.message || 'Falha ao gerar a resposta.')}</div>`;
+      await highlightJob;
+      const markStatus = highlightResult?.appliedCount ? '<div class="ia-inline-note">Os destaques foram atualizados.</div>' : '';
+      responseDiv.innerHTML = previousResponse + markStatus + '<div class="ia-inline-note ia-status-error">Não foi possível gerar a resposta escrita. Tente novamente.</div>';
       clearLoading(iaWrapper, button);
       return;
     }
 
-    const extraPromises = [];
+    const extraPromises = [highlightJob];
 
     if (imageInfo) {
       extraPromises.push((async () => {
@@ -957,9 +631,7 @@
         } catch (err) {
           textParsed.image_analysis = "A imagem não pôde ser analisada corretamente ou foi bloqueada.";
         }
-        const finalHtml = renderResponseHTML(textParsed);
-        responseDiv.innerHTML = finalHtml;
-        if (window.CacheAnotacao) window.CacheAnotacao.salvar(idRespostaIA, finalHtml);
+        renderCurrentResponse();
       })());
     }
 
@@ -981,13 +653,11 @@
         } catch (err) {
           textParsed.bible_analysis = "Erro ao cruzar os textos bíblicos.";
         }
-        const finalHtml = renderResponseHTML(textParsed);
-        responseDiv.innerHTML = finalHtml;
-        if (window.CacheAnotacao) window.CacheAnotacao.salvar(idRespostaIA, finalHtml);
+        renderCurrentResponse();
       })());
     }
 
-    Promise.all(extraPromises).finally(() => {
+    await Promise.all(extraPromises).finally(() => {
       clearLoading(iaWrapper, button);
     });
   }

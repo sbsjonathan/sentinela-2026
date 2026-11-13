@@ -521,7 +521,7 @@
                 <div style="text-align: center; margin-bottom: 15px;">
                     <div style="font-size: 28px; margin-bottom: 5px;">✈️</div>
                     <h3 style="color: var(--text-title); margin: 0; font-size: 18px;">Modo Offline</h3>
-                    <p style="color: var(--text-subtitle); margin-top: 5px;">Baixe a Bíblia, App e a Sentinela da semana para ler sem internet.</p>
+                    <p style="color: var(--text-subtitle); margin-top: 5px;">Baixe o aplicativo e a Bíblia para usar sem internet. Os estudos são baixados pela aba A Sentinela.</p>
                 </div>
                 
                 <div class="progress-bar-container" id="offline-progress-container">
@@ -543,7 +543,6 @@
 
     <script src="config.js"></script>
     <script src="supabase.js"></script>
-    <script src="sync-bridge.js"></script>
     <script src="../navbar/navbar-unified.js"></script>
     <script src="../navbar/network-sensor.js"></script>
     <script src="offline-manager.js"></script>
@@ -558,45 +557,34 @@
 
             init() {
                 this.setupEventListeners();
-                this.checkExistingLogin(); 
+                this.checkExistingLogin();
+                window.addEventListener('supabaseSessionChanged', () => this.checkExistingLogin());
+                window.addEventListener('pageshow', event => { if (event.persisted) this.checkExistingLogin(); });
             }
 
             checkExistingLogin() {
-                const savedUser = localStorage.getItem('supabase_user');
-                if (savedUser) {
-                    try {
-                        const userData = JSON.parse(savedUser);
-                        this.showStatusBadge(`Logado: ${userData.nome || userData.usuario}`, 'success');
-                        this.showLoggedUserScreen(userData);
-                        this.validateUserInBackground(userData);
-                    } catch (e) {
-                        localStorage.removeItem('supabase_user');
-                        this.showStatusBadge('Login corrompido removido', 'logged-out');
-                    }
+                const session = window.SupabaseSync.checkExistingSession();
+                if (session.status !== 'unavailable') window.UnifiedNavbar?.get()?.updateSaveButtonVisual();
+                if (session.status === 'signed-in') {
+                    this.showStatusBadge(`Logado: ${session.user.nome || session.user.usuario}`, 'success');
+                    this.showLoggedUserScreen(session.user);
+                    this.validateUserInBackground();
+                } else if (session.status === 'unavailable') {
+                    this.showStatusBadge('Armazenamento indisponível no momento', 'loading');
                 } else {
+                    this.showScreen('login');
                     this.showStatusBadge('Não logado', 'logged-out');
+                    if (session.status === 'invalid') this.showError('Não foi possível ler a entrada salva. Entre novamente.');
                 }
             }
 
-            async validateUserInBackground(userData) {
-                if (!navigator.onLine) return;
-                try {
-                    const { data: validUser, error } = await window.SupabaseSync.supabase
-                        .from('usuarios')
-                        .select('*')
-                        .eq('id', userData.id)
-                        .single();
-                    
-                    if (error) {
-                        if (error.code === 'PGRST301' || error.message.includes('network') || error.message.includes('fetch')) {
-                            return;
-                        }
-                        if (error.code === 'PGRST116') {
-                            localStorage.removeItem('supabase_user');
-                            this.checkExistingLogin();
-                        }
-                    }
-                } catch (networkError) {}
+            async validateUserInBackground() {
+                const result = await window.SupabaseSync.validateExistingSession();
+                if (result.status === 'removed') {
+                    this.showError('Esta conta não está mais disponível. Entre novamente.');
+                } else if (result.status === 'unavailable') {
+                    this.showStatusBadge('Entrada mantida; verificação indisponível no momento', 'loading');
+                }
             }
 
             showLoggedUserScreen(userData) {
@@ -611,17 +599,11 @@
                 btn.disabled = true;
 
                 try {
-                    if (window.SupabaseSync) window.SupabaseSync.logout();
-                    localStorage.removeItem('supabase_user');
-                    localStorage.removeItem('last_login');
-                    this.showStatusBadge('👋 Logout realizado', 'logged-out');
-                    
-                    setTimeout(() => {
-                        this.showScreen('login');
-                        document.getElementById('login-usuario').value = '';
-                        document.getElementById('login-senha').value = '';
-                        setTimeout(() => { this.showStatusBadge('Não logado', 'logged-out'); }, 500);
-                    }, 1500);
+                    window.SupabaseSync.logout();
+                    this.showScreen('login');
+                    document.getElementById('login-usuario').value = '';
+                    document.getElementById('login-senha').value = '';
+                    this.showStatusBadge('Não logado', 'logged-out');
                 } catch (error) {
                     this.showStatusBadge('❌ Erro no logout', 'error');
                 }
@@ -702,10 +684,6 @@
                         else if (this.currentScreen === 'register') this.handleRegister();
                     }
                 });
-
-                document.querySelectorAll('.form-input').forEach(input => {
-                    input.addEventListener('blur', () => { window.scrollTo(0, 0); });
-                });
             }
 
             async handleLogin() {
@@ -719,6 +697,7 @@
                 if (!this.validateInput(usuario, senha)) return;
 
                 const btn = document.getElementById('btn-login');
+                if (btn.disabled) return;
                 btn.classList.add('loading');
                 btn.disabled = true;
 
@@ -755,19 +734,15 @@
                 if (!this.validateInput(usuario, senha)) return;
 
                 const btn = document.getElementById('btn-register');
+                if (btn.disabled) return;
                 btn.classList.add('loading');
                 btn.disabled = true;
 
                 try {
                     const result = await window.SupabaseSync.cadastrarUsuario(usuario, senha, nome);
                     if (result.success) {
-                        const loginResult = await window.SupabaseSync.logarUsuario(usuario, senha);
-                        if (loginResult.success) {
-                            this.showSuccess(`Conta criada! Bem-vindo, ${nome || usuario}!`);
-                            if (window.UnifiedNavbar && window.UnifiedNavbar.get()) {
-                                window.UnifiedNavbar.get().onLoginSuccess(loginResult.userData);
-                            }
-                        }
+                        this.showSuccess(`Conta criada! Bem-vindo, ${nome || usuario}!`);
+                        window.UnifiedNavbar?.get()?.onLoginSuccess(result.userData);
                     } else {
                         this.showError(result.error);
                     }
@@ -826,7 +801,7 @@
             }
 
             redirectToApp() {
-                const returnUrl = new URLSearchParams(window.location.search).get('return') || '../richtext/container.html';
+                const returnUrl = new URLSearchParams(window.location.search).get('return') || '../index.html';
                 window.location.href = returnUrl;
             }
         }

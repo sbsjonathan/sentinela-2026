@@ -16,9 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
     button.classList.toggle('btn-danger', isDownloaded);
     button.classList.toggle('btn-secondary', !isDownloaded);
     if (hint) hint.textContent = isDownloaded
-      ? 'Aplicativo e Bíblia disponíveis offline. Os estudos de A Sentinela são baixados pelo botão Baixar no Início.'
+      ? 'Aplicativo e Bíblia disponíveis offline. Os estudos de A Sentinela são baixados pelo botão Baixar na aba A Sentinela.'
       : bibleComplete
-        ? 'A Bíblia já está disponível offline. Baixe também as outras telas do aplicativo. Os estudos são baixados no Início.'
+        ? 'A Bíblia já está disponível offline. Baixe também as outras telas do aplicativo. Os estudos são baixados na aba A Sentinela.'
         : 'Baixe o aplicativo e a Bíblia de Estudo completa, com imagens e apêndices. Áudios e vídeos precisam de internet.';
   }
   function setDownloaded(value) {
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (progressText) progressText.textContent = `${percent}% (${data.loaded}/${data.total} arquivos)`;
     } else if (data.type === 'DOWNLOAD_COMPLETE') {
       finish(); bibleComplete = true; setDownloaded(data.complete === true);
-      if (data.complete === true) alert('Aplicativo e Bíblia completos para leitura offline. Áudios e vídeos precisam de internet. Baixe os estudos de A Sentinela pelo Início.');
+      if (data.complete === true) alert('Aplicativo e Bíblia completos para leitura offline. Áudios e vídeos precisam de internet. Baixe os estudos pela aba A Sentinela.');
     } else if (data.type === 'DOWNLOAD_ERROR') {
       finish(); setDownloaded(false);
       alert(data.message || 'O download ficou incompleto. Tente novamente; os arquivos já baixados serão aproveitados.');

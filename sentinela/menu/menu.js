@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const barraEstudo = document.querySelector(".barra-estudo");
     const mainContent = document.querySelector("main");
 
-    if (!barraEstudo || !mainContent) return;
+    if (!barraEstudo || !mainContent || window.SentinelaArticleMenu) return;
 
     const FONTE_STORAGE_KEY = 'tamanho-fonte-global';
     const FONTE_PADRAO = 19.36;
@@ -126,8 +126,8 @@ document.addEventListener("DOMContentLoaded", () => {
                   <label class="sync-choice">
                     <input type="radio" name="sync-enviar" value="merge" checked>
                     <span class="sync-choice__body">
-                      <span class="sync-choice__title">Juntar tudo (Recomendado)</span>
-                      <span class="sync-choice__desc">Junta as anotações deste aparelho com as da nuvem. Nenhuma nota é perdida.</span>
+                      <span class="sync-choice__title">Enviar apenas o que falta</span>
+                      <span class="sync-choice__desc">Adiciona as notas que ainda não estão na nuvem e mantém as que já existem lá.</span>
                     </span>
                   </label>
                   <label class="sync-choice">
@@ -146,8 +146,8 @@ document.addEventListener("DOMContentLoaded", () => {
                   <label class="sync-choice">
                     <input type="radio" name="sync-baixar" value="merge" checked>
                     <span class="sync-choice__body">
-                      <span class="sync-choice__title">Baixar e Misturar</span>
-                      <span class="sync-choice__desc">Traz da nuvem e soma com o que você já fez hoje. Nenhuma nota local é apagada.</span>
+                      <span class="sync-choice__title">Baixar apenas o que falta</span>
+                      <span class="sync-choice__desc">Baixa as notas que ainda não estão neste aparelho e mantém as notas locais.</span>
                     </span>
                   </label>
                   <label class="sync-choice">
@@ -195,21 +195,21 @@ document.addEventListener("DOMContentLoaded", () => {
                   <input type="radio" name="local-delete-opt" value="day" checked>
                   <span class="sync-choice__body">
                     <span class="sync-choice__title">Apagar anotações deste artigo</span>
-                    <span class="sync-choice__desc">Remove respostas da IA, comentários e destaques deste estudo da Sentinela.</span>
+                    <span class="sync-choice__desc">Remove respostas da IA, comentários e destaques deste estudo. A cópia da nuvem só volta ao baixar manualmente.</span>
                   </span>
                 </label>
                 <label class="sync-choice sync-choice--danger">
                   <input type="radio" name="local-delete-opt" value="all-notes">
                   <span class="sync-choice__body">
                     <span class="sync-choice__title">Apagar de TODAS as Sentinelas</span>
-                    <span class="sync-choice__desc">Esvazia todas as anotações de todos os artigos locais (Assembleia é mantida).</span>
+                    <span class="sync-choice__desc">Esvazia todos os artigos locais. As notas do editor e a nuvem são mantidas; baixar manualmente restaura as notas.</span>
                   </span>
                 </label>
                 <label class="sync-choice sync-choice--danger">
                   <input type="radio" name="local-delete-opt" value="nuclear">
                   <span class="sync-choice__body">
                     <span class="sync-choice__title">Formatar App Inteiro (Opção Nuclear)</span>
-                    <span class="sync-choice__desc">Desloga a conta, apaga a Sentinela, Assembleia e reseta todo o aplicativo.</span>
+                    <span class="sync-choice__desc">Desloga a conta e apaga as anotações e preferências locais da Sentinela.</span>
                   </span>
                 </label>
               </div>
@@ -287,9 +287,244 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let menuVisivel = false;
 
+    // Move the existing controls, rather than cloning them: backup, cloud,
+    // preferences and deletion keep their original state and event handlers.
+    const menuHome = document.createComment('sentinela-controls-home');
+    menuControles.before(menuHome);
+    const inlineSpace = document.createElement('div');
+    inlineSpace.hidden = true;
+    inlineSpace.setAttribute('aria-hidden', 'true');
+    menuHome.after(inlineSpace);
+    const articleMenu = document.createElement('div');
+    articleMenu.id = 'sentinela-article-menu';
+    articleMenu.className = 'sentinela-article-menu';
+    articleMenu.hidden = true;
+    articleMenu.innerHTML = `
+      <div class="article-menu__scroll" role="dialog" aria-labelledby="article-menu-title">
+        <section class="article-menu__card article-menu__settings">
+          <div class="article-menu__heading">
+            <h2 id="article-menu-title">A Sentinela</h2>
+            <button class="article-menu__close" type="button" aria-label="Fechar menu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+          <div class="article-menu__controls"></div>
+        </section>
+        <section class="article-menu__card article-menu__paragraphs" aria-labelledby="article-paragraphs-title">
+          <div class="article-menu__heading">
+            <h2 id="article-paragraphs-title">Parágrafos</h2>
+            <span class="article-menu__count"></span>
+          </div>
+          <nav class="article-menu__grid" aria-label="Ir para o parágrafo"></nav>
+          <p class="article-menu__empty" hidden>Nenhum parágrafo numerado neste artigo.</p>
+        </section>
+      </div>`;
+    document.body.append(articleMenu);
+    const menuScroll = articleMenu.querySelector('.article-menu__scroll');
+    const paragraphGrid = articleMenu.querySelector('.article-menu__grid');
+    const menuClose = articleMenu.querySelector('.article-menu__close');
+    let menuOpener = null;
+    let inlineMenuWasVisible = false;
+    let mainWasInert = false;
+    let finishNavigation = null;
+    let highlightTimer = null;
+    let highlightedParagraph = null;
+
+    const emitMenuState = (open) => document.dispatchEvent(new CustomEvent('sentinela:article-menu-state', { bubbles: true, detail: { open } }));
+    const emitNavigationState = (active) => document.dispatchEvent(new CustomEvent('sentinela:paragraph-navigation', { bubbles: true, detail: { active } }));
+
+    function articleParagraphs() {
+      const paragraphs = new Map();
+      const excluded = '.anotacao, .comentarios, .ia-wrapper, .agente-overlay, .agente-modal, [data-tutor-generated], [contenteditable="true"], dialog, [role="dialog"], [hidden], [aria-hidden="true"]';
+      mainContent.querySelectorAll('.paragrafo').forEach((paragraph) => {
+        if (paragraph.closest(excluded) || paragraph.parentElement?.closest('.paragrafo')) return;
+        const numberNode = paragraph.firstElementChild;
+        if (!numberNode || numberNode.tagName !== 'SPAN') return;
+        // Numbered source paragraphs begin with a standalone number span.
+        // A citation or numbered question elsewhere in the text is not one.
+        for (let node = paragraph.firstChild; node && node !== numberNode; node = node.nextSibling) {
+          if (node.textContent.trim()) return;
+        }
+        const match = numberNode.textContent.trim().match(/^(\d{1,3})[.)]?$/);
+        if (!match) return;
+        const number = Number(match[1]);
+        if (number > 0 && !paragraphs.has(number)) paragraphs.set(number, paragraph);
+      });
+      return paragraphs;
+    }
+
+    function headerClearance() {
+      const headerStyle = getComputedStyle(barraEstudo);
+      const headerHeight = /^(fixed|sticky)$/.test(headerStyle.position) ? barraEstudo.getBoundingClientRect().height : 0;
+      return headerHeight + 12;
+    }
+
+    function highlightParagraph(paragraph) {
+      clearTimeout(highlightTimer);
+      highlightedParagraph?.classList.remove('article-paragraph-arrival');
+      highlightedParagraph = paragraph;
+      paragraph.classList.add('article-paragraph-arrival');
+      highlightTimer = setTimeout(() => {
+        paragraph.classList.remove('article-paragraph-arrival');
+        highlightedParagraph = null;
+      }, 1600);
+    }
+
+    function closeArticleMenu({ restoreFocus = true, restoreInline = true } = {}) {
+      if (articleMenu.hidden) return;
+      articleMenu.hidden = true;
+      articleMenu.inert = false;
+      menuHome.after(menuControles);
+      menuVisivel = restoreInline && inlineMenuWasVisible;
+      menuControles.style.display = menuVisivel ? 'block' : 'none';
+      inlineSpace.hidden = true;
+      mainContent.inert = mainWasInert;
+      barraEstudo.setAttribute('aria-expanded', String(menuVisivel));
+      if (!menuVisivel) document.documentElement.style.setProperty('--cor-glow', 'rgba(180,180,185,0.15)');
+      emitMenuState(false);
+      if (restoreFocus && menuOpener?.isConnected) menuOpener.focus({ preventScroll: true });
+    }
+
+    function goToParagraph(paragraph) {
+      if (!paragraph.isConnected) return;
+      finishNavigation?.();
+      // Pause navbar direction tracking before the menu closes or scrolling starts.
+      emitNavigationState(true);
+      closeArticleMenu({ restoreFocus: false, restoreInline: false });
+      const top = Math.max(0, Math.min(
+        window.scrollY + paragraph.getBoundingClientRect().top - headerClearance(),
+        document.documentElement.scrollHeight - window.innerHeight
+      ));
+      let settledTimer;
+      let deadline;
+      const hadTabIndex = paragraph.hasAttribute('tabindex');
+      if (!hadTabIndex) {
+        paragraph.setAttribute('tabindex', '-1');
+        paragraph.addEventListener('blur', () => paragraph.removeAttribute('tabindex'), { once: true });
+      }
+      paragraph.focus({ preventScroll: true });
+      const finish = () => {
+        clearTimeout(settledTimer);
+        clearTimeout(deadline);
+        window.removeEventListener('scroll', onScroll);
+        window.removeEventListener('scrollend', finish);
+        window.removeEventListener('touchstart', finish);
+        window.removeEventListener('wheel', finish);
+        finishNavigation = null;
+        highlightParagraph(paragraph);
+        emitNavigationState(false);
+      };
+      const onScroll = () => {
+        clearTimeout(settledTimer);
+        settledTimer = setTimeout(finish, 180);
+      };
+      finishNavigation = finish;
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('scrollend', finish, { once: true });
+      window.addEventListener('touchstart', finish, { once: true, passive: true });
+      window.addEventListener('wheel', finish, { once: true, passive: true });
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const alreadyThere = Math.abs(window.scrollY - top) < 1;
+      window.scrollTo({ top, behavior: reducedMotion ? 'instant' : 'smooth' });
+      deadline = setTimeout(finish, 2400);
+      // A zero-distance jump and browsers without scrollend still release tracking.
+      if (reducedMotion || alreadyThere) settledTimer = setTimeout(finish, 0);
+    }
+
+    function buildParagraphGrid() {
+      const paragraphs = articleParagraphs();
+      paragraphGrid.replaceChildren();
+      let currentNumber = null;
+      for (const [number, paragraph] of paragraphs) {
+        if (currentNumber === null || paragraph.getBoundingClientRect().top <= headerClearance()) currentNumber = number;
+      }
+      for (const [number, paragraph] of paragraphs) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'article-menu__paragraph';
+        button.textContent = String(number);
+        button.setAttribute('aria-label', `Parágrafo ${number}`);
+        if (number === currentNumber) button.setAttribute('aria-current', 'location');
+        // Keep the element reference: source IDs can be absent or duplicated.
+        button.addEventListener('click', () => goToParagraph(paragraph));
+        paragraphGrid.append(button);
+      }
+      articleMenu.querySelector('.article-menu__count').textContent = paragraphs.size ? `${paragraphs.size} no artigo` : '';
+      articleMenu.querySelector('.article-menu__empty').hidden = paragraphs.size > 0;
+    }
+
+    function openArticleMenu() {
+      if (!articleMenu.hidden) return;
+      menuOpener = document.activeElement;
+      // No body position/height lock or visualViewport reposition loop. The
+      // overlay has its own native scroll area, leaving the article anchored.
+      inlineMenuWasVisible = menuVisivel;
+      if (inlineMenuWasVisible) {
+        const style = getComputedStyle(menuControles);
+        inlineSpace.style.height = `${menuControles.getBoundingClientRect().height}px`;
+        inlineSpace.style.marginTop = style.marginTop;
+        inlineSpace.style.marginBottom = style.marginBottom;
+        inlineSpace.hidden = false;
+      }
+      menuVisivel = false;
+      menuControles.style.display = 'none';
+      articleMenu.querySelector('.article-menu__controls').append(menuControles);
+      buildParagraphGrid();
+      mainWasInert = mainContent.inert;
+      mainContent.inert = true;
+      menuControles.style.display = 'block';
+      articleMenu.hidden = false;
+      menuScroll.scrollTop = 0;
+      barraEstudo.setAttribute('aria-expanded', 'true');
+      aplicarGlowDaCorEstudo();
+      emitMenuState(true);
+      menuClose.focus({ preventScroll: true });
+    }
+
+    window.SentinelaArticleMenu = Object.freeze({
+      open: openArticleMenu,
+      close: closeArticleMenu,
+      toggle: () => articleMenu.hidden ? openArticleMenu() : closeArticleMenu(),
+      isOpen: () => !articleMenu.hidden
+    });
+    menuClose.addEventListener('click', () => closeArticleMenu());
+    articleMenu.addEventListener('click', (event) => {
+      if (event.target === articleMenu || event.target === menuScroll) closeArticleMenu();
+    });
+    const preventBackdropScroll = (event) => {
+      if (!menuScroll.contains(event.target)) event.preventDefault();
+    };
+    articleMenu.addEventListener('touchmove', preventBackdropScroll, { passive: false });
+    articleMenu.addEventListener('wheel', preventBackdropScroll, { passive: false });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !articleMenu.hidden && !document.querySelector('.sync-sheet-overlay.is-open, .sync-alert-overlay.is-open')) {
+        event.preventDefault();
+        closeArticleMenu();
+      }
+    });
+
+    // Existing sheets remain siblings above both cards. Do not trap their
+    // controls in the article dialog or close the cards when a sheet closes.
+    const sheets = [...document.querySelectorAll('.sync-sheet-overlay, .sync-alert-overlay')];
+    const updateSheetState = () => {
+      let nestedOpen = false;
+      sheets.forEach((sheet) => {
+        const open = sheet.classList.contains('is-open');
+        sheet.setAttribute('aria-hidden', String(!open));
+        nestedOpen ||= open;
+      });
+      articleMenu.inert = !articleMenu.hidden && nestedOpen;
+    };
+    const sheetObserver = new MutationObserver(updateSheetState);
+    sheets.forEach((sheet) => sheetObserver.observe(sheet, { attributes: true, attributeFilter: ['class'] }));
+
     barraEstudo.style.cursor = "pointer";
+    barraEstudo.setAttribute('aria-controls', 'sentinela-controles');
+    barraEstudo.setAttribute('aria-expanded', 'false');
     barraEstudo.addEventListener('click', () => {
+        if (!articleMenu.hidden) { closeArticleMenu(); return; }
         menuVisivel = !menuVisivel;
+        barraEstudo.setAttribute('aria-expanded', String(menuVisivel));
         menuControles.style.display = menuVisivel ? 'block' : 'none';
         if (menuVisivel) aplicarGlowDaCorEstudo();
         else document.documentElement.style.setProperty('--cor-glow', 'rgba(180,180,185,0.15)');
@@ -333,8 +568,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function isSentinelaKey(key) {
-      if (!key) return false;
+      if (!key || /^(?:ass26:|ass26-migration:|assembleia-2026:)/.test(key)) return false;
       return /^(c-|r-|p-|obj-|qa:)/.test(key) || /-pg-/.test(key) || key.startsWith('sentinela_loaded_');
+    }
+
+    function clearSentinelaStorage(storage) {
+      // The original app keeps its legacy raw keys. Other Pages variants have
+      // explicit namespaces, including receipts that must survive a reset.
+      const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index));
+      keys.forEach((key) => {
+        if (key && !/^(?:ass26:|ass26-migration:|assembleia-2026:)/.test(key)) storage.removeItem(key);
+      });
     }
 
     function getLocalExportPayload() {
@@ -400,8 +644,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const preferences = parsed.preferences || {};
       const annotations = parsed.annotations || {};
 
-      Object.entries(preferences).forEach(([key, value]) => localStorage.setItem(key, String(value)));
-      Object.entries(annotations).forEach(([key, value]) => localStorage.setItem(key, String(value)));
+      Object.entries(preferences).forEach(([key, value]) => {
+        if (['tema-interface', 'tamanho-fonte-global', 'editor-performance-mode'].includes(key)) localStorage.setItem(key, String(value));
+      });
+      Object.entries(annotations).forEach(([key, value]) => {
+        if (isSentinelaKey(key)) localStorage.setItem(key, String(value));
+      });
     }
 
     // --- LOGIC: Export / Import BIN ---
@@ -467,9 +715,61 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- LOGIC: Nuvem Sync ---
     const syncOverlay = document.getElementById('sentinelaSyncOverlay');
+
+    // Keep a cloud collision visible without taking focus away from the note.
+    let cloudConflictNotice;
+    const cloudNoticeKey = () => {
+      try {
+        const account = JSON.parse(localStorage.getItem('supabase_user'))?.id;
+        return account == null ? null : `cloud_conflict_notice_sentinela_${encodeURIComponent(account)}_${semanaAtual}_${estudoId}`;
+      } catch (_) { return null; }
+    };
+    function hideCloudConflictNotice(clear = false) {
+      if (cloudConflictNotice) cloudConflictNotice.hidden = true;
+      if (clear) { try { const key = cloudNoticeKey(); if (key) localStorage.removeItem(key); } catch (_) {} }
+    }
+    function showCloudConflictNotice() {
+      if (!cloudConflictNotice) {
+        const notice = document.createElement('aside'); notice.id = 'sentinela-cloud-conflict-notice';
+        notice.setAttribute('role', 'status'); notice.setAttribute('aria-live', 'polite');
+        notice.style.cssText = 'position:fixed;z-index:12080;top:calc(var(--app-statusbar-height,env(safe-area-inset-top,0px)) + 8px);left:12px;right:12px;max-width:480px;margin:auto;padding:10px 12px;border:1px solid #b9a8c7;border-radius:10px;background:var(--bg-body,#fff);color:var(--text-primary,#39333e);box-shadow:0 3px 16px #00000014;font:13px/1.4 system-ui,-apple-system,sans-serif';
+        const text = document.createElement('p'); text.style.margin = '0 0 7px';
+        text.textContent = 'Outra versão está na nuvem. Sua edição está salva aqui. Abra Nuvem para escolher.';
+        const actions = document.createElement('div'); actions.style.cssText = 'display:flex;gap:8px';
+        const addButton = (label, action) => {
+          const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
+          button.style.cssText = 'border:0;border-radius:5px;padding:7px 10px;min-height:34px;background:#f2eef6;color:#604184;font:600 12px/1.4 system-ui';
+          button.onclick = action; actions.append(button);
+        };
+        addButton('Abrir Nuvem', () => { hideCloudConflictNotice(); btnAbrirSync.click(); });
+        addButton('Fechar aviso', () => hideCloudConflictNotice());
+        notice.append(text, actions); document.body.append(notice); cloudConflictNotice = notice;
+      }
+      cloudConflictNotice.hidden = false;
+    }
+    function restoreCloudConflictNotice() {
+      hideCloudConflictNotice();
+      try { const key = cloudNoticeKey(); if (key && localStorage.getItem(key)) showCloudConflictNotice(); } catch (_) {}
+    }
+    window.addEventListener('sentinela:syncstatus', event => {
+      const detail = event.detail || {};
+      if (detail.code === 'SYNC_CONFLICT') {
+        try { const key = cloudNoticeKey(); if (key) localStorage.setItem(key, '1'); } catch (_) {}
+        showCloudConflictNotice();
+      } else if (detail.status === 'saved') {
+        const sync = window.sentinelaSync;
+        if (typeof sync?.lastObservedLocalJSON === 'string' && sync.lastObservedLocalJSON === sync.lastSavedDataJSON) hideCloudConflictNotice(true);
+      }
+    });
+    window.addEventListener('sentinela:cloudresolved', () => hideCloudConflictNotice(true));
+    window.addEventListener('supabaseSessionChanged', restoreCloudConflictNotice);
+    window.addEventListener('supabaseLogout', restoreCloudConflictNotice);
+    restoreCloudConflictNotice();
+
     const syncTabs = document.querySelectorAll('[data-sync-tab]');
     const syncPanels = document.querySelectorAll('[data-sync-panel]');
     let activeSyncTab = 'enviar';
+    let syncActionRunning = false;
 
     function setSyncTab(tab) {
       activeSyncTab = tab;
@@ -500,47 +800,54 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     document.getElementById('sentinelaSyncRun').addEventListener('click', async () => {
+      if (syncActionRunning) return;
+      syncActionRunning = true;
+      const action = activeSyncTab;
+      const runButton = document.getElementById('sentinelaSyncRun');
+      runButton.disabled = true;
+      try {
+      const requestSession = localStorage.getItem('supabase_user');
+      if (!JSON.parse(requestSession)?.id || window.SupabaseSync?.isLoggedIn?.() === false) {
+        throw new Error('Entre na sua conta antes de sincronizar.');
+      }
       syncOverlay.classList.remove('is-open');
-      const actionValue = document.querySelector(`input[name="sync-${activeSyncTab}"]:checked`).value;
+      const actionValue = document.querySelector(`input[name="sync-${action}"]:checked`).value;
 
       const runSync = async () => {
-        if (!window.SupabaseSync) { alert('Erro: Supabase não inicializado.'); return; }
-        
+        const sync = window.sentinelaSync;
+        if (!sync) { alert('A sincronização ainda está iniciando. Tente novamente.'); return; }
+        const button = document.getElementById('sentinelaSyncRun');
+        button.disabled = true;
         try {
-          if (activeSyncTab === 'apagar') {
-            await window.SupabaseSync.salvarSentinelaAnotacoes(semanaAtual, estudoId, {});
-            alert('Anotações apagadas da nuvem com sucesso.');
-          } else if (activeSyncTab === 'enviar') {
-            const anotacoes = window.sentinelaSync?.collectAnnotationsFromLocalStorage() || {};
-            await window.SupabaseSync.salvarSentinelaAnotacoes(semanaAtual, estudoId, anotacoes);
-            alert('Anotações enviadas para a nuvem.');
-          } else if (activeSyncTab === 'baixar') {
-            const anotacoes = await window.SupabaseSync.carregarSentinelaAnotacoes(semanaAtual, estudoId);
-            if (anotacoes) {
-              Object.entries(anotacoes).forEach(([k, v]) => localStorage.setItem(k, v));
-              alert('Anotações baixadas com sucesso. A página será recarregada.');
-              location.reload();
-            } else {
-              alert('Nenhuma anotação encontrada na nuvem para este artigo.');
-            }
+          if (localStorage.getItem('supabase_user') !== requestSession || window.SupabaseSync?.isLoggedIn?.() === false) {
+            throw new Error('A conta mudou durante a confirmação. Abra a Nuvem novamente.');
           }
-        } catch (e) {
-          alert('Erro de comunicação com a nuvem.');
-        }
+          let result;
+          if (action === 'apagar') result = await sync.deleteRemote();
+          else if (action === 'enviar') result = await (actionValue === 'overwrite' ? sync.pushOverwrite() : sync.pushMissing());
+          else result = await (actionValue === 'overwrite' ? sync.pullOverwrite() : sync.pullMissing());
+          if (result?.success !== true) throw new Error(result?.error || 'Não foi possível concluir.');
+          window.dispatchEvent(new CustomEvent('sentinela:cloudresolved'));
+          alert(action === 'apagar' ? 'Anotações deste artigo apagadas da nuvem.' :
+            action === 'enviar' ? 'Anotações enviadas para a nuvem.' : 'Anotações baixadas com sucesso.');
+        } catch (error) { alert(error.message || 'Erro de comunicação com a nuvem.'); }
+        finally { button.disabled = false; }
       };
 
-      if (activeSyncTab === 'apagar') {
+      if (action === 'apagar') {
         const res = await showCustomAlert({ title: "Apagar da nuvem?", text: "Isso removerá apenas as notas deste artigo do servidor.", left: "Cancelar", right: "Apagar", rightDanger: true, rightBold: true });
-        if (res === 'right') runSync();
-      } else if (activeSyncTab === 'enviar' && actionValue === 'overwrite') {
+        if (res === 'right') await runSync();
+      } else if (action === 'enviar' && actionValue === 'overwrite') {
         const res = await showCustomAlert({ title: "Substituir nuvem?", text: "A cópia da nuvem será sobrescrita pela versão deste aparelho.", left: "Cancelar", right: "Substituir", rightBold: true });
-        if (res === 'right') runSync();
-      } else if (activeSyncTab === 'baixar' && actionValue === 'overwrite') {
+        if (res === 'right') await runSync();
+      } else if (action === 'baixar' && actionValue === 'overwrite') {
         const res = await showCustomAlert({ title: "Restaurar aparelho?", text: "Suas notas locais que não estiverem na nuvem serão perdidas.", left: "Cancelar", right: "Restaurar", rightBold: true });
-        if (res === 'right') runSync();
+        if (res === 'right') await runSync();
       } else {
-        runSync();
+        await runSync();
       }
+      } catch (error) { alert(error.message || 'Não foi possível confirmar a conta. Tente novamente.'); }
+      finally { syncActionRunning = false; runButton.disabled = false; }
     });
 
     // --- LOGIC: Limpeza Local ---
@@ -567,21 +874,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       setTimeout(() => {
         if (window.confirm(msg)) {
-          if (opt === 'day') {
-            Object.keys(localStorage).forEach(key => {
-              if (isSentinelaKey(key) && (key.includes(semanaAtual) || key.includes(estudoId))) {
-                localStorage.removeItem(key);
-              }
-            });
-            location.reload();
-          } else if (opt === 'all-notes') {
-            Object.keys(localStorage).forEach(key => {
-              if (isSentinelaKey(key)) localStorage.removeItem(key);
-            });
-            location.reload();
+          if (opt === 'day' || opt === 'all-notes') {
+            try {
+              if (!window.sentinelaSync?.clearLocal) throw new Error('A limpeza não está disponível. Atualize a página e tente novamente.');
+              window.sentinelaSync.clearLocal(opt === 'all-notes');
+              location.reload();
+            } catch (error) { alert(error.message || 'Não foi possível apagar todas as anotações. Tente novamente.'); }
           } else if (opt === 'nuclear') {
-            localStorage.clear();
-            sessionStorage.clear();
+            clearSentinelaStorage(localStorage);
+            clearSentinelaStorage(sessionStorage);
             window.dispatchEvent(new Event('supabaseLogout'));
             location.reload();
           }
