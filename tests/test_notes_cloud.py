@@ -40,8 +40,10 @@ def check(engine, executable, origin):
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
         entry = 'container-v1.html' if version == 1 else 'container.html'
-        page.goto(f'{origin}/richtext/{entry}?semana=02-11&versao={version}')
+        recovery = '&legado=1' if version == 1 else ''
+        page.goto(f'{origin}/richtext/{entry}?semana=02-11&versao={version}{recovery}')
         page.wait_for_function('window.AutoSaveManager && window.UnifiedLoadManager && window.cacheRichText')
+        assert page.evaluate('NotesVersions.current') == str(version)
         page.evaluate('Promise.all([window.AutoSaveManager.ready, window.UnifiedLoadManager.ready, window.cacheRichText.ready])')
         page.evaluate('window.fakeCloud.fail = true')
         editor = page.locator('#editor .paragraph-content').first

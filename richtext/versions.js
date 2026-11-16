@@ -1,4 +1,4 @@
-/* The editor can be rolled back independently of its notes. No data migration. */
+/* Normal entries use the current editor; explicit recovery never migrates notes. */
 (() => {
   'use strict';
   const current = document.documentElement.dataset.notesVersion === '1' ? '1' : '2';
@@ -11,17 +11,15 @@
   function destination(version) {
     const url = entry(version); url.search = location.search; url.hash = location.hash;
     url.searchParams.set('versao', version);
+    if (String(version) === '1') url.searchParams.set('legado', '1');
+    else url.searchParams.delete('legado');
     url.searchParams.delete('experimental');
     return url;
   }
-  let preferred;
-  try {
-    preferred = localStorage.getItem(choiceKey);
-  } catch (_) {}
-  // The previous release assigned v1 automatically. That assignment is not a
-  // user preference. Resume v2 by default; keep explicit links and menu choices.
-  const chosen = ['1', '2'].includes(requested) ? requested : current === '1' ? '1' :
-    ['1', '2'].includes(preferred) ? preferred : '2';
+  // Old saved choices and v1 bookmarks must not keep the retired editor in the
+  // normal navigation. The preserved snapshot remains available only through
+  // an explicit recovery request; it is not offered in the editing tools.
+  const chosen = requested === '1' && parameters.get('legado') === '1' ? '1' : '2';
   try {
     localStorage.setItem(preferenceKey, chosen);
   } catch (_) {}
