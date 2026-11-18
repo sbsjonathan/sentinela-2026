@@ -1,7 +1,3 @@
-:root {
-  --leitor-fx-radius: 46px;
-}
-
 @property --bbl-aura-angle {
   syntax: '<angle>';
   inherits: false;
@@ -278,6 +274,7 @@
 }
 
 .leitor-fx {
+  visibility: hidden;
   position: fixed;
   inset: 0;
   z-index: 96;
@@ -286,15 +283,9 @@
   contain: layout paint style;
 }
 
-/* The installed iPhone PWA has a second solid status-area surface. Keep its
-   opaque base, but let this v2 decoration paint above it while the aura runs.
-   The aura stays below the toolbar and Bible modal. */
-html[data-notes-version="2"].leitor-glow-active #app-solid-statusbar {
-  z-index: 95;
-}
-
-/* The local mask duplicates that solid surface. A color fade can leave its
-   composited layer covering the first aura frames in WebKit. */
+/* Keep both solid status-bar surfaces out of the translucent area while the
+   Notes glow is active, including its entry and exit at the edge of the glass. */
+html[data-notes-version="2"].leitor-glow-active #app-solid-statusbar,
 html[data-notes-version="2"].leitor-glow-active .statusbar-mask {
   visibility: hidden;
   transition: none;
@@ -312,24 +303,14 @@ html[data-notes-version="2"].leitor-glow-active .bottom-navbar {
   pointer-events: none !important;
 }
 
-.leitor-fx__fog,
-.leitor-fx__smoke {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border-radius: var(--leitor-fx-radius);
-}
+.leitor-fx.is-mounted { visibility: visible; }
 
-.leitor-fx__fog canvas,
-.leitor-fx__smoke canvas {
+.leitor-fx__glow {
   display: block;
   width: 100%;
   height: 100%;
+  -webkit-mask: var(--edge-mask, linear-gradient(transparent, transparent)) center / 100% 100% no-repeat;
+  mask: var(--edge-mask, linear-gradient(transparent, transparent)) center / 100% 100% no-repeat;
 }
 
-.leitor-fx__fog { z-index: 0; }
-.leitor-fx__smoke { z-index: 1; }
-
-:root.perf-low .leitor-fx,
-:root.perf-low .leitor-fx * ,
 :root.perf-low .bbl--aura { animation: none !important; transition: none !important; filter: none !important; box-shadow: none !important; text-shadow: none !important; }

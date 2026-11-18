@@ -1,5 +1,4 @@
-:root.perf-low #glassFx,
-:root.perf-low .leitor-fx {
+:root.perf-low #glassFx {
   display: none !important;
 }
 
@@ -43,11 +42,7 @@
   animation: none !important;
 }
 
-:root.perf-low .bbl--aura,
-:root.perf-low .leitor-fx__fog,
-:root.perf-low .leitor-fx__smoke,
-:root.perf-low .leitor-fx__fog canvas,
-:root.perf-low .leitor-fx__smoke canvas {
+:root.perf-low .bbl--aura {
   filter: none !important;
   box-shadow: none !important;
   text-shadow: none !important;

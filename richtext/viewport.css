@@ -16,6 +16,12 @@ html[data-notes-version="2"][data-notes-surface="pwa"] .bottom-navbar {
   width: var(--notes-surface-width) !important;
 }
 
+/* The glow paints beneath the native clock. Keep scrolling note text inside
+   the readable area when the reader releases its solid status-bar cover. */
+html[data-notes-version="2"][data-notes-surface="pwa"].leitor-glow-active #editorScroll {
+  clip-path: inset(env(safe-area-inset-top, 0px) 0 0);
+}
+
 html[data-notes-version="2"][data-notes-surface="pwa"] body.leitor-keep-toolbar .kbd-toolbar,
 html[data-notes-version="2"][data-notes-surface="pwa"] body.zombie-toolbar-active .kbd-toolbar {
   top: max(0px, calc(var(--notes-surface-height) - var(--notes-toolbar-height, 68px)));

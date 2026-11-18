@@ -64,7 +64,7 @@
         bottomMinusInnerHeight:navBox ? number(navBox.bottom - innerHeight) : null,
         bottomMinusFixedBottom:navBox && probe ? number(navBox.bottom - probe.getBoundingClientRect().bottom) : null},
       elements:{root:element(root), body:element(document.body), app:element('.app'), scroller:element('#editorScroll'),
-        aura:element('.leitor-fx'), fog:element('.leitor-fx__fog canvas'), glow:element('.leitor-fx__smoke canvas'),
+        aura:element('.leitor-fx'), fog:null, glow:element('.leitor-fx__glow'),
         navbar:element('.bottom-navbar'), toolbar:element('#kbdToolbar'), statusbar:element('#app-solid-statusbar'), mask:element('.statusbar-mask')}
     };
   }

@@ -119,9 +119,8 @@
     for (const meta of head.statusMetas.reverse()) {
       contents = contents.slice(0, meta.start - head.start) + contents.slice(meta.end - head.start);
     }
-    // Remove legacy native status-bar metadata on every opening, including old
-    // offline HTML. The install/launch policy must also be absent on the index;
-    // toggling it per page cannot reliably change an installed iOS web view.
+    // Old offline studies may carry their own launch style. The app index owns
+    // the install policy, and the reader paints its own solid status-area strip.
     // Reading position runs before styles; typography follows legacy bootstraps.
     // The URL stays estudo.html, preserving all relative assets and links.
     return html.slice(0, head.start) + (head.explicit ? '' : '<head>') + script + statusbar +

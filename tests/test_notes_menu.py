@@ -207,8 +207,14 @@ def check(engine, executable, origin):
     page.locator('#modal-biblia-fechar').tap()
     page.wait_for_timeout(250)
     assert tool('bold').is_disabled()
+    # A first-time reader gets the glow even with the economical editor defaults.
+    assert page.evaluate("localStorage.getItem('editor-performance-mode')") is None
+    glow = page.locator('.leitor-fx__glow')
+    assert glow.is_visible()
+    assert page.locator('.leitor-fx').evaluate('el => getComputedStyle(el).pointerEvents') == 'none'
     tool('reader').tap()
     page.wait_for_function('!LeitorMode.isActive()')
+    glow.wait_for(state='hidden')
     assert editable.inner_text().rstrip('\n') == TEXT, (editable.inner_text(), editable.inner_html())
     dismiss_keyboard()
     page.evaluate('M4_Caret.zombieToolbar = false; M4_Caret.updateFocus()')
