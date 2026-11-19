@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function createLeitorBorderFx(anchorEl) {
     const root = document.documentElement;
+    const statusbarMask = document.querySelector('.statusbar-mask');
     const host = document.createElement('div');
     host.className = 'leitor-fx';
     host.setAttribute('aria-hidden', 'true');
@@ -126,7 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const {width, height} = window.NotesViewport?.enabled
         ? window.NotesViewport.measure() : host.getBoundingClientRect();
       if (!width || !height) return;
-      const key = [width, height, root.dataset.theme].join('/');
+      // With a native status band, the web surface starts at its straight lower
+      // edge. Under the clock, use the same rounded outline as the glass.
+      const reservedTop = window.NotesViewport?.enabled && height > width &&
+        statusbarMask?.offsetHeight === 0 && screen.height - height > 1;
+      const key = [width, height, root.dataset.theme, reservedTop].join('/');
       if (key === lastShape) return;
       lastShape = key;
 
@@ -134,11 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
       // Continuous-looking corners meet each straight edge with a gentle tangent.
       const shoulder = .36;
       const bend = radius * shoulder;
+      const topRadius = reservedTop ? 0 : radius;
+      const topBend = topRadius * shoulder;
       const outline = [
-        'M', radius, 0, 'H', width - radius, 'C', width - bend, 0, width, bend, width, radius,
+        'M', topRadius, 0, 'H', width - topRadius, 'C', width - topBend, 0, width, topBend, width, topRadius,
         'V', height - radius, 'C', width, height - bend, width - bend, height, width - radius, height,
         'H', radius, 'C', bend, height, 0, height - bend, 0, height - radius,
-        'V', radius, 'C', 0, bend, bend, 0, radius, 0, 'Z'
+        'V', topRadius, 'C', 0, topBend, topBend, 0, topRadius, 0, 'Z'
       ].join(' ');
 
       // Rasterize the optical falloff only on resize or an appearance change.
@@ -242,6 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
         host.classList.add('is-mounted');
         root.classList.add('leitor-glow-active');
         resizeObserver?.observe(host);
+        if (statusbarMask) resizeObserver?.observe(statusbarMask);
         themeObserver.observe(root, {attributes:true, attributeFilter:['data-theme']});
         window.addEventListener('resize', updateContour, {passive:true});
         document.addEventListener('notes:surface-resize', updateContour);

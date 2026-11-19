@@ -40,12 +40,10 @@
 
     function refresh() {
         if (document.documentElement !== root) return;
-        // Home and Notes v2 declare the translucent launch style in their HTML.
-        // Keep stripping legacy overrides from other pages, including old studies.
-        if (!home && !(surface === 'notes' && root.dataset.notesVersion === '2')) {
-            for (const meta of document.head.querySelectorAll('meta[name]')) {
-                if (meta.name.toLowerCase() === 'apple-mobile-web-app-status-bar-style') meta.remove();
-            }
+        // The install policy belongs to the entire iOS app. Keep its default on
+        // every route, including Notes and studies saved by earlier releases.
+        for (const meta of document.head.querySelectorAll('meta[name]')) {
+            if (meta.name.toLowerCase() === 'apple-mobile-web-app-status-bar-style') meta.remove();
         }
         root.dataset.appStatusbar = home ? 'home' : 'solid';
         root.dataset.statusbarSurface = surface;
@@ -63,7 +61,7 @@
         }
     }
 
-    window.AppStatusBar = { documentRoot: root, revision: '2026.11.18.1', refresh };
+    window.AppStatusBar = { documentRoot: root, revision: '2026.11.19.1', refresh };
     refresh();
     window.addEventListener('pageshow', refresh);
     standalone.addEventListener('change', refresh);

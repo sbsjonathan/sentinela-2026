@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#fbfbfa">
+  <meta name="theme-color" content="#ffffff">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   <script src="versions.js"></script>
   <link rel="stylesheet" href="versions.css">
@@ -23,7 +22,6 @@
         var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         root.setAttribute('data-theme', isDark ? 'dark' : 'light');
         root.dataset.themeChoice = theme;
-        document.querySelector('meta[name="theme-color"]').content = isDark ? '#000000' : '#fbfbfa';
       } catch(e) {}
     })();
   </script>

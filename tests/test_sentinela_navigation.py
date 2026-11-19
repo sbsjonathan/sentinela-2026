@@ -25,6 +25,7 @@ FIXTURE = '''<!doctype html><html lang="pt-BR"><head>
 <script src="/sentinela-2026/navbar/navbar-unified.js"></script></body></html>'''
 CACHED_ARTICLE = '''<!doctype html><html lang="pt-BR"><head>
 <title>A Sentinela</title><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="../../navbar/navbar-unified.css">
 <link rel="stylesheet" href="../menu/menu.css">
 <style>body{margin:0;--cor-principal-estudo:#604184}main{padding:20px}.paragrafo{min-height:180px}</style>
@@ -138,6 +139,13 @@ def check(engine, executable, origin):
             assert page.evaluate('window.UnifiedNavbar.get().canAutoHide()') is False
         assert_identity(page)
 
+    # iOS can read install metadata before the page scripts run.
+    for path in ['index.html', 'richtext/container.html']:
+        response = page.request.get(base + path)
+        assert response.ok
+        assert page.evaluate('''html => new DOMParser().parseFromString(html, 'text/html')
+            .head.querySelector('meta[name="apple-mobile-web-app-status-bar-style" i]') === null''', response.text()), path
+
     open_fixture(page)
     page.evaluate('''() => {
       window.semanaAtual = '09-11';
@@ -225,6 +233,7 @@ def check(engine, executable, origin):
     page.wait_for_function('window.SentinelaArticleMenu && window.UnifiedNavbar?.get()')
     assert page.url == base + 'sentinela/artigos/estudo.html?d=2026-11-02'
     assert 'Download anterior preservado' in page.locator('#saved-study').inner_text()
+    assert page.locator('meta[name="apple-mobile-web-app-status-bar-style" i]').count() == 0
     assert not any('workers.dev' in url for url in remote[before:]), remote[before:]
     assert_identity(page)
     page.evaluate("window.qaDocumentMarker='same document'")

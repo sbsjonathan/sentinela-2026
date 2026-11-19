@@ -16,8 +16,7 @@ html[data-notes-version="2"][data-notes-surface="pwa"] .bottom-navbar {
   width: var(--notes-surface-width) !important;
 }
 
-/* The glow paints beneath the native clock. Keep scrolling note text inside
-   the readable area when the reader releases its solid status-bar cover. */
+/* Keep scrolling note text below the clock on an edge-to-edge installation. */
 html[data-notes-version="2"][data-notes-surface="pwa"].leitor-glow-active #editorScroll {
   clip-path: inset(env(safe-area-inset-top, 0px) 0 0);
 }

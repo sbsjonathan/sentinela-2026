@@ -283,9 +283,11 @@
   contain: layout paint style;
 }
 
-/* Keep both solid status-bar surfaces out of the translucent area while the
-   Notes glow is active, including its entry and exit at the edge of the glass. */
-html[data-notes-version="2"].leitor-glow-active #app-solid-statusbar,
+/* Keep the clock's backing above the notes. Only the decorative rim (z-index
+   96) paints over it while reading. The local mask duplicates that backing. */
+html[data-notes-version="2"].leitor-glow-active #app-solid-statusbar {
+  z-index: 95;
+}
 html[data-notes-version="2"].leitor-glow-active .statusbar-mask {
   visibility: hidden;
   transition: none;
