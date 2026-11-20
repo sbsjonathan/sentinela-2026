@@ -430,6 +430,142 @@
 [data-theme="dark"] .sync-alert__btn.is-danger { color: #ff453a; }
 [data-theme="dark"] .sync-alert__btn:active { background: rgba(255,255,255,0.05); }
 
+/* The cloud sheet is mounted on body, outside the article menu's accent scope. */
+#sentinelaSyncOverlay {
+  --cloud-accent: #663e79;
+  --cloud-on-accent: #fff;
+  --cloud-danger: #a32930;
+  --cloud-on-danger: #fff;
+  --cloud-success: #24643c;
+  --cloud-warning: #79510a;
+  --cloud-muted: #505764;
+  --cloud-surface: #fff;
+  box-sizing: border-box;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    calc(16px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  color-scheme: light;
+}
+[data-theme="dark"] #sentinelaSyncOverlay {
+  --cloud-accent: #e0b9ed;
+  --cloud-on-accent: #361340;
+  --cloud-danger: #ffacac;
+  --cloud-on-danger: #450d13;
+  --cloud-success: #92dda5;
+  --cloud-warning: #f3ce83;
+  --cloud-muted: #c3c6d0;
+  --cloud-surface: #242429;
+  color-scheme: dark;
+}
+#sentinelaSyncOverlay [hidden] { display: none !important; }
+#sentinelaSyncOverlay .sync-sheet { box-sizing: border-box; }
+#sentinelaSyncOverlay button { cursor: pointer; touch-action: manipulation; }
+#sentinelaSyncOverlay button:active:enabled { filter: brightness(0.92); }
+#sentinelaSyncOverlay :is(button, input):disabled { cursor: default; }
+#sentinelaSyncOverlay .sync-sheet__close { width: 44px; height: 44px; }
+#sentinelaSyncOverlay .sync-sheet__tab { min-height: 44px; color: var(--cloud-muted); }
+#sentinelaSyncOverlay .sync-sheet__tab.is-active { background: var(--cloud-surface); color: var(--cloud-accent); }
+#sentinelaSyncOverlay:not([data-state="idle"]) .sync-sheet__panel,
+#sentinelaSyncOverlay:is([data-state="busy"], [data-state="confirm"], [data-state="account"]) .sync-sheet__tabs { display: none; }
+#sentinelaSyncOverlay .sync-choice__desc { color: var(--cloud-muted); }
+#sentinelaSyncOverlay .sync-choice__body { padding-inline-end: 44px; cursor: pointer; }
+#sentinelaSyncOverlay .sync-choice input {
+  z-index: 1;
+  inset-block-start: 16px;
+  inset-inline-end: 14px;
+  width: 19px;
+  height: 19px;
+  margin: 0;
+  opacity: 1;
+  pointer-events: auto;
+  accent-color: var(--cloud-accent);
+}
+#sentinelaSyncOverlay .sync-choice--danger { --cloud-accent: var(--cloud-danger); }
+#sentinelaSyncOverlay .sync-choice input:checked + .sync-choice__body {
+  background: color-mix(in srgb, var(--cloud-accent) 8%, var(--cloud-surface));
+  border-color: var(--cloud-accent);
+  box-shadow: inset 0 0 0 0.5px var(--cloud-accent);
+}
+#sentinelaSyncOverlay input:disabled + .sync-choice__body,
+#sentinelaSyncOverlay .sync-sheet__tab:disabled { opacity: 0.7; cursor: default; }
+#sentinelaSyncOverlay button:focus-visible,
+#sentinelaSyncOverlay input:focus-visible + .sync-choice__body {
+  outline: 3px solid var(--cloud-accent);
+  outline-offset: 2px;
+}
+#sentinelaSyncOverlay .sync-sheet__actions { flex-wrap: wrap; }
+#sentinelaSyncOverlay .sync-sheet__actions .sync-sheet__secondary { flex: 1 0 auto; }
+#sentinelaSyncOverlay .sync-sheet__actions .sync-sheet__primary { flex: 3 1 12em; }
+#sentinelaSyncOverlay[data-state="confirm"] .sync-sheet__actions { margin-top: 28px; }
+#sentinelaSyncOverlay[data-state="confirm"] #sentinelaSyncCancel { flex: 0 1 auto; }
+#sentinelaSyncOverlay .sync-sheet__primary,
+#sentinelaSyncOverlay .sync-sheet__secondary {
+  min-height: 48px;
+  min-width: 0;
+  border: 0;
+  border-radius: 14px;
+  font: 650 0.9rem/1.3 -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow-wrap: anywhere;
+}
+#sentinelaSyncOverlay .sync-sheet__primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--cloud-on-accent);
+  background: var(--cloud-accent);
+  box-shadow: none;
+}
+#sentinelaSyncOverlay .sync-sheet__primary.is-danger {
+  color: var(--cloud-on-danger);
+  background: var(--cloud-danger);
+}
+#sentinelaSyncOverlay .sync-sheet__primary:disabled { opacity: 0.7; }
+#sentinelaSyncOverlay[data-state="busy"] #sentinelaSyncRun {
+  opacity: 1;
+  cursor: progress;
+}
+#sentinelaSyncOverlay[data-state="busy"] #sentinelaSyncRun::before {
+  content: "";
+  box-sizing: border-box;
+  flex: 0 0 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: sentinela-cloud-spin 0.8s linear infinite;
+}
+@keyframes sentinela-cloud-spin { to { transform: rotate(1turn); } }
+#sentinelaSyncOverlay .sync-feedback {
+  --feedback-tone: var(--cloud-accent);
+  margin-block: 12px 0;
+  padding: 14px;
+  border-inline-start: 3px solid var(--feedback-tone);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--feedback-tone) 9%, var(--cloud-surface));
+  overflow-wrap: anywhere;
+}
+#sentinelaSyncOverlay:is([data-state="confirm"], [data-state="error"]) .sync-feedback { --feedback-tone: var(--cloud-danger); }
+#sentinelaSyncOverlay[data-state="success"] .sync-feedback { --feedback-tone: var(--cloud-success); }
+#sentinelaSyncOverlay[data-state="partial"] .sync-feedback { --feedback-tone: var(--cloud-warning); }
+#sentinelaSyncOverlay .sync-feedback__title { display: block; margin: 0; color: var(--feedback-tone); font-size: 0.94rem; font-weight: 700; }
+#sentinelaSyncOverlay .sync-feedback__detail { display: block; margin: 4px 0 0; color: var(--cloud-muted); font-size: 0.84rem; line-height: 1.45; }
+#sentinelaSyncConfirm { width: 100%; margin-top: 12px; }
+@media (max-height: 600px) {
+  #sentinelaSyncOverlay:is([data-state="error"], [data-state="partial"]) .sync-sheet__inner {
+    display: flex;
+    flex-direction: column;
+  }
+  #sentinelaSyncOverlay:is([data-state="error"], [data-state="partial"]) .sync-sheet__tabs {
+    order: 1;
+    margin: 12px 0 0;
+  }
+  #sentinelaSyncOverlay:is([data-state="error"], [data-state="partial"]) .sync-feedback { margin-top: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #sentinelaSyncOverlay[data-state="busy"] #sentinelaSyncRun::before { animation: none; }
+  #sentinelaSyncOverlay :is(.sync-sheet, .sync-choice__body) { transition: none; }
+}
+
 /* The navbar opens two compact cards in a separate scroll surface. Neither
    opening these cards nor expanding preferences changes the article height. */
 .sentinela-article-menu {

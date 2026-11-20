@@ -4,6 +4,7 @@ class SentinelaSync {
         this.semanaAtual = null; this.estudoId = null; this.isLoggedIn = false;
         this.isSyncing = false; this.initialLoadComplete = false; this.accountId = null;
         this.autoSaveTimeout = null; this.lastSavedDataJSON = '{}'; this.lastObservedLocalJSON = null; this.dirty = false;
+        this.unsavedAnnotations = new Map();
         this.SAVE_DELAY = 2500;
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => this.setup(), { once: true });
         else this.setup();
@@ -53,7 +54,7 @@ class SentinelaSync {
             Number(localStorage.getItem(this.localClearKey())) || 0);
     }
     locallyCleared() { return this.localClearEpoch() > (Number(localStorage.getItem(this.localRestoreKey())) || 0); }
-    stopForLocalClear() { this.localClearInProgress = true; this.dirty = false; clearTimeout(this.autoSaveTimeout); }
+    stopForLocalClear() { this.localClearInProgress = true; this.unsavedAnnotations.clear(); this.dirty = false; clearTimeout(this.autoSaveTimeout); }
     clearLocal(all = false) {
         if (!this.estudoId) throw new Error('Estudo não identificado. Atualize a página.');
         // Persist the choice before removing notes or navigating: startup and
@@ -93,6 +94,16 @@ class SentinelaSync {
         localStorage.setItem(this.manualKey(), JSON.stringify({ local, remote }));
     }
     collectAnnotationsFromLocalStorage() {
+        // The annotation editor can still show a keystroke whose cache write
+        // failed. Retry that exact write before using this article as a snapshot.
+        for (const [key, pending] of this.unsavedAnnotations) {
+            const stored = localStorage.getItem(key);
+            if (stored !== pending.value) {
+                if (stored !== pending.previous) throw new Error('A última edição difere da cópia salva neste aparelho. Revise a anotação e edite-a novamente antes de sincronizar.');
+                localStorage.setItem(key, pending.value);
+            }
+            this.unsavedAnnotations.delete(key);
+        }
         const values = {};
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -120,7 +131,18 @@ class SentinelaSync {
         const wrapper = (id, content) => {
             if (this.localClearInProgress) return;
             const result = original(id, content);
-            if (this.validKey(id) && localStorage.getItem(id) === String(content)) this.scheduleAutoSave();
+            if (this.validKey(id)) {
+                // Keep only unconfirmed writes from the editor's save callback.
+                const value = String(content);
+                let previous;
+                try { previous = localStorage.getItem(id); } catch (_) { /* Unknown prior value requires review on retry. */ }
+                if (previous !== value) {
+                    this.unsavedAnnotations.set(id, {value, previous});
+                    return result;
+                }
+                this.unsavedAnnotations.delete(id);
+                this.scheduleAutoSave();
+            }
             return result;
         };
         wrapper.sentinelaSync = true; cache.salvar = wrapper;
@@ -217,8 +239,23 @@ class SentinelaSync {
         const changes = Object.keys(values).filter(key => current[key] !== values[key] && current[key] === before[key]);
         const removals = replace ? Object.keys(current).filter(key => !(key in values) && current[key] === before[key]) : [];
         this.backup(Object.fromEntries([...changes, ...removals].filter(key => key in current).map(key => [key, current[key]])), 'Antes de restaurar a nuvem');
-        for (const key of changes) localStorage.setItem(key, values[key]);
-        for (const key of removals) localStorage.removeItem(key);
+        const applied = [];
+        try {
+            for (const key of removals) { localStorage.removeItem(key); applied.push(key); }
+            for (const key of changes) { localStorage.setItem(key, values[key]); applied.push(key); }
+        } catch (error) {
+            // One article spans multiple localStorage entries. Undo the writes
+            // already made if the device runs out of space during a restore.
+            try {
+                for (const key of applied.reverse()) {
+                    if (key in current) localStorage.setItem(key, current[key]);
+                    else localStorage.removeItem(key);
+                }
+            } catch (_) {
+                throw this.syncError({ code: 'SYNC_PARTIAL', error: 'O armazenamento do aparelho falhou durante a restauração. Confira as anotações do estudo antes de baixar novamente.' });
+            }
+            throw error;
+        }
         for (const key of [...changes, ...removals]) {
             const node = document.getElementById(key);
             if (node && node !== document.activeElement && !node.contains(document.activeElement)) node.innerHTML = values[key] ?? '';
@@ -287,31 +324,47 @@ class SentinelaSync {
         } catch (error) { this.dirty = true; return this.fail(error); }
         finally { this.isSyncing = false; }
     }
-    async manual(action, replace = false) {
+    async manual(action, replace, onProgress) {
         if (this.localClearInProgress) return this.fail('Atualize a página após apagar as anotações.');
         if (this.isSyncing) return this.fail('Aguarde a sincronização em andamento.');
         if (!this.checkLoginStatus()) return this.fail('Entre na sua conta antes de sincronizar.');
         clearTimeout(this.autoSaveTimeout); this.isSyncing = true;
-        const account = this.account(), before = this.collectAnnotationsFromLocalStorage();
+        const account = this.account();
         let completed = false;
+        let destinationUpdated = false;
         let attemptedLocal, attemptedRemote;
         try {
+            const before = this.collectAnnotationsFromLocalStorage();
+            onProgress?.('reading');
             const { raw, values: remote } = await this.readRemote(account);
             const local = this.collectAnnotationsFromLocalStorage();
             if (this.stable(local) !== this.stable(before)) throw new Error('As notas mudaram durante a consulta. Tente novamente.');
+            let changed;
             if (action === 'pull') {
-                if (raw === null) throw new Error('Nenhuma anotação encontrada na nuvem para este artigo.');
+                if (raw === null) throw this.syncError({ code: 'SYNC_EMPTY', error: 'Nenhuma anotação encontrada na nuvem para este artigo.' });
                 const values = replace ? remote : { ...remote, ...local };
-                this.apply(values, local, replace);
+                changed = this.countChanges(local, values);
+                if (changed) {
+                    onProgress?.('applying');
+                    this.apply(values, local, replace);
+                }
+                destinationUpdated = changed > 0;
                 localStorage.setItem(this.localRestoreKey(), String(this.localClearEpoch()));
                 this.remember(this.collectAnnotationsFromLocalStorage(), remote);
             } else {
                 const values = action === 'delete' ? {} : replace ? local : { ...local, ...remote };
-                attemptedLocal = local; attemptedRemote = remote;
-                this.backup(remote, action === 'delete' ? 'Antes de apagar da nuvem' : 'Antes de enviar manualmente');
-                const result = await window.SupabaseSync.salvarSentinelaAnotacoes(this.semanaAtual, this.estudoId, values, { expectedRemote: raw });
-                this.assertAccount(account);
-                if (result?.success !== true) throw this.syncError(result, 'Não foi possível concluir.');
+                changed = this.countChanges(remote, values);
+                // An explicit empty backup can later restore an empty device.
+                // An empty merge or delete needs no new server document.
+                if (changed || (action === 'push' && replace && raw === null)) {
+                    attemptedLocal = local; attemptedRemote = remote;
+                    this.backup(remote, action === 'delete' ? 'Antes de apagar da nuvem' : 'Antes de enviar manualmente');
+                    onProgress?.('writing');
+                    const result = await window.SupabaseSync.salvarSentinelaAnotacoes(this.semanaAtual, this.estudoId, values, { expectedRemote: raw });
+                    destinationUpdated = result?.success === true;
+                    this.assertAccount(account);
+                    if (!destinationUpdated) throw this.syncError(result, 'Não foi possível concluir.');
+                }
                 // A manual command changes only its chosen destination. Avoid
                 // automatically reversing a cloud deletion/missing-only upload.
                 this.remember(local, values);
@@ -320,9 +373,16 @@ class SentinelaSync {
             this.clearConflict();
             this.dirty = this.stable(this.collectAnnotationsFromLocalStorage()) !== this.lastObservedLocalJSON;
             completed = true;
-            return this.success();
+            return { success: true, changed };
         } catch (error) {
-            if (error.code === 'SYNC_CONFLICT' && this.account() === account && attemptedLocal) {
+            if (destinationUpdated) {
+                const destination = action === 'pull' ? 'O aparelho recebeu as anotações.' : 'A nuvem confirmou a operação.';
+                return this.fail(this.syncError({ code: 'SYNC_PARTIAL', error: destination + ' Não foi possível registrar a conclusão neste aparelho. Confira o estudo antes de repetir.' }));
+            }
+            if (error?.name === 'QuotaExceededError') {
+                return this.fail('O armazenamento deste aparelho está cheio. Libere espaço e tente novamente.');
+            }
+            if (error?.code === 'SYNC_CONFLICT' && this.account() === account && attemptedLocal) {
                 try { this.recordConflict(attemptedLocal, attemptedRemote, true); await this.reconcileConflict(account); } catch (_) {}
                 this.dirty = false;
             }
@@ -330,10 +390,14 @@ class SentinelaSync {
         }
         finally { this.isSyncing = false; if (completed && this.dirty) this.scheduleAutoSave(); }
     }
-    pushOverwrite() { return this.manual('push', true); }
-    pushMissing() { return this.manual('push', false); }
-    pullOverwrite() { return this.manual('pull', true); }
-    pullMissing() { return this.manual('pull', false); }
-    deleteRemote() { return this.manual('delete'); }
+    countChanges(before, after) {
+        const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+        return [...keys].filter(key => before[key] !== after[key]).length;
+    }
+    pushOverwrite(onProgress) { return this.manual('push', true, onProgress); }
+    pushMissing(onProgress) { return this.manual('push', false, onProgress); }
+    pullOverwrite(onProgress) { return this.manual('pull', true, onProgress); }
+    pullMissing(onProgress) { return this.manual('pull', false, onProgress); }
+    deleteRemote(onProgress) { return this.manual('delete', false, onProgress); }
 }
 window.sentinelaSync = new SentinelaSync();

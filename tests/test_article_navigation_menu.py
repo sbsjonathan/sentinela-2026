@@ -169,10 +169,13 @@ def check(engine, executable, origin):
     page.wait_for_function('document.getElementById("sentinela-article-menu").inert')
     assert page.locator('#sentinelaSyncOverlay').get_attribute('aria-hidden') == 'false'
     page.keyboard.press('Escape')
+    page.locator('#sentinelaSyncOverlay').wait_for(state='hidden')
     assert page.evaluate('SentinelaArticleMenu.isOpen()')
+    menu.locator('#btn-abrir-sync').tap()
     page.locator('#sentinelaSyncRun').tap()
     page.wait_for_function('qaCloud.length===1')
     assert page.evaluate('qaCloud') == ['missing']
+    page.get_by_role('button', name='Concluir', exact=True).press('Enter')
     page.wait_for_function('!document.getElementById("sentinela-article-menu").inert')
     assert page.evaluate('scrollY') == before_sheet
 

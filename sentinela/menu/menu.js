@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <span class="action-card__icon">${getStaticActionIcon('export')}</span>
               <span class="action-card__label">Backup</span>
             </button>
-            <button id="btn-abrir-sync" class="action-card action-card--cloud" type="button">
+            <button id="btn-abrir-sync" class="action-card action-card--cloud" type="button" aria-haspopup="dialog" aria-controls="sentinelaSyncOverlay">
               <span class="action-card__icon">${getStaticActionIcon('cloud')}</span>
               <span class="action-card__label">Nuvem</span>
             </button>
@@ -107,15 +107,15 @@ document.addEventListener("DOMContentLoaded", () => {
     mainContent.insertAdjacentHTML('afterbegin', menuHTML);
 
     const sheetsHTML = `
-      <div class="sync-sheet-overlay" id="sentinelaSyncOverlay" aria-hidden="true">
-        <div class="sync-sheet" role="dialog" aria-modal="true">
+      <div class="sync-sheet-overlay" id="sentinelaSyncOverlay" data-state="idle" aria-hidden="true">
+        <div class="sync-sheet" role="dialog" aria-modal="true" aria-labelledby="sentinelaSyncTitle">
           <div class="sync-sheet__handle"></div>
           <div class="sync-sheet__inner">
             <div class="sync-sheet__topbar">
-              <div class="sync-sheet__title">Nuvem da Sentinela</div>
-              <button type="button" class="sync-sheet__close" id="sentinelaSyncClose">×</button>
+              <div class="sync-sheet__title" id="sentinelaSyncTitle">Nuvem da Sentinela</div>
+              <button type="button" class="sync-sheet__close" id="sentinelaSyncClose" aria-label="Fechar Nuvem">×</button>
             </div>
-            <div class="sync-sheet__tabs">
+            <div class="sync-sheet__tabs" role="group" aria-label="Ação na nuvem">
               <button type="button" class="sync-sheet__tab is-active" data-sync-tab="enviar">Enviar</button>
               <button type="button" class="sync-sheet__tab" data-sync-tab="baixar">Baixar</button>
               <button type="button" class="sync-sheet__tab" data-sync-tab="apagar">Apagar</button>
@@ -124,14 +124,14 @@ document.addEventListener("DOMContentLoaded", () => {
               <div class="sync-card">
                 <div class="sync-options">
                   <label class="sync-choice">
-                    <input type="radio" name="sync-enviar" value="merge" checked>
+                    <input type="radio" name="sync-enviar" value="merge" data-method="pushMissing" checked>
                     <span class="sync-choice__body">
                       <span class="sync-choice__title">Enviar apenas o que falta</span>
                       <span class="sync-choice__desc">Adiciona as notas que ainda não estão na nuvem e mantém as que já existem lá.</span>
                     </span>
                   </label>
                   <label class="sync-choice">
-                    <input type="radio" name="sync-enviar" value="overwrite">
+                    <input type="radio" name="sync-enviar" value="overwrite" data-method="pushOverwrite">
                     <span class="sync-choice__body">
                       <span class="sync-choice__title">Substituir Nuvem</span>
                       <span class="sync-choice__desc">Apaga as anotações deste artigo na nuvem e guarda exatamente como este aparelho está agora.</span>
@@ -144,14 +144,14 @@ document.addEventListener("DOMContentLoaded", () => {
               <div class="sync-card">
                 <div class="sync-options">
                   <label class="sync-choice">
-                    <input type="radio" name="sync-baixar" value="merge" checked>
+                    <input type="radio" name="sync-baixar" value="merge" data-method="pullMissing" checked>
                     <span class="sync-choice__body">
                       <span class="sync-choice__title">Baixar apenas o que falta</span>
                       <span class="sync-choice__desc">Baixa as notas que ainda não estão neste aparelho e mantém as notas locais.</span>
                     </span>
                   </label>
                   <label class="sync-choice">
-                    <input type="radio" name="sync-baixar" value="overwrite">
+                    <input type="radio" name="sync-baixar" value="overwrite" data-method="pullOverwrite">
                     <span class="sync-choice__body">
                       <span class="sync-choice__title">Restaurar Aparelho</span>
                       <span class="sync-choice__desc">Apaga as anotações deste aparelho e deixa idêntico ao que está salvo na nuvem.</span>
@@ -164,7 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <div class="sync-card">
                 <div class="sync-options">
                   <label class="sync-choice sync-choice--danger">
-                    <input type="radio" name="sync-apagar" value="day" checked>
+                    <input type="radio" name="sync-apagar" value="day" data-method="deleteRemote" checked>
                     <span class="sync-choice__body">
                       <span class="sync-choice__title">Apagar este artigo da Nuvem</span>
                       <span class="sync-choice__desc">Remove as anotações da semana ${semanaAtual} da nuvem. O resto continua a salvo.</span>
@@ -173,9 +173,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
               </div>
             </section>
+            <div class="sync-feedback" hidden>
+              <div id="sentinelaSyncFeedback" role="status" aria-live="polite" aria-atomic="true">
+                <strong class="sync-feedback__title"></strong>
+                <p class="sync-feedback__detail"></p>
+              </div>
+              <button type="button" class="sync-sheet__primary is-danger" id="sentinelaSyncConfirm" aria-describedby="sentinelaSyncFeedback" hidden></button>
+            </div>
             <div class="sync-sheet__actions">
-              <button type="button" class="sync-sheet__secondary" id="sentinelaSyncCancel">Cancelar</button>
-              <button type="button" class="sync-sheet__primary" id="sentinelaSyncRun">Avançar</button>
+              <button type="button" class="sync-sheet__secondary" id="sentinelaSyncCancel" aria-describedby="sentinelaSyncFeedback">Cancelar</button>
+              <button type="button" class="sync-sheet__primary" id="sentinelaSyncRun" aria-describedby="sentinelaSyncFeedback">Enviar para a nuvem</button>
             </div>
           </div>
         </div>
@@ -766,88 +773,243 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener('supabaseLogout', restoreCloudConflictNotice);
     restoreCloudConflictNotice();
 
-    const syncTabs = document.querySelectorAll('[data-sync-tab]');
-    const syncPanels = document.querySelectorAll('[data-sync-panel]');
+    const syncTabs = syncOverlay.querySelectorAll('[data-sync-tab]');
+    const syncPanels = syncOverlay.querySelectorAll('[data-sync-panel]');
+    const syncOptions = syncOverlay.querySelectorAll('input[data-method]');
+    const runButton = document.getElementById('sentinelaSyncRun');
+    const confirmButton = document.getElementById('sentinelaSyncConfirm');
+    const cancelButton = document.getElementById('sentinelaSyncCancel');
+    const closeButton = document.getElementById('sentinelaSyncClose');
+    const feedback = syncOverlay.querySelector('.sync-feedback');
+    const feedbackTitle = feedback.querySelector('.sync-feedback__title');
+    const feedbackDetail = feedback.querySelector('.sync-feedback__detail');
+    const openerLabel = btnAbrirSync.querySelector('.action-card__label');
+    const methods = {
+      pushMissing: { label: 'Enviar para a nuvem', unchanged: 'Não há anotações novas deste artigo para enviar.' },
+      pushOverwrite: { label: 'Substituir na nuvem', confirm: 'Substituir a cópia da nuvem?',
+        warning: 'A nuvem ficará com as anotações deste aparelho. As anotações que só existem na nuvem serão apagadas.',
+        unchanged: 'A cópia da nuvem corresponde às anotações deste aparelho.' },
+      pullMissing: { label: 'Baixar anotações', unchanged: 'Este aparelho já tem as anotações disponíveis para baixar.' },
+      pullOverwrite: { label: 'Restaurar neste aparelho', confirm: 'Restaurar as anotações neste aparelho?',
+        warning: 'Este artigo ficará igual à cópia da nuvem. As anotações que só existem neste aparelho serão apagadas.',
+        unchanged: 'As anotações deste aparelho já correspondem à cópia da nuvem.' },
+      deleteRemote: { label: 'Apagar da nuvem', confirm: 'Apagar este artigo da nuvem?',
+        warning: 'As anotações deste artigo serão apagadas da nuvem. Sua cópia neste aparelho será mantida.',
+        unchanged: 'A nuvem já estava sem anotações deste artigo.' }
+    };
+    const tabLabels = {
+      enviar: { busy: 'Enviando…', done: 'Envio concluído', destination: 'na nuvem' },
+      baixar: { busy: 'Baixando…', done: 'Anotações baixadas', destination: 'neste aparelho' },
+      apagar: { busy: 'Apagando…', done: 'Exclusão concluída', destination: 'na nuvem' }
+    };
     let activeSyncTab = 'enviar';
-    let syncActionRunning = false;
+    let openedSession = null;
+    let keepSyncResult = false;
+    let lastActionTap = null;
 
-    function setSyncTab(tab) {
-      activeSyncTab = tab;
-      syncTabs.forEach(btn => btn.classList.toggle('is-active', btn.dataset.syncTab === tab));
-      syncPanels.forEach(panel => panel.hidden = panel.dataset.syncPanel !== tab);
-      const runBtn = document.getElementById('sentinelaSyncRun');
-      if (tab === 'apagar') {
-        runBtn.textContent = 'Apagar da Nuvem';
-        runBtn.classList.add('is-danger');
-      } else {
-        runBtn.textContent = 'Avançar';
-        runBtn.classList.remove('is-danger');
-      }
+    function currentSession() {
+      try {
+        const raw = localStorage.getItem('supabase_user');
+        return JSON.parse(raw)?.id && window.SupabaseSync?.isLoggedIn?.() !== false ? raw : null;
+      } catch (_) { return null; }
     }
-
-    syncTabs.forEach(btn => btn.addEventListener('click', () => setSyncTab(btn.dataset.syncTab)));
-    document.getElementById('sentinelaSyncClose').addEventListener('click', () => syncOverlay.classList.remove('is-open'));
-    document.getElementById('sentinelaSyncCancel').addEventListener('click', () => syncOverlay.classList.remove('is-open'));
-
+    function selectedMethod() {
+      return syncOverlay.querySelector(`input[name="sync-${activeSyncTab}"]:checked`).dataset.method;
+    }
+    function setSyncState(state, title = '', detail = '') {
+      const previousFocus = document.activeElement;
+      const choice = methods[selectedMethod()];
+      const busy = state === 'busy';
+      const confirming = state === 'confirm';
+      const finished = state === 'success' || state === 'empty' || state === 'account';
+      const locked = confirming || busy || state === 'account';
+      syncOverlay.dataset.state = state;
+      for (const tab of syncTabs) {
+        const active = tab.dataset.syncTab === activeSyncTab;
+        tab.classList.toggle('is-active', active);
+        tab.setAttribute('aria-pressed', String(active));
+        tab.disabled = locked;
+      }
+      for (const panel of syncPanels) panel.hidden = panel.dataset.syncPanel !== activeSyncTab;
+      for (const radio of syncOptions) radio.disabled = locked;
+      feedback.hidden = state === 'idle';
+      feedbackTitle.textContent = title;
+      feedbackDetail.textContent = detail;
+      confirmButton.hidden = !confirming;
+      confirmButton.textContent = choice.label;
+      const primaryLabels = {
+        idle: choice.label, confirm: choice.label, busy: tabLabels[activeSyncTab].busy,
+        success: 'Concluir', error: 'Tentar novamente', partial: 'Revisar opções', empty: 'Fechar', account: 'Fechar'
+      };
+      runButton.textContent = primaryLabels[state];
+      runButton.hidden = confirming;
+      runButton.disabled = busy;
+      runButton.setAttribute('aria-busy', String(busy));
+      runButton.classList.toggle('is-danger', Boolean(choice.confirm) && (state === 'idle' || state === 'error'));
+      cancelButton.hidden = finished;
+      cancelButton.textContent = busy ? 'Ocultar' : confirming ? 'Voltar' : 'Cancelar';
+      closeButton.setAttribute('aria-label', busy ? 'Ocultar Nuvem' : 'Fechar Nuvem');
+      if (!keepSyncResult) openerLabel.textContent = 'Nuvem';
+      else openerLabel.textContent = busy ? tabLabels[activeSyncTab].busy : 'Ver resultado';
+      if (finished && syncOverlay.classList.contains('is-open') &&
+          (previousFocus === cancelButton || previousFocus === confirmButton)) runButton.focus({ preventScroll: true });
+    }
+    function verifySyncSession() {
+      if (openedSession && openedSession === currentSession()) return true;
+      const message = openedSession ? 'A conta mudou. Feche e abra a Nuvem novamente.' : 'Entre na sua conta pela aba Salvar e volte a este artigo.';
+      setSyncState('account', openedSession ? 'Sessão alterada' : 'Entre na sua conta', message);
+      return false;
+    }
+    function resetChoices() {
+      for (const radio of syncOptions) radio.checked = radio.defaultChecked;
+    }
+    function closeCloud() {
+      keepSyncResult = syncOverlay.dataset.state === 'busy';
+      openerLabel.textContent = keepSyncResult ? tabLabels[activeSyncTab].busy : 'Nuvem';
+      syncOverlay.classList.remove('is-open');
+      updateSheetState();
+      if (btnAbrirSync.getClientRects().length) btnAbrirSync.focus({ preventScroll: true });
+      else if (barraEstudo.tabIndex >= 0) barraEstudo.focus({ preventScroll: true });
+    }
+    function backFromConfirmation() {
+      lastActionTap = null;
+      setSyncState('idle');
+      runButton.focus({ preventScroll: true });
+    }
     btnAbrirSync.addEventListener('click', () => {
-      const isLoggedIn = !!localStorage.getItem('supabase_user');
-      if (!isLoggedIn) {
-        alert("Você precisa fazer login em 'Salvar' antes de usar a Nuvem.");
+      if (syncOverlay.classList.contains('is-open')) return;
+      syncOverlay.classList.add('is-open');
+      if (!keepSyncResult) {
+        openedSession = currentSession();
+        lastActionTap = null;
+        activeSyncTab = 'enviar';
+        resetChoices();
+        setSyncState('idle');
+      }
+      // An in-flight request owns its slot until it settles, even after a logout.
+      if (syncOverlay.dataset.state !== 'busy') verifySyncSession();
+      updateSheetState();
+      closeButton.focus({ preventScroll: true });
+    });
+    for (const tab of syncTabs) tab.addEventListener('click', () => {
+      if (tab.disabled || !verifySyncSession()) return;
+      keepSyncResult = false;
+      activeSyncTab = tab.dataset.syncTab;
+      setSyncState('idle');
+    });
+    for (const radio of syncOptions) radio.addEventListener('change', () => {
+      if (!radio.disabled && verifySyncSession()) setSyncState('idle');
+    });
+    closeButton.addEventListener('click', closeCloud);
+    cancelButton.addEventListener('click', () => {
+      if (syncOverlay.dataset.state === 'confirm') backFromConfirmation();
+      else closeCloud();
+    });
+    // On a fast response a second tap can land on a different action where
+    // Send used to be. Only suppress a rapid repeat at that same spot.
+    syncOverlay.addEventListener('click', event => {
+      if (!event.detail) {
+        lastActionTap = null; // Keyboard and assistive activation start a fresh gesture.
         return;
       }
-      setSyncTab('enviar');
-      syncOverlay.classList.add('is-open');
+      if (lastActionTap && performance.now() - lastActionTap.at < 450 &&
+          Math.hypot(event.clientX - lastActionTap.x, event.clientY - lastActionTap.y) < 24) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+      const state = syncOverlay.dataset.state;
+      if ((event.target === runButton && (state === 'idle' || state === 'error')) ||
+          (event.target === confirmButton && state === 'confirm')) {
+        lastActionTap = { at: performance.now(), x: event.clientX, y: event.clientY };
+      } else {
+        lastActionTap = null;
+      }
+    }, true);
+    syncOverlay.addEventListener('click', event => {
+      if (event.target !== syncOverlay) return;
+      if (syncOverlay.dataset.state === 'confirm') backFromConfirmation();
+      else closeCloud();
+    });
+    syncOverlay.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        if (syncOverlay.dataset.state === 'confirm') backFromConfirmation();
+        else closeCloud();
+      } else if (event.key === 'Tab') {
+        const focusable = Array.from(syncOverlay.querySelectorAll('button:enabled, input:checked:enabled'))
+          .filter(element => element.getClientRects().length);
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
     });
 
-    document.getElementById('sentinelaSyncRun').addEventListener('click', async () => {
-      if (syncActionRunning) return;
-      syncActionRunning = true;
-      const action = activeSyncTab;
-      const runButton = document.getElementById('sentinelaSyncRun');
-      runButton.disabled = true;
+    async function runCloudAction(method) {
+      const phase = syncOverlay.dataset.state;
+      if (phase !== 'idle' && phase !== 'error' && phase !== 'confirm') return;
+      const choice = methods[method];
+      if (!verifySyncSession() || (choice.confirm && phase !== 'confirm')) return;
+      const labels = tabLabels[activeSyncTab];
+      const reading = 'Consultando as anotações deste artigo na nuvem…';
+      setSyncState('busy', labels.busy, reading);
+      cancelButton.focus({ preventScroll: true });
       try {
-      const requestSession = localStorage.getItem('supabase_user');
-      if (!JSON.parse(requestSession)?.id || window.SupabaseSync?.isLoggedIn?.() === false) {
-        throw new Error('Entre na sua conta antes de sincronizar.');
-      }
-      syncOverlay.classList.remove('is-open');
-      const actionValue = document.querySelector(`input[name="sync-${action}"]:checked`).value;
-
-      const runSync = async () => {
+        if (navigator.onLine === false) throw new Error('Conecte o aparelho à internet e tente novamente.');
         const sync = window.sentinelaSync;
-        if (!sync) { alert('A sincronização ainda está iniciando. Tente novamente.'); return; }
-        const button = document.getElementById('sentinelaSyncRun');
-        button.disabled = true;
-        try {
-          if (localStorage.getItem('supabase_user') !== requestSession || window.SupabaseSync?.isLoggedIn?.() === false) {
-            throw new Error('A conta mudou durante a confirmação. Abra a Nuvem novamente.');
+        if (typeof sync?.[method] !== 'function') throw new Error('A sincronização ainda está iniciando. Tente novamente.');
+        const result = await sync[method](stage => {
+          if (stage === 'writing') feedbackDetail.textContent = 'Aguardando a confirmação da nuvem…';
+          if (stage === 'applying') feedbackDetail.textContent = 'Salvando as alterações neste aparelho…';
+        });
+        if (!verifySyncSession()) return;
+        if (result?.success !== true) {
+          if (result?.code === 'SYNC_EMPTY') {
+            setSyncState('empty', 'Sem cópia na nuvem', result.error);
+            return;
           }
-          let result;
-          if (action === 'apagar') result = await sync.deleteRemote();
-          else if (action === 'enviar') result = await (actionValue === 'overwrite' ? sync.pushOverwrite() : sync.pushMissing());
-          else result = await (actionValue === 'overwrite' ? sync.pullOverwrite() : sync.pullMissing());
-          if (result?.success !== true) throw new Error(result?.error || 'Não foi possível concluir.');
-          window.dispatchEvent(new CustomEvent('sentinela:cloudresolved'));
-          alert(action === 'apagar' ? 'Anotações deste artigo apagadas da nuvem.' :
-            action === 'enviar' ? 'Anotações enviadas para a nuvem.' : 'Anotações baixadas com sucesso.');
-        } catch (error) { alert(error.message || 'Erro de comunicação com a nuvem.'); }
-        finally { button.disabled = false; }
-      };
-
-      if (action === 'apagar') {
-        const res = await showCustomAlert({ title: "Apagar da nuvem?", text: "Isso removerá apenas as notas deste artigo do servidor.", left: "Cancelar", right: "Apagar", rightDanger: true, rightBold: true });
-        if (res === 'right') await runSync();
-      } else if (action === 'enviar' && actionValue === 'overwrite') {
-        const res = await showCustomAlert({ title: "Substituir nuvem?", text: "A cópia da nuvem será sobrescrita pela versão deste aparelho.", left: "Cancelar", right: "Substituir", rightBold: true });
-        if (res === 'right') await runSync();
-      } else if (action === 'baixar' && actionValue === 'overwrite') {
-        const res = await showCustomAlert({ title: "Restaurar aparelho?", text: "Suas notas locais que não estiverem na nuvem serão perdidas.", left: "Cancelar", right: "Restaurar", rightBold: true });
-        if (res === 'right') await runSync();
-      } else {
-        await runSync();
+          if (result?.code === 'SYNC_PARTIAL') {
+            setSyncState('partial', 'Confira as anotações', result.error);
+            return;
+          }
+          throw new Error(result?.error || 'A nuvem não confirmou a operação. Tente novamente.');
+        }
+        let detail = method === 'deleteRemote' ? 'A cópia neste aparelho foi mantida.' : 'A operação deste artigo foi confirmada.';
+        if (result.changed === 0) detail = choice.unchanged;
+        else if (Number.isInteger(result.changed) && result.changed > 0) {
+          const changes = result.changed === 1 ? '1 alteração aplicada' : `${result.changed} alterações aplicadas`;
+          detail = changes + ' ' + labels.destination + '.';
+        }
+        setSyncState('success', result.changed === 0 ? 'Nenhuma anotação alterada' : labels.done, detail);
+        window.dispatchEvent(new CustomEvent('sentinela:cloudresolved'));
+      } catch (error) {
+        if (!verifySyncSession()) return;
+        let message = error?.message || 'Confira a conexão e tente novamente.';
+        if (/failed to fetch|fetch failed|load failed|networkerror|network request failed/i.test(message)) {
+          message = 'Não foi possível confirmar a operação. Confira a conexão e tente novamente.';
+        }
+        setSyncState('error', 'Não foi possível concluir', message);
       }
-      } catch (error) { alert(error.message || 'Não foi possível confirmar a conta. Tente novamente.'); }
-      finally { syncActionRunning = false; runButton.disabled = false; }
+    }
+    runButton.addEventListener('click', () => {
+      if (!syncOverlay.classList.contains('is-open')) return;
+      switch (syncOverlay.dataset.state) {
+        case 'empty': case 'account': case 'success': closeCloud(); return;
+        case 'partial': resetChoices(); setSyncState('idle'); return;
+        case 'idle': case 'error': break;
+        default: return;
+      }
+      if (!verifySyncSession()) return;
+      const method = selectedMethod();
+      const choice = methods[method];
+      if (choice.confirm) {
+        setSyncState('confirm', choice.confirm, choice.warning);
+        cancelButton.focus({ preventScroll: true });
+      } else runCloudAction(method);
+    });
+    confirmButton.addEventListener('click', () => {
+      if (syncOverlay.classList.contains('is-open') && syncOverlay.dataset.state === 'confirm') runCloudAction(selectedMethod());
     });
 
     // --- LOGIC: Limpeza Local ---

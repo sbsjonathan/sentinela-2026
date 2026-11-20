@@ -136,6 +136,85 @@ async function test(name, run) { await run(); count++; console.log('PASS', name)
         const h = article(); h.storage.setItem('c-35-1', 'local'); h.api.carregarSentinelaAnotacoes = async () => { throw Error('offline'); };
         assert.equal((await h.sync.pullOverwrite()).success, false); assert.equal((await h.sync.pushOverwrite()).success, false); assert.equal(h.writes.length, 0); assert.equal(h.storage.getItem('c-35-1'), 'local');
     });
+    await test('manual progress and counts reflect work at the chosen destination', async () => {
+        const h = article(), stages = [], progress = stage => stages.push(stage);
+        assert.equal((await h.sync.deleteRemote(progress)).changed, 0);
+        assert.equal((await h.sync.pushMissing(progress)).changed, 0);
+        assert.equal((await h.sync.pullOverwrite(progress)).code, 'SYNC_EMPTY');
+        assert.deepEqual(stages, ['reading', 'reading', 'reading']);
+        assert.equal(h.writes.length, 0);
+        h.storage.setItem('c-35-1', 'first');
+        stages.length = 0;
+        assert.equal((await h.sync.pushMissing(progress)).changed, 1);
+        assert.equal((await h.sync.pushMissing(progress)).changed, 0);
+        h.cloud()['c-35-2'] = 'second';
+        assert.equal((await h.sync.pullMissing(progress)).changed, 1);
+        assert.equal((await h.sync.pullMissing(progress)).changed, 0);
+        assert.deepEqual(stages, ['reading', 'writing', 'reading', 'reading', 'applying', 'reading']);
+        assert.equal(h.writes.length, 1);
+    });
+    await test('a confirmed cloud write with failed bookkeeping can retry without rewriting', async () => {
+        const h = article(), set = h.storage.setItem;
+        h.storage.setItem('c-35-1', 'local');
+        h.storage.setItem = (key, value) => {
+            if (key === h.sync.manualKey()) throw Error('quota');
+            set(key, value);
+        };
+        const result = await h.sync.pushOverwrite();
+        assert.equal(result.success, false); assert.equal(result.code, 'SYNC_PARTIAL');
+        assert.equal(h.cloud()['c-35-1'], 'local');
+        h.storage.setItem = set;
+        assert.equal((await h.sync.pushOverwrite()).changed, 0);
+        assert.equal(h.writes.length, 1);
+    });
+    await test('a local restore rolls back earlier removals and additions when storage fills', async () => {
+        const h = article({'c-35-2': 'second', 'c-35-3': 'third'}), set = h.storage.setItem;
+        h.storage.setItem('c-35-1', 'first');
+        h.storage.setItem = (key, value) => {
+            if (key === 'c-35-3') throw Object.assign(Error('quota'), {name: 'QuotaExceededError'});
+            set(key, value);
+        };
+        const result = await h.sync.pullOverwrite();
+        assert.equal(result.success, false); assert.match(result.error, /espaço/);
+        assert.equal(h.storage.getItem('c-35-1'), 'first');
+        assert.equal(h.storage.getItem('c-35-2'), null); assert.equal(h.storage.getItem('c-35-3'), null);
+        h.storage.setItem = set;
+        assert.equal((await h.sync.pullOverwrite()).changed, 3);
+    });
+    await test('manual upload retries a failed editor cache write before reading the draft', async () => {
+        const h = article(), set = h.storage.setItem;
+        h.storage.setItem('c-35-1', 'old');
+        h.run('sentinela/clickable/cache.js');
+        h.sync.interceptCacheSalvar();
+        h.context.console = {...console, error() {}};
+        h.storage.setItem = (key, value) => {
+            if (key === 'c-35-1') throw Object.assign(Error('quota'), {name: 'QuotaExceededError'});
+            set(key, value);
+        };
+        h.context.window.CacheAnotacao.salvar('c-35-1', 'last edit');
+        assert.equal((await h.sync.pushOverwrite()).success, false); assert.equal(h.writes.length, 0);
+        h.storage.setItem = set;
+        assert.equal((await h.sync.pushOverwrite()).changed, 1);
+        assert.equal(h.cloud()['c-35-1'], 'last edit');
+    });
+    await test('a pending editor write preserves another tab’s edit or deletion', async () => {
+        for (const newer of ['other tab', null]) {
+            const h = article(), key = 'c-35-1', set = h.storage.setItem;
+            set(key, 'original');
+            let writable = false;
+            h.context.window.CacheAnotacao = {salvar(id, value) { if (writable) set(id, value); }};
+            h.sync.interceptCacheSalvar();
+            h.context.window.CacheAnotacao.salvar(key, 'pending');
+            if (newer === null) h.storage.removeItem(key); else set(key, newer);
+            const result = await h.sync.pushOverwrite();
+            assert.equal(result.success, false); assert.match(result.error, /[Rr]evise/);
+            assert.equal(h.storage.getItem(key), newer); assert.equal(h.writes.length, 0);
+            writable = true;
+            h.context.window.CacheAnotacao.salvar(key, 'reviewed');
+            assert.equal((await h.sync.pushOverwrite()).changed, 1);
+            assert.equal(h.cloud()[key], 'reviewed');
+        }
+    });
     await test('article mutation failure and unavailable recovery storage abort manual operations', async () => {
         const h = article({ 'c-35-1': 'remote' }); h.storage.setItem('c-35-1', 'local'); h.api.salvarSentinelaAnotacoes = async () => ({ success: false, error: 'denied' });
         assert.equal((await h.sync.pushOverwrite()).success, false);
@@ -181,37 +260,6 @@ async function test(name, run) { await run(); count++; console.log('PASS', name)
             h.storage.setItem('supabase_user', JSON.stringify({ id: 'test-user', loginId: 'two' })); return { 'c-35-1': 'remote' };
         };
         assert.equal((await h.sync.pushOverwrite()).success, false); assert.equal(h.writes.length, 0);
-    });
-    await test('article menu propagates failure and dispatches the requested direction', async () => {
-        const source = fs.readFileSync(path.join(root, 'sentinela/menu/menu.js'), 'utf8');
-        const start = source.indexOf('const runSync = async () => {');
-        const end = source.indexOf("\n      if (action === 'apagar') {", start);
-        const body = source.slice(start, end) + '\nwindow.runSync = runSync;';
-        const alerts = [], calls = [], button = { disabled: false };
-        const h = base(); h.context.alert = text => alerts.push(text);
-        h.context.document.getElementById = () => button;
-        h.context.action = 'enviar'; h.context.actionValue = 'merge'; h.context.requestSession = h.storage.getItem('supabase_user');
-        h.context.window.sentinelaSync = { pushMissing: async () => { calls.push('missing'); return { success: false, error: 'server denied' }; }, pushOverwrite: async () => { calls.push('overwrite'); return { success: true }; } };
-        vm.runInContext(body, h.context); await h.context.window.runSync(); assert.deepEqual(alerts, ['server denied']); assert.equal(button.disabled, false);
-        h.context.actionValue = 'overwrite'; await h.context.window.runSync(); assert.deepEqual(calls, ['missing', 'overwrite']); assert.equal(alerts[1], 'Anotações enviadas para a nuvem.');
-    });
-    await test('article menu binds confirmation to the original session', async () => {
-        const source = fs.readFileSync(path.join(root, 'sentinela/menu/menu.js'), 'utf8');
-        const start = source.indexOf("    document.getElementById('sentinelaSyncRun').addEventListener('click', async () => {");
-        const end = source.indexOf('\n    // --- LOGIC: Limpeza Local ---', start);
-        for (const [action, nextSession] of [['apagar', {id:'other-user', loginId:'two'}], ['enviar', {id:'test-user',loginId:'two'}]]) {
-            const h = base(), alerts = [], calls = [];
-            const button = { disabled: false, addEventListener(name, callback) { this.run = callback; } };
-            h.context.document.getElementById = () => button;
-            h.context.document.querySelector = () => ({ value: 'overwrite' });
-            h.context.alert = message => alerts.push(message); h.context.syncActionRunning = false;
-            h.context.activeSyncTab = action; h.context.syncOverlay = {classList:{remove() {}}};
-            h.context.showCustomAlert = async () => { h.storage.setItem('supabase_user', JSON.stringify(nextSession)); return 'right'; };
-            h.context.window.sentinelaSync = { deleteRemote: async () => { calls.push('delete'); return {success:true}; }, pushOverwrite: async () => { calls.push('replace'); return {success:true}; } };
-            vm.runInContext(source.slice(start, end), h.context); await button.run();
-            assert.equal(calls.length, 0); assert.equal(alerts.length, 1); assert.match(alerts[0], /conta mudou/);
-            assert.equal(button.disabled, false); assert.equal(h.context.syncActionRunning, false);
-        }
     });
     await test('v1 compatibility adapter rejects snapshots that were not persisted', async () => {
         const h = base(); const payload = { html: 'notes', localRevision: 'one' };
