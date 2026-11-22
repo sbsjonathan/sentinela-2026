@@ -4,7 +4,7 @@ import os
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 
 class Handler(SimpleHTTPRequestHandler):
@@ -117,6 +117,31 @@ def check(engine, executable, origin):
         assert page.evaluate("""Array.from({length:localStorage.length},(_,i)=>localStorage.key(i))
             .filter(k=>k.startsWith('richtext_recovery_02-11_'))
             .some(k=>localStorage.getItem(k).includes('Edição privada de A antes de trocar de conta'))""")
+        if version == 2:
+            page.evaluate('document.activeElement.blur(); getSelection().removeAllRanges(); M4_Caret.updateFocus()')
+            page.locator('.bottom-navbar [data-page="notes"]').click()
+            page.locator('[data-notes-action="cloud"]').click()
+            status = page.locator('[data-notes-cloud-status]')
+            sync = page.locator('[data-notes-sync]')
+            expect(status).to_have_text('Anotação sincronizada.')
+            page.evaluate("""() => {
+                const api = window.SupabaseSync, read = api.carregarRichtextAnotacoes;
+                api.carregarRichtextAnotacoes = () => new Promise((resolve, reject) => {
+                    window.failManualRead = () => {
+                        api.carregarRichtextAnotacoes = read;
+                        reject(new Error('synthetic read failure'));
+                    };
+                });
+            }""")
+            sync.click()
+            expect(sync).to_be_disabled()
+            expect(status).to_have_text('Sincronizando esta semana…')
+            page.wait_for_function('typeof failManualRead === "function"')
+            page.evaluate('failManualRead()')
+            expect(status).to_contain_text('Não foi possível sincronizar.')
+            sync.click()
+            expect(status).to_have_text('Anotação sincronizada.')
+            assert page.evaluate('fakeCloud.writes.length') == 3
         assert not page.evaluate('qaHasSaveBubble')
         assert not errors, errors
         print(json.dumps({'engine': engine.name, 'version': version, 'local_failure_and_retry': 'passed',

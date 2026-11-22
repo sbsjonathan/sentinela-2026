@@ -304,25 +304,25 @@ document.addEventListener("DOMContentLoaded", () => {
     menuHome.after(inlineSpace);
     const articleMenu = document.createElement('div');
     articleMenu.id = 'sentinela-article-menu';
-    articleMenu.className = 'sentinela-article-menu';
+    articleMenu.className = 'sentinela-article-menu app-menu';
     articleMenu.hidden = true;
     articleMenu.innerHTML = `
-      <div class="article-menu__scroll" role="dialog" aria-labelledby="article-menu-title">
-        <section class="article-menu__card article-menu__settings">
-          <div class="article-menu__heading">
+      <div class="app-menu__scroll article-menu__scroll" role="dialog" aria-labelledby="article-menu-title">
+        <section class="app-menu__card article-menu__card article-menu__settings">
+          <div class="app-menu__heading article-menu__heading">
             <h2 id="article-menu-title">A Sentinela</h2>
-            <button class="article-menu__close" type="button" aria-label="Fechar menu">
+            <button class="app-menu__close article-menu__close" type="button" aria-label="Fechar menu">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
             </button>
           </div>
-          <div class="article-menu__controls"></div>
+          <div class="app-menu__controls article-menu__controls"></div>
         </section>
-        <section class="article-menu__card article-menu__paragraphs" aria-labelledby="article-paragraphs-title">
-          <div class="article-menu__heading">
+        <section class="app-menu__card article-menu__card article-menu__paragraphs" aria-labelledby="article-paragraphs-title">
+          <div class="app-menu__heading article-menu__heading">
             <h2 id="article-paragraphs-title">Parágrafos</h2>
-            <span class="article-menu__count"></span>
+            <span class="app-menu__count article-menu__count"></span>
           </div>
-          <nav class="article-menu__grid" aria-label="Ir para o parágrafo"></nav>
+          <nav class="app-menu__grid article-menu__grid" aria-label="Ir para o parágrafo"></nav>
           <p class="article-menu__empty" hidden>Nenhum parágrafo numerado neste artigo.</p>
         </section>
       </div>`;
@@ -448,7 +448,7 @@ document.addEventListener("DOMContentLoaded", () => {
       for (const [number, paragraph] of paragraphs) {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'article-menu__paragraph';
+        button.className = 'app-menu__item article-menu__paragraph';
         button.textContent = String(number);
         button.setAttribute('aria-label', `Parágrafo ${number}`);
         if (number === currentNumber) button.setAttribute('aria-current', 'location');

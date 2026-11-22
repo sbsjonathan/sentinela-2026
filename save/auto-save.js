@@ -6,6 +6,7 @@ class AutoSaveManager {
         this.lastSavedContent = ''; this.lastCloudKey = null; this.lastAckLocalKey = null;
         this.saveInProgress = false; this.isPaused = false; this.SAVE_DELAY = 350;
         this.pending = null; this.sending = null; this.accountId = null;
+        this.lastCloudCheck = null;
         this.retryDelay = 2000; this.retryTimer = null;
         this.ready = this.setup();
     }
@@ -42,6 +43,7 @@ class AutoSaveManager {
         } catch (_) {}
         if (account !== this.accountId) {
             this.pending = null;
+            this.lastCloudCheck = null;
             this.lastCloudKey = null; this.lastAckLocalKey = null;
             this.lastRecovery = null;
             this.accountId = account;
@@ -128,6 +130,7 @@ class AutoSaveManager {
         this.lastAckLocalKey = snapshot.key;
         this.lastSavedContent = JSON.stringify(snapshot.payload);
         this.store.acknowledge(snapshot);
+        this.lastCloudCheck = remoteKey === null ? 'empty' : 'synced';
     }
     acceptSnapshot(snapshot) {
         if (!snapshot || !this.store.isStored(snapshot) || !this.store.hasPending(snapshot)) return;
@@ -171,7 +174,10 @@ class AutoSaveManager {
             const foreign = owner != null && owner !== this.accountId;
             // Legacy HTML can render as an equivalent structured editor tree
             // with a different key. Leave an already imported document in place.
-            if (!foreign && !dirty && remoteKey === this.lastCloudKey && snapshot.key === this.lastAckLocalKey) return;
+            if (!foreign && !dirty && remoteKey === this.lastCloudKey && snapshot.key === this.lastAckLocalKey) {
+                this.lastCloudCheck = remoteKey === null ? 'empty' : 'synced';
+                return;
+            }
             const seedMissing = raw === null && this.lastCloudKey === null && this.editor.textContent.trim();
             if (!foreign && (dirty || seedMissing)) {
                 if (!this.store.isStored(snapshot)) return;
@@ -188,7 +194,10 @@ class AutoSaveManager {
                 this.acknowledgeRemote(snapshot);
                 return;
             }
-            if (raw === null && this.lastCloudKey === null && !foreign) return;
+            if (raw === null && this.lastCloudKey === null && !foreign) {
+                this.lastCloudCheck = 'empty';
+                return;
+            }
             const incoming = remote || { html: '', formato: 'legacy-html' };
             this.preserveCopy(snapshot.payload, incoming, 'Antes de restaurar a nuvem');
             if (!this.store.applyContent(incoming, { remote: true })) throw new Error('Falha ao restaurar a nota.');
@@ -218,6 +227,7 @@ class AutoSaveManager {
                 } catch (_) {
                     if (session === localStorage.getItem('supabase_user')) {
                         this.pending ??= next;
+                        this.lastCloudCheck = 'error';
                         failed = true;
                         this.retryTimer = setTimeout(() => this.drain(), this.retryDelay);
                         this.retryDelay = Math.min(this.retryDelay * 2, 60000);
@@ -226,9 +236,11 @@ class AutoSaveManager {
                 }
             }
         });
+        window.dispatchEvent(new CustomEvent('notes:cloud-state'));
         try { await this.sending; }
         finally {
             this.sending = null; this.saveInProgress = false;
+            window.dispatchEvent(new CustomEvent('notes:cloud-state'));
             if (this.pending && !failed) this.drain();
         }
     }
@@ -263,6 +275,17 @@ class AutoSaveManager {
         this.SAVE_DELAY = Math.floor(value); this.store?.setDelay(this.SAVE_DELAY);
     }
     getStatus() { return { semana: this.currentSemana, loggedIn: this.isLoggedIn, paused: this.isPaused, saveInProgress: this.saveInProgress, delay: this.SAVE_DELAY }; }
+    getCloudStatus() {
+        if (!this.editor) return 'loading';
+        if (navigator.onLine === false) return 'offline';
+        if (!this.isLoggedIn) return 'signed-out';
+        if (this.store.getConflict?.() || this.store.stats?.().saveError) return 'local-error';
+        if (this.isPaused) return 'paused';
+        if (this.saveInProgress) return 'syncing';
+        if (this.lastCloudCheck === 'error') return 'error';
+        if (this.pending || this.store.hasPending()) return 'pending';
+        return this.lastCloudCheck || 'unchecked';
+    }
     debug() { return { ...this.getStatus(), editorFound: !!this.editor, lastSavedLength: this.lastSavedContent.length, roots: this.obterRaizesEditor().length, local: this.store?.stats() }; }
 }
 window.AutoSaveManager = new AutoSaveManager();

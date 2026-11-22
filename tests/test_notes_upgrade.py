@@ -116,12 +116,16 @@ def check(engine, executable, origin):
         assert page.locator('script[src*="richtext-v1"]').count() == 0
         assert_preserved(page)
 
-        # Real active-navbar tap opens the compact tools, not the old versions dialog.
+        # Open the active navbar destination on each old route and in the migrated editor.
         page.locator('.bottom-navbar [data-page="notes"]').tap()
         page.wait_for_function('NotesMenu.isOpen')
-        assert page.locator('#notes-tools [data-notes-action]').count() == 12
+        assert page.locator('#notes-tools .notes-menu-main h2').inner_text() == 'Anotações'
+        assert page.locator('#notes-tools .notes-menu-main [data-notes-action]').count() == 6
+        assert page.locator('#notes-tools .notes-menu-tools [data-notes-tab]').count() == 2
+        assert page.locator('#notes-tools [data-notes-action="search"]').is_visible()
+        page.locator('#notes-tools [data-notes-tab="organize"]').tap()
         assert page.locator('#notes-tools [data-notes-action="orderedList"]').count() == 1
-        assert page.locator('#notes-tools [data-notes-action="toggle"]').text_content().strip() == 'Toggle'
+        assert page.locator('#notes-tools [data-notes-action="toggle"]').get_attribute('aria-label') == 'Toggle'
         assert page.locator('#notes-versions:not([hidden])').count() == 0
         page.locator('#notes-tools-close').tap()
         page.reload()
@@ -146,7 +150,7 @@ def check(engine, executable, origin):
     browser.close()
     assert not errors, errors
     return {'engine': engine.name, 'oldEntrypoints': len(routes), 'treeAndBackupPreserved': True,
-            'rawLoginAndOtherAppPreserved': True, 'currentCompactMenu': True, 'explicitRecovery': True}
+            'rawLoginAndOtherAppPreserved': True, 'currentOverlayMenu': True, 'explicitRecovery': True}
 
 
 if __name__ == '__main__':

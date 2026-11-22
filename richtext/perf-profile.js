@@ -35,6 +35,9 @@
   document.addEventListener('DOMContentLoaded', () => apply(mode), { once: true });
 
   window.EditorPerfProfile = {
+    getPreference() {
+      return preference || 'auto';
+    },
     getMode() {
       return mode;
     },
@@ -46,14 +49,23 @@
       return preference !== 'low';
     },
     setMode(nextMode, options = {}) {
-      const finalMode = VALID.has(nextMode) ? nextMode : 'low';
-      preference = finalMode;
-      try { localStorage.setItem(KEY, finalMode); } catch (_) {}
-      apply(finalMode);
-      window.dispatchEvent(new CustomEvent('editorperfchange', { detail: { mode: finalMode } }));
+      const chosen = nextMode === 'auto' ? null : VALID.has(nextMode) ? nextMode : 'low';
+      try {
+        if (chosen) localStorage.setItem(KEY, chosen);
+        else localStorage.removeItem(KEY);
+        const url = new URL(location.href);
+        if (url.searchParams.has('perf')) {
+          url.searchParams.delete('perf');
+          history.replaceState(history.state, '', url);
+        }
+      } catch (_) { return false; }
+      preference = chosen;
+      apply(chosen || 'low');
+      window.dispatchEvent(new CustomEvent('editorperfchange', { detail: { mode } }));
       if (options.reload !== false) {
         try { location.reload(); } catch (_) {}
       }
+      return true;
     }
   };
 })();

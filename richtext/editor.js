@@ -923,7 +923,7 @@ const M10_EditorEvents = {
     
     document.addEventListener('touchmove', (e) => {
       const isAllowedArea = e.target.closest(
-        '.editor-scroll, .font-dropdown, #notes-save-status, .picker-overlay, .leitor-container, .bbl-container,[id*="bbl"], [class*="modal"],[class*="sheet"],[class*="overlay"]'
+        '.editor-scroll, #notes-tools, .font-dropdown, #notes-save-status, .picker-overlay, .leitor-container, .bbl-container,[id*="bbl"], [class*="modal"],[class*="sheet"],[class*="overlay"]'
       );
       if (!isAllowedArea) {
         e.preventDefault();
