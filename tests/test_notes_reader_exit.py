@@ -86,6 +86,7 @@ def check(engine, executable, origin):
         expect(nav_notes).to_have_attribute('aria-expanded', 'true')
         page.locator('#notes-tools-close').tap()
         expect(nav_notes).to_have_attribute('aria-expanded', 'false')
+        expect(page.locator('#notes-tools')).to_be_hidden()
         assert title.inner_text() == 'Estudo'
         assert page.locator('#editor .text-content').inner_text() == 'Gênesis 1:1 e João 3:16'
     touch_title()
