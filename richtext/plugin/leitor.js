@@ -300,9 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const enableReadOnly = ({ toastMessage = null, autoOpenRef = null, enableAura = false } = {}) => {
     const version = ++modeVersion;
     editor.setAttribute('contenteditable', 'false'); editor.classList.add('is-read-only');
-    document.body.classList.add('leitor-keep-toolbar'); document.body.classList.add('editor-has-focus');
+    document.body.classList.add('leitor-keep-toolbar');
+    M4_Caret.updateFocus();
     M11_Layout.revalidateViewport?.();
-    window.M4_Caret?.updateFocus?.();
     if (window.M12_History) window.M12_History._leitorPaused = true;
     leitorBtn.classList.add('is-active'); leitorBtn.setAttribute('aria-pressed', 'true');
     setToolbarLocked(true); syncReaderGlow(); multiRefAuraEnabled = !PERF_LOW && !!enableAura;
@@ -319,14 +319,23 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const disableReadOnly = ({ reference = null } = {}) => {
+    if (!isReadOnly) return reference;
     ++modeVersion; isReadOnly = false;
+    // Blur before restoring contenteditable so iOS does not reopen the keyboard.
+    // A transcription places its own caret in the verse it inserts.
+    if (!reference) {
+      const active = document.activeElement;
+      if (editor.contains(active) || toolbar.contains(active)) active.blur();
+      const selection = window.getSelection();
+      if (editor.contains(selection?.anchorNode) || editor.contains(selection?.focusNode)) selection.removeAllRanges();
+    }
     const replacement = removeAllLinks(reference); leitorFx?.setEnabled(false);
     editor.setAttribute('contenteditable', 'true'); editor.classList.remove('is-read-only');
     document.body.classList.remove('leitor-keep-toolbar');
     M11_Layout.revalidateViewport?.();
     if (window.M12_History) window.M12_History._leitorPaused = false;
     leitorBtn.classList.remove('is-active'); leitorBtn.setAttribute('aria-pressed', 'false');
-    setToolbarLocked(false); setTimeout(() => window.M4_Caret?.updateFocus?.(), 0);
+    setToolbarLocked(false); M4_Caret.updateFocus();
     processedNodes = new WeakSet(); multiRefAuraEnabled = false;
     return replacement;
   };
@@ -429,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
     leitorFx?.forceOff(); editor.setAttribute('contenteditable', 'true'); editor.classList.remove('is-read-only'); document.body.classList.remove('leitor-keep-toolbar');
     M11_Layout.revalidateViewport?.();
     leitorBtn.classList.remove('is-active'); leitorBtn.setAttribute('aria-pressed', 'false'); setToolbarLocked(false);
-    if (window.M12_History) window.M12_History._leitorPaused = false; window.M4_Caret?.updateFocus?.();
+    if (window.M12_History) window.M12_History._leitorPaused = false; M4_Caret.updateFocus();
     editor.querySelectorAll('.bbl').forEach(s => s.replaceWith(document.createTextNode(s.textContent))); allEditables().forEach(el => el.normalize());
     processedNodes = new WeakSet(); multiRefAuraEnabled = false;
   };

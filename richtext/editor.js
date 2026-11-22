@@ -66,43 +66,6 @@ const M3_TextModel = {
 };
 
 const M4_Caret = {
-  _suppressSelectionFocusUntil: 0,
-  zombieToolbar: false,
-
-  clearFocusSuppression() {
-    this._suppressSelectionFocusUntil = 0;
-  },
-  forceToolbarOff() {
-    this.zombieToolbar = false;
-    document.body.classList.remove('zombie-toolbar-active');
-    
-    const clear = () => {
-      M1_Config.editor.querySelectorAll('.is-focused').forEach(n => n.classList.remove('is-focused'));
-      document.body.classList.remove('editor-has-focus');
-
-      try {
-        const sel = window.getSelection?.();
-        if (sel && sel.rangeCount) sel.removeAllRanges();
-      } catch (e) {}
-
-      const ae = document.activeElement;
-      if (ae && (ae === M1_Config.editor || M1_Config.editor.contains(ae))) {
-        try { ae.blur?.(); } catch (e) {}
-      }
-      try { M1_Config.editor.blur?.(); } catch (e) {}
-    };
-
-    this._suppressSelectionFocusUntil = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + 180;
-    clear();
-    requestAnimationFrame(() => {
-      clear();
-      this.updateFocus(true);
-    });
-    setTimeout(() => {
-      clear();
-      this.updateFocus(true);
-    }, 60);
-  },
   saveR() {
     const r = M2_Query.curRange();
     if (r && M1_Config.editor.contains(r.startContainer)) M1_Config.state.lastR = r.cloneRange();
@@ -130,32 +93,21 @@ const M4_Caret = {
     M11_Layout.run();
     M11_Layout.schedule(2);
   },
-  updateFocus(forceRecalc = false) {
+  updateFocus() {
     M1_Config.editor.querySelectorAll('.is-focused').forEach(n => n.classList.remove('is-focused'));
-
-    if (this.zombieToolbar) {
-      document.body.classList.add('zombie-toolbar-active');
-    } else {
-      document.body.classList.remove('zombie-toolbar-active');
-    }
-
-    const forceToolbarVisible = document.body.classList.contains('leitor-keep-toolbar') || this.zombieToolbar;
-    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-    const suppressSelectionFocus = !forceToolbarVisible && !forceRecalc && now < (this._suppressSelectionFocusUntil || 0);
-
-    let hasFocus = !!forceToolbarVisible;
-    const ed = suppressSelectionFocus ? null : M2_Query.curEd();
+    let hasFocus = document.body.classList.contains('leitor-keep-toolbar');
+    const ed = M2_Query.curEd();
 
     if (ed && M1_Config.editor.contains(ed)) {
       ed.closest('.node-toggle, .node-text, .node-paragraph')?.classList.add('is-focused');
       hasFocus = true;
     }
 
-    if (!suppressSelectionFocus && document.activeElement === M1_Config.editor) {
+    if (document.activeElement === M1_Config.editor) {
       hasFocus = true;
     }
 
-    const s = suppressSelectionFocus ? null : window.getSelection();
+    const s = window.getSelection();
     if (s && s.rangeCount > 0 && M1_Config.editor.contains(s.anchorNode)) {
       hasFocus = true;
     }
@@ -230,11 +182,11 @@ const M4A_Placeholder = {
     return !!walker.nextNode();
   },
 
-  sync() {
+  sync(hasContent = this.hasContent()) {
     const editor = M1_Config.editor;
     const hint = this.hint;
-    const empty = !this.hasContent();
-    if (empty && !editor.querySelector('.editable')) {
+    this.hadContent = hasContent;
+    if (!hasContent && !editor.querySelector('.editable')) {
       // A native edit can leave the contenteditable host as <div><br></div>,
       // even without a deleteByCut event. Give the next character a real block.
       const selection = window.getSelection();
@@ -243,10 +195,14 @@ const M4A_Placeholder = {
       editor.replaceChildren(paragraph);
       if (keepCaret) M4_Caret.place(M2_Query.getParC(paragraph));
     }
-    if (!empty) hint.removeAttribute('data-after-cut');
-    if (hint.hidden === empty) {
-      hint.hidden = !empty;
-      if (empty) M1_Config.scroll.scrollTop = 0;
+    const toggleHint = editor.querySelector(':scope > .node-toggle:first-child > .row > .toggle-title')?.dataset.placeholder;
+    const placeholder = toggleHint || hint.textContent;
+    if (editor.getAttribute('aria-placeholder') !== placeholder) editor.setAttribute('aria-placeholder', placeholder);
+    const showWeek = !hasContent && !toggleHint;
+    if (hasContent) hint.removeAttribute('data-after-cut');
+    if (hint.hidden === showWeek) {
+      hint.hidden = !showWeek;
+      if (showWeek) M1_Config.scroll.scrollTop = 0;
     }
   },
 
@@ -254,7 +210,6 @@ const M4A_Placeholder = {
     const editor = M1_Config.editor;
     this.hint = document.getElementById('notes-week-placeholder');
     this.hint.textContent = this.main();
-    editor.setAttribute('aria-placeholder', this.hint.textContent);
     this.sync();
     this.observer = new MutationObserver(() => {
       // New typing, a new block or a restored template resumes normal layout.
@@ -275,7 +230,7 @@ const M4A_Placeholder = {
       editor.prepend(first);
     }
     this.hint.setAttribute('data-after-cut', '');
-    this.hint.hidden = false;
+    this.sync(false);
     M4_Caret.place(M2_Query.getParC(first));
     M4_Caret.saveR();
     M1_Config.scroll.scrollTop = 0;
@@ -988,36 +943,11 @@ const M10_EditorEvents = {
 
     document.addEventListener('selectionchange', handleSelectionChange);
 
-    M1_Config.editor.addEventListener('focus', () => {
-      M4_Caret.zombieToolbar = false; 
-      M4_Caret.clearFocusSuppression();
-      M4_Caret.updateFocus();
-    });
-
-    M1_Config.editor.addEventListener('pointerdown', () => {
-      M4_Caret.zombieToolbar = false; 
-      M4_Caret.clearFocusSuppression();
-      M4_Caret.updateFocus();
-    }, true);
-
+    M1_Config.editor.addEventListener('focus', () => M4_Caret.updateFocus());
+    M1_Config.editor.addEventListener('pointerdown', () => M4_Caret.updateFocus(), true);
     M1_Config.editor.addEventListener('blur', () => {
       setTimeout(() => M4_Caret.updateFocus(), 100);
     });
-
-    let hadBibleToolbarLock = document.body.classList.contains('leitor-keep-toolbar');
-    const bodyClassObserver = new MutationObserver(() => {
-      const hasBibleToolbarLock = document.body.classList.contains('leitor-keep-toolbar');
-      
-      if (hadBibleToolbarLock && !hasBibleToolbarLock) {
-        M4_Caret.zombieToolbar = true;
-        try { document.activeElement?.blur?.(); } catch(e) {}
-        window.getSelection()?.removeAllRanges();
-        M4_Caret.updateFocus(true);
-      }
-      
-      hadBibleToolbarLock = hasBibleToolbarLock;
-    });
-    bodyClassObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
     const TAP_SLOP = 12;
     let scrollTap = null;
@@ -1442,7 +1372,7 @@ const M10_EditorEvents = {
       // input afterwards, with no matching cut or beforeinput on the page.
       if (!M1_Config.editor.querySelector('.editable')) M4A_Placeholder.sync();
       if (!e.isComposing && (!e.inputType || e.inputType === 'deleteByCut') &&
-          M4A_Placeholder.hint.hidden && !M4A_Placeholder.hasContent()) {
+          M4A_Placeholder.hadContent && !M4A_Placeholder.hasContent()) {
         M4A_Placeholder.afterCut();
         return;
       }

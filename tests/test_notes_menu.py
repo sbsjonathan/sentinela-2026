@@ -216,8 +216,7 @@ def check(engine, executable, origin):
     page.wait_for_function('!LeitorMode.isActive()')
     glow.wait_for(state='hidden')
     assert editable.inner_text().rstrip('\n') == TEXT, (editable.inner_text(), editable.inner_html())
-    dismiss_keyboard()
-    page.evaluate('M4_Caret.zombieToolbar = false; M4_Caret.updateFocus()')
+    page.locator('#kbdToolbar').wait_for(state='hidden', timeout=1200)
 
     # Global size follows the eleven levels without resizing the action cards.
     slider = page.locator('#notes-tools-font-level')

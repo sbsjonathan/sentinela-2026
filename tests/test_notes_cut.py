@@ -32,23 +32,25 @@ def check(engine, executable, origin):
     week = f'Semana de {day} de {months[month - 1]}'
     label = page.locator('#notes-week-placeholder')
 
-    def assert_visible_hint():
-        assert label.is_visible() and label.text_content() == week
-        assert week not in editor.text_content()
-        # Count the visible pixels drawn by the hint in the top of the scrollport.
-        # Computed styles alone passed when the field was scrolled off screen.
+    def assert_painted_hint(selector):
+        # Computed styles alone passed when the hint was outside the scrollport.
         scroller = page.locator('#editorScroll').bounding_box()
         clip = {'x': scroller['x'] + 8, 'y': scroller['y'], 'width': 350, 'height': 95}
         def sample():
             shot = page.screenshot(clip=clip, animations='disabled', caret='hide')
             return Image.open(BytesIO(shot)).convert('RGB')
         painted = sample()
-        override = page.add_style_tag(content='#notes-week-placeholder {visibility:hidden!important}')
+        override = page.add_style_tag(content=selector + ' {visibility:hidden!important}')
         try:
             delta = ImageChops.difference(painted, sample()).convert('L')
-            assert sum(delta.histogram()[12:]) > 100, 'Weekly hint has no visible text at the top of Notes'
+            assert sum(delta.histogram()[12:]) > 100, f'No visible hint at the top of Notes: {selector}'
         finally:
             override.evaluate('n => n.remove()')
+
+    def assert_visible_hint():
+        assert label.is_visible() and label.text_content() == week
+        assert week not in editor.text_content()
+        assert_painted_hint('#notes-week-placeholder')
 
     def assert_empty():
         assert editor.locator('.editable').count() == 1
@@ -87,6 +89,60 @@ def check(engine, executable, origin):
 
     assert_empty()
     assert_visible_hint()
+    # The first empty toggle owns its hint even when the whole note has no text.
+    # Exercise the editing toolbar that is visible while typing on the phone.
+    paragraph.tap()
+    page.locator('#addToggleBtn').tap()
+    root = editor.locator(':scope > .node-toggle')
+    title = root.locator(':scope > .row > .toggle-title')
+    arrow = root.locator(':scope > .row > .toggle-arrow')
+    assert root.count() == 1 and paragraph.count() == 0
+    assert title.text_content() == '' and title.get_attribute('data-placeholder') == 'Toggle'
+    assert label.is_hidden()
+    assert editor.get_attribute('aria-placeholder') == 'Toggle'
+    assert_painted_hint('.toggle-title::before')
+    editor.evaluate("el => el.dispatchEvent(new InputEvent('input', {bubbles: true}))")
+    assert root.count() == 1 and label.is_hidden()
+    page.evaluate('cacheRichText.flush()')
+    saved = page.evaluate('cacheRichText.carregarDados()')
+    assert saved['tree'] == [{'type': 'toggle', 'text': '', 'html': '', 'open': False, 'children': []}]
+    assert week not in saved['html']
+    page.reload()
+    page.wait_for_function('window.cacheRichText && window.M12_History')
+    page.evaluate('cacheRichText.ready')
+    assert label.is_hidden()
+    assert_painted_hint('.toggle-title::before')
+
+    arrow.tap()
+    child = root.locator('.text-content')
+    assert child.is_visible() and child.get_attribute('data-placeholder') == 'Escreva ou aperte +'
+    assert label.is_hidden()
+    arrow.tap()
+    assert child.is_hidden() and label.is_hidden()
+    arrow.tap()
+    child.tap()
+    root.locator('.text-plus').tap()
+    nested = root.locator('.children .toggle-title')
+    assert nested.get_attribute('data-placeholder') == 'Toggle'
+    page.keyboard.insert_text('Título interno')
+    assert nested.text_content() == 'Título interno'
+    arrow.tap()
+    assert nested.is_hidden() and title.text_content() == '' and label.is_hidden()
+    page.evaluate('cacheRichText.flush()')
+    saved_root, = page.evaluate('cacheRichText.carregarDados().tree')
+    assert saved_root['text'] == '' and saved_root['children'][0]['text'] == 'Título interno'
+    select_root()
+    cut()
+    assert_empty()
+    assert_visible_hint()
+
+    paragraph.tap()
+    page.locator('#addToggleBtn').tap()
+    page.keyboard.press('Backspace')
+    assert_empty()
+    assert editor.get_attribute('aria-placeholder') == week
+    assert_visible_hint()
+
     # Plain text with a genuine keyboard selection. Undo and redo must each
     # take one step, and typing at the new caret must enter the existing editor.
     paragraph.click()

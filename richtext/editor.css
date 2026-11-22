@@ -190,7 +190,7 @@ body.editor-has-focus:not(.leitor-keep-toolbar):not(.zombie-toolbar-active) .edi
 }
 .toggle-title[data-empty="true"]::before, .text-content[data-empty="true"]::before { content: attr(data-placeholder); position: absolute; inset: 0 auto auto 0; color: var(--placeholder-color); pointer-events: none; top: calc(2px * var(--font-scale-global)); }
 #notes-week-placeholder:not([hidden]) + .editor > :first-child > .row > .editable::before { display: none; }
-.page:has(> .editor > :is(.node-toggle,.node-text):first-child) > #notes-week-placeholder {
+.page:has(> .editor > .node-text:first-child) > #notes-week-placeholder {
   inset-inline-start: var(--editor-arrow-width);
 }
 .page:has(> .editor > .node-paragraph:first-child .paragraph-content > :is(ol,ul):first-child) > #notes-week-placeholder {
