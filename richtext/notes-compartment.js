@@ -50,6 +50,7 @@
   function mountSummary(panel) {
     panel.innerHTML = `<header class="notes-summary-header">
         <span class="notes-summary-badge" role="img" aria-label="IA">${star}</span>
+        <button type="button" class="notes-summary-badge" data-summary-regenerate aria-label="Resumir novamente" title="Resumir novamente" hidden>${star}</button>
         <h2 id="notes-summary-title">Resumo do discurso</h2>
         <button type="button" class="notes-summary-close" aria-label="Ocultar compartimento de IA">×</button>
       </header>
@@ -60,6 +61,8 @@
       </div>
       <footer><button type="button" data-summary-generate>Resumir</button></footer>`;
     const button = panel.querySelector('[data-summary-generate]');
+    const badge = panel.querySelector('span.notes-summary-badge');
+    const regenerate = panel.querySelector('[data-summary-regenerate]');
     const result = panel.querySelector('[data-summary-result]');
     const status = panel.querySelector('[data-summary-status]');
     const spinner = panel.querySelector('.notes-summary-spinner');
@@ -74,21 +77,28 @@
       const busy = !!request;
       const enough = source.characters >= minCharacters;
       const offline = navigator.onLine === false;
-      panel.classList.toggle('is-summarizing', busy);
-      button.disabled = busy || !enough || offline;
-      button.textContent = error ? 'Tentar novamente' : result.textContent ? 'Resumir novamente' : 'Resumir';
-      spinner.hidden = !busy;
-      footer.hidden = busy;
-      result.hidden = !result.textContent;
+      const hasResult = !!result.textContent;
+      const firstLoad = busy && !hasResult;
+      const unavailable = busy || !enough || offline;
+      panel.classList.toggle('is-summarizing', firstLoad);
+      badge.hidden = busy || hasResult;
+      regenerate.hidden = !hasResult;
+      regenerate.disabled = unavailable || !hasResult;
+      regenerate.setAttribute('aria-busy', String(busy && hasResult));
+      button.disabled = unavailable || hasResult;
+      button.textContent = error ? 'Tentar novamente' : 'Resumir';
+      spinner.hidden = !firstLoad;
+      footer.hidden = busy || hasResult;
+      result.hidden = !hasResult;
       let hint = '';
       if (busy) hint = 'Resumindo…';
       else if (!enough) hint = 'Escreva um pouco mais para gerar o resumo.';
       else if (offline) hint = 'Conecte-se à internet para gerar o resumo.';
       else if (error) hint = error;
       else if (changed) hint = 'A anotação mudou. Você pode gerar um novo resumo.';
-      else if (!result.textContent) hint = 'A IA lê a anotação inteira, inclusive os tópicos recolhidos.';
+      else if (!hasResult) hint = 'A IA lê a anotação inteira, inclusive os tópicos recolhidos.';
       else hint = 'Resumo pronto.';
-      status.classList.toggle('notes-summary-sr-only', !!result.textContent && !offline && !error);
+      status.classList.toggle('notes-summary-sr-only', hasResult && !offline && !error);
       if (status.textContent !== hint) status.textContent = hint;
     }
 
@@ -109,14 +119,13 @@
       render();
     }
 
-    async function generate() {
+    async function generate(event) {
       refreshSource();
-      if (button.disabled) return;
+      if (event.currentTarget.disabled) return;
       const current = new AbortController();
       request = current;
       changed = false;
       error = '';
-      result.textContent = '';
       render();
       try {
         const summary = await window.NotesSummaryAgent.summarize(source.outline, {signal:current.signal});
@@ -138,6 +147,7 @@
     observer.observe(editor, {subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:['class', 'start', 'reversed', 'value']});
     const on = {signal:events.signal};
     button.addEventListener('click', generate, on);
+    regenerate.addEventListener('click', generate, on);
     panel.querySelector('.notes-summary-close').addEventListener('click', hide, on);
     window.addEventListener('online', render, on);
     window.addEventListener('offline', render, on);

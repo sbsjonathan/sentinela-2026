@@ -59,6 +59,11 @@
 }
 .notes-summary-badge { flex: none; width: 34px; height: 34px; }
 .notes-summary-badge svg { width: 22px; height: 22px; }
+#notes-compartment [data-summary-regenerate] {
+  width: 44px; height: 44px; margin-inline: -5px; padding: 0;
+  border: 5px solid transparent; background-clip: padding-box;
+}
+#notes-compartment [data-summary-regenerate]:enabled:active { transform: scale(.95); }
 #notes-compartment button { font-family: inherit; cursor: pointer; touch-action: manipulation; }
 #notes-compartment button:focus-visible { outline: 2px solid var(--summary-accent); outline-offset: 2px; }
 .notes-summary-close {
@@ -66,6 +71,7 @@
   color: var(--summary-accent); font-size: 23px; line-height: 1;
 }
 .notes-summary-body { margin: 10px 0 14px; }
+.notes-summary-body:has([data-summary-result]:not([hidden])) { margin-bottom: 0; }
 #notes-compartment [data-summary-status] { margin: 0; font-size: clamp(14px,.82em,17px); line-height: 1.5; color: var(--summary-muted); }
 #notes-compartment [data-summary-result] {
   margin: 0; padding-inline-start: 12px; border-inline-start: 3px solid var(--summary-accent);
@@ -78,12 +84,11 @@
   background: var(--summary-button); color: white; font-size: clamp(14px,.8em,17px); font-weight: 650;
 }
 #notes-compartment [data-summary-generate]:disabled { background: var(--summary-wash); color: var(--summary-muted); cursor: default; }
-#notes-compartment.is-summarizing .notes-summary-badge { display: none; }
 #notes-compartment.is-summarizing .notes-summary-body { display: grid; justify-items: center; gap: 9px; margin: 2px 0 10px; }
 .notes-summary-spinner { width: 56px; height: 56px; }
 .notes-summary-spinner svg { width: 36px; height: 36px; }
 @keyframes notes-summary-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: no-preference) {
-  .notes-summary-spinner svg { animation: notes-summary-spin 1.6s linear infinite; }
+  .notes-summary-spinner svg, [data-summary-regenerate][aria-busy="true"] svg { animation: notes-summary-spin 1.6s linear infinite; }
   #notes-compartment-progress svg:not(.notes-compartment-ring) { animation: notes-summary-spin 2s linear infinite; }
 }

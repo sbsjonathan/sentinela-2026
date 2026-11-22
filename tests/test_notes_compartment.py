@@ -11,6 +11,7 @@ from test_notes_upgrade import Handler, PREFIX, ROOT
 
 def check_summary(page, panel):
     generate = panel.locator('[data-summary-generate]')
+    regenerate = panel.locator('button[data-summary-regenerate]')
     status = panel.locator('[data-summary-status]')
     result = panel.locator('[data-summary-result]')
     # Delay the model itself. Local inputs, serialization and user interactions
@@ -24,9 +25,9 @@ def check_summary(page, panel):
     def restore(tree):
         assert page.evaluate('tree => cacheRichText.applyContent({tree})', tree)
 
-    def start():
+    def start(control=generate):
         count = page.evaluate('testSummaryRequests.length')
-        generate.tap()
+        control.tap()
         page.wait_for_function('count => testSummaryRequests.length === count + 1', arg=count)
         return count
 
@@ -84,6 +85,41 @@ def check_summary(page, panel):
     page.evaluate("i => testSummaryRequests[i].resolve('A leitura citada foi Gênesis 1:1.')", retry)
     expect(result).to_contain_text('A leitura citada foi Gênesis 1:1.')
     expect_no_count()
+    expect(panel.locator('footer')).to_be_hidden()
+    expect(regenerate).to_have_accessible_name('Resumir novamente')
+    expect(regenerate).to_be_enabled()
+    refresh_star = regenerate.locator('svg')
+    expect(refresh_star).to_be_visible()
+    assert refresh_star.locator('path').get_attribute('d') == article_path.group(1)
+    assert regenerate.bounding_box()['x'] < panel.get_by_role('heading').bounding_box()['x']
+    expect(refresh_star).to_have_css('animation-name', 'none')
+    replacement = start(regenerate)
+    expect(result).to_be_visible()
+    expect(result).to_have_text('A leitura citada foi Gênesis 1:1.')
+    expect(spinner).to_be_hidden()
+    expect(panel.locator('footer')).to_be_hidden()
+    expect(refresh_star).to_have_css('animation-iteration-count', 'infinite')
+    assert refresh_star.evaluate("svg => svg.getAnimations().some(a => a.effect.getKeyframes().some(k => k.transform?.includes('rotate')))")
+    assert panel.locator('svg:visible').evaluate_all("""svgs => svgs.filter(svg =>
+        svg.getAnimations().length > 0).length""") == 1
+    position = regenerate.bounding_box()
+    page.touchscreen.tap(position['x'] + position['width'] / 2, position['y'] + position['height'] / 2)
+    assert page.evaluate('testSummaryRequests.length') == replacement + 1
+    page.emulate_media(reduced_motion='reduce')
+    expect(refresh_star).to_have_css('animation-name', 'none')
+    page.emulate_media(reduced_motion='no-preference')
+    page.evaluate("i => testSummaryRequests[i].reject(new Error('Interrompido'))", replacement)
+    expect(regenerate).to_be_enabled()
+    expect(refresh_star).to_have_css('animation-name', 'none')
+    expect(result).to_have_text('A leitura citada foi Gênesis 1:1.')
+    expect(status).to_contain_text(re.compile(r'não foi possível|tente novamente', re.I))
+    expect(panel.locator('footer')).to_be_hidden()
+    replacement = start(regenerate)
+    page.evaluate("i => testSummaryRequests[i].resolve('Nova síntese com outra redação.')", replacement)
+    expect(result).to_have_text('Nova síntese com outra redação.')
+    expect(regenerate).to_be_enabled()
+    expect(refresh_star).to_have_css('animation-name', 'none')
+    expect(generate).to_be_hidden()
 
     tree = [
         {'type': 'paragraph', 'text': 'Discurso sobre perseverança.'},
@@ -109,10 +145,10 @@ def check_summary(page, panel):
 
     # A changed editor and a dismissed compartment must ignore even a provider
     # that resolves after receiving the cancellation signal.
-    restore([{'type': 'paragraph', 'text': 'Outro discurso de teste sobre a importância da leitura diária.'}])
-    obsolete = start()
+    obsolete = start(regenerate)
     restore([{'type': 'paragraph', 'text': 'Nova versão: a leitura regular permite descobrir ideias importantes.'}])
     page.wait_for_function('i => testSummaryRequests[i].signal.aborted', arg=obsolete)
+    expect(result).to_be_hidden()
     page.evaluate("i => testSummaryRequests[i].resolve('Resposta obsoleta')", obsolete)
     expect(panel).not_to_contain_text('Resposta obsoleta')
     edited = start()
@@ -124,7 +160,10 @@ def check_summary(page, panel):
     page.evaluate("i => testSummaryRequests[i].resolve('Texto anterior à edição')", edited)
     expect(panel).not_to_contain_text('Texto anterior à edição')
     page.evaluate('document.activeElement.blur(); getSelection().removeAllRanges()')
-    dismissed = start()
+    latest = start()
+    page.evaluate("i => testSummaryRequests[i].resolve('Resumo da última edição.')", latest)
+    expect(result).to_have_text('Resumo da última edição.')
+    dismissed = start(regenerate)
     panel.get_by_role('button', name='Ocultar compartimento de IA').tap()
     expect(panel).to_have_count(0)
     assert page.evaluate('i => testSummaryRequests[i].signal.aborted', dismissed)
@@ -258,7 +297,7 @@ def check(engine, executable, origin):
         assert page.locator('#editorScroll').evaluate('e => e.scrollTop') > 0
         context.close()
     browser.close()
-    print(f'PASS {engine.name}: PWA-only two-second pull, 49/50 boundary, nested notes, retries and cancellation', flush=True)
+    print(f'PASS {engine.name}: two-second PWA gesture, 49/50 threshold, nested notes, first summary, star regeneration and cancellation', flush=True)
 
 
 if __name__ == '__main__':
