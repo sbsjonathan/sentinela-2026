@@ -59,6 +59,26 @@ FIXTURE = '''<!doctype html><html lang="pt-BR" data-theme="light"><head>
 <script src="/sentinela/mark.js"></script>
 </body></html>'''
 
+# Short excerpts and the original question/box markup from public study 2026562.
+# clickable.js moves the numbered paragraphs inside the question's new container;
+# the named box remains outside that container, as it does on the installed PWA.
+BOX_QUESTION = 'O que você aprendeu com a experiência de Robert e com a história do quadro “ Uma refugiada encontra esperança”?'
+ROBERT = 'E eu percebi que o homem passou a entender melhor a mensagem da Bíblia e a dar mais valor a ela.'
+YOUA = 'Ela ficou feliz e passou a ter esperança de uma vida melhor no futuro.'
+BOX_FIXTURE = f'''<!doctype html><meta charset="utf-8"><main>
+<h1 class="estudo-titulo">Pregando as boas novas em “todas as línguas das nações”</h1>
+<div><p class="pergunta"><span>10-11.</span> {BOX_QUESTION}</p></div>
+<p class="paragrafo"><span>10</span> Robert conta: “Nós conversamos por mais ou menos uma hora. {ROBERT}”</p>
+<p class="paragrafo"><span>11</span> Mesmo sendo algo simples, compartilhar um folheto ou um artigo do site jw.org no idioma do coração de uma pessoa pode ter um efeito profundo na vida dela.</p>
+<div class="quadro1"><h3 class="quadro1-titulo">Uma refugiada encontra esperança</h3><div class="quadro1-corpo">
+<p>Youa nunca tinha ouvido falar das promessas da Bíblia que ela leu no folheto. {YOUA}<span class="comentarios">PRIVATE_BOX_NOTE</span></p></div></div>
+<div class="quadro1"><h3 class="quadro1-titulo">Outra experiência</h3><div class="quadro1-corpo"><p>UNRELATED_BOX_TEXT</p></div></div>
+<div><p class="pergunta"><span>12.</span> Como a Tradução do Novo Mundo tem ajudado o povo de Jeová?</p></div>
+<p class="paragrafo"><span>12</span> OUTSIDE_GROUP_TEXT</p></main>
+<script>window.estudoId="2026562";Object.assign(qaStored,JSON.parse(sessionStorage.getItem('qaSavedBoxStudy')||'{{}}'));</script>
+<script src="/sentinela/clickable/agente_perguntas.js"></script><script src="/sentinela/clickable/clickable.js"></script>
+<script src="/sentinela/mark.js"></script>'''
+
 MOCKS = '''(() => {
   window.qaRequests = [];
   window.qaResponses = [];
@@ -102,8 +122,8 @@ class Handler(SimpleHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path.startswith('/highlight-fixture.html'):
-            data = FIXTURE.encode()
+        if self.path.startswith(('/highlight-fixture.html', '/question-box-fixture.html')):
+            data = (BOX_FIXTURE if self.path.startswith('/question-box-fixture.html') else FIXTURE).encode()
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.send_header('Content-Length', str(len(data)))
@@ -474,6 +494,97 @@ def check_response_shapes_and_validation_fallback(page, origin):
     assert not page.locator('#wrapper-1-2 .btn-gerar-ia').is_disabled()
 
 
+def check_named_box_in_grouped_question(page, origin):
+    page.goto(origin + '/question-box-fixture.html?d=2026-11-16')
+    question_id = 'p-2026562-10-11'
+    study = page.locator('#ia-2026562-10-11')
+    answer = study.locator('#r-2026562-10-11')
+    question = study.locator('.pergunta')
+    button = study.locator('.btn-gerar-ia')
+    paragraph = '#' + question_id + '-pg-0'
+    box = '.quadro1-corpo > p'
+    referenced_box = '.quadro1-corpo:has(.comentarios) > p'
+    box_key = 'p-2026562-quadro-1-1'
+    marks = 'mark[data-ia-owner]'
+    asked_question = BOX_QUESTION
+
+    def extraction(*quotes):
+        return {'sub_questions': [{'question': asked_question, 'highlights': list(quotes)}]}
+
+    robert = {'paragraph_number': 10, 'literal_text': ROBERT}
+    youa = {'source_id': 'quadro-1-1', 'literal_text': YOUA}
+    verified = extraction(robert, youa)
+
+    def generate(*attempts, answer_text='Robert e Youa se beneficiaram de publicações na língua que entendiam.'):
+        natural = {'sub_questions': [{'question': asked_question, 'natural_answer': answer_text,
+                                      'literal_smooth': 'PARÁFRASE_SEM_MARCAÇÃO'}]}
+        page.evaluate('''({attempts,natural}) => {
+          qaRequests.length=0;
+          qaResponses.push(...attempts.map(payload=>({payload})));
+          qaNaturalResponses.push({payload:natural});
+        }''', {'attempts': attempts, 'natural': natural})
+        button.click()
+        page.wait_for_function("qaRequests.length > 0 && !document.querySelector('#ia-2026562-10-11 .btn-gerar-ia').disabled")
+        prompts = page.evaluate("qaRequests.map(row => [row.qaKind, row.prompt])")
+        assert sum(kind == 'natural' for kind, _ in prompts) == 1
+        assert sum(kind == 'highlight' for kind, _ in prompts) == len(attempts)
+        for _, prompt in prompts:
+            assert ROBERT in prompt and 'Mesmo sendo algo simples' in prompt
+            assert YOUA in prompt and 'Uma refugiada encontra esperança' in prompt
+            assert all(secret not in prompt for secret in ['PRIVATE_BOX_NOTE', 'UNRELATED_BOX_TEXT', 'OUTSIDE_GROUP_TEXT'])
+
+    question.click()
+    # The first extraction skips the named experience. Repair only that
+    # request; a successful retry must mark each quotation in its own source.
+    generate(extraction(robert), verified)
+    assert 'Youa' in answer.locator('.ia-tab-natural').inner_text()
+    assert 'Não foi possível' not in answer.inner_text()
+    assert_exact_coverage(page, paragraph, [ROBERT])
+    assert_exact_coverage(page, referenced_box, [YOUA])
+    assert YOUA in answer.locator('.ia-tab-literal').text_content()
+    assert 'PARÁFRASE_SEM_MARCAÇÃO' not in answer.locator('.ia-tab-literal').text_content()
+    assert not page.locator('.quadro1-titulo mark, .quadro1-corpo .comentarios mark').count()
+    assert not page.locator(box).nth(1).locator(marks).count()
+    assert 'PRIVATE_BOX_NOTE' not in page.evaluate('key => qaStored[key]', box_key)
+    generate(extraction(youa), verified)
+    assert_exact_coverage(page, paragraph, [ROBERT])
+    assert_exact_coverage(page, referenced_box, [YOUA])
+
+    # Reopen the original article markup with the saved cache snapshot. The
+    # box lives outside the question's numbered paragraphs on every load.
+    page.evaluate("sessionStorage.setItem('qaSavedBoxStudy',JSON.stringify(qaStored))")
+    page.reload()
+    page.locator(box).first.locator(marks).first.wait_for()
+    assert page.evaluate('qaRequests.length') == 0
+    assert question_id == page.locator(box).first.locator(marks).first.get_attribute('data-ia-owner')
+    assert_exact_coverage(page, paragraph, [ROBERT])
+    assert_exact_coverage(page, referenced_box, [YOUA])
+    question.click()
+    # Misattributing a real quote to §11 or inventing a quote from the box
+    # cannot displace the previously verified highlights in either source.
+    original = [page.locator(paragraph).inner_html(), page.locator(box).first.inner_html()]
+    misattributed = extraction(robert, {'paragraph_number': 11, 'literal_text': YOUA})
+    bad = extraction(robert, {**youa, 'literal_text': 'Uma frase que o artigo nunca disse.'})
+    generate(misattributed, bad)
+    assert original == [page.locator(paragraph).inner_html(), page.locator(box).first.inner_html()]
+    assert 'Não foi possível' in answer.inner_text()
+    page.evaluate("sessionStorage.removeItem('qaSavedBoxStudy')")
+
+    # A question exclusively about Youa needs evidence only from her box.
+    page.reload()
+    asked_question = 'Segundo o quadro “Uma refugiada encontra esperança”, como Youa se sentiu?'
+    question.evaluate('(el, text) => el.lastChild.textContent = " " + text', asked_question)
+    question.click()
+    generate(extraction(youa), answer_text=YOUA)
+    assert not answer.locator('.ia-status-error').count() and 'Não foi possível' not in answer.inner_text()
+    assert YOUA in answer.locator('.ia-tab-literal').text_content()
+    assert_exact_coverage(page, paragraph, [])
+    assert_exact_coverage(page, referenced_box, [YOUA])
+    generate(extraction(robert), extraction(youa), answer_text=YOUA)
+    assert_exact_coverage(page, paragraph, [])
+    assert_exact_coverage(page, referenced_box, [YOUA])
+
+
 def check_recorded_public_responses(page, origin):
     """Replay real public-source output through the DOM and persistence path.
 
@@ -570,8 +681,10 @@ def check(engine, executable, origin):
     check_independent_requests(page, origin)
     check_response_shapes_and_validation_fallback(page, origin)
     check_recorded_public_responses(page, origin)
+    check_named_box_in_grouped_question(page, origin)
     check_tab_and_scroll_retention(page, origin)
     print(json.dumps({'engine':engine.name,'singleQuestionAcrossParagraphs':'passed',
+      'namedBoxInGroupedQuestion':'passed',
       'semanticDoubleQuestions':'passed','threeQuestionsInAuthoredColorOrder':'passed','linkedOverviewAndAnswerBoundary':'passed','exactSourceAndReferenceExclusion':'passed',
       'naturalAnswerAndManualMarksPreserved':'passed','invalidPayloadSafety':'passed',
       'fallbackAndInflightDeduplication':'passed','terminalExtractionErrorsDoNotSwitchModel':'passed','alternateJsonShapesAndValidatedRetry':'passed','failedRegenerationPreservesSavedAnswer':'passed','recordedPublicModelCoverage':'passed','independentHighlightAndNaturalFailures':'passed','activeTabAndScrollRetention':'passed','perParagraphPersistence':'passed'}),flush=True)

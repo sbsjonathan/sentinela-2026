@@ -198,10 +198,11 @@ p.objetivo-titulo {
 
 .comentarios {
     width: 100%;
+    min-height: max(44px, 2.5em);
     padding: calc(8px * var(--font-scale-global)) calc(8px * var(--font-scale-global));
     font-size: calc(14.4px * var(--font-scale-global));
     font-family: inherit;
-    color: var(--text-main);
+    color: var(--text-sub);
     background: var(--bg-input);
     box-sizing: border-box;
     margin-bottom: calc(15px * var(--font-scale-global));

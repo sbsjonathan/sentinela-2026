@@ -21,6 +21,10 @@ def check(engine, executable, origin):
         context.add_init_script('''
             localStorage.setItem('supabase_user', JSON.stringify({id:'synthetic',loginId:'one'}));
             window.fakeCloud = JSON.parse(sessionStorage.getItem('qa-cloud') || 'null') || { raw: null, writes: [], fail: false };
+            window.qaHasSaveBubble = false;
+            new MutationObserver(() => {
+                if (document.querySelector('#notes-save-status:not([hidden])')) window.qaHasSaveBubble = true;
+            }).observe(document, {subtree:true, childList:true, attributes:true, attributeFilter:['hidden','data-type']});
             window.SupabaseSync = {
                 isLoggedIn: () => !!localStorage.getItem('supabase_user'),
                 carregarRichtextAnotacoes: async () => fakeCloud.raw,
@@ -59,44 +63,65 @@ def check(engine, executable, origin):
         page.wait_for_function("!document.getElementById('editor').textContent.trim() && !window.UnifiedLoadManager.syncing")
         assert page.evaluate('fakeCloud.writes.length') == 1
         assert page.evaluate("Array.from({length:localStorage.length},(_,i)=>localStorage.key(i)).some(k=>k.startsWith('richtext_recovery_02-11_'))")
-        # A true CAS collision leaves local typing untouched and asks for a choice.
-        page.evaluate('fakeCloud.race=true')
+        # A server-side compare-and-swap collision is retried after reading the
+        # competing write. The editor keeps the active paragraph and its caret.
+        page.evaluate('fakeCloud.race = true')
         editor = page.locator('#editor .paragraph-content').first
         editor.fill('Minha edição durante a disputa')
         editor.focus()
         page.evaluate("window.qaFocused = document.activeElement; window.qaSelection = {node:getSelection().anchorNode,offset:getSelection().anchorOffset}")
         page.evaluate('window.cacheRichText.flush(); window.AutoSaveManager.forceAutoSave()')
-        page.wait_for_function('window.AutoSaveManager.getCloudConflict() && !window.AutoSaveManager.sending')
-        assert page.evaluate("document.activeElement === window.qaFocused && getSelection().anchorNode === window.qaSelection.node && getSelection().anchorOffset === window.qaSelection.offset")
-        assert 'Minha edição durante a disputa' in page.locator('#editor').inner_text()
-        page.locator('#notes-save-status[data-type="conflict"]').wait_for(state='visible')
-        assert page.evaluate('fakeCloud.writes.length') == 1
-        page.evaluate("sessionStorage.setItem('qa-cloud',JSON.stringify(fakeCloud))")
-        page.reload()
-        page.wait_for_function('window.AutoSaveManager?.getCloudConflict()')
-        page.locator('#notes-save-status[data-type="conflict"]').wait_for(state='visible')
-        page.evaluate('window.AutoSaveManager.forceAutoSave()')
-        assert page.evaluate('fakeCloud.writes.length') == 1
-        assert 'Minha edição durante a disputa' in page.locator('#editor').inner_text()
-        page.get_by_role('button', name='Usar da nuvem', exact=True).click()
-        page.wait_for_function('!window.AutoSaveManager.getCloudConflict()')
-        assert 'Versão do outro aparelho' in page.locator('#editor').inner_text()
-        assert page.evaluate('fakeCloud.writes.length') == 1
-        # A later normal edit uses the acknowledged baseline without another prompt.
-        page.locator('#editor .paragraph-content').first.fill('Edição após a escolha')
-        page.evaluate('window.cacheRichText.flush(); window.AutoSaveManager.forceAutoSave()')
         page.wait_for_function('fakeCloud.writes.length === 2 && !window.AutoSaveManager.sending')
-        assert page.evaluate('window.AutoSaveManager.getCloudConflict()') is None
-        # Keeping local also confirms the current cloud copy with CAS.
-        page.evaluate("fakeCloud.raw = JSON.stringify({html:'Nova alteração na nuvem',formato:'legacy-html'})")
-        page.locator('#editor .paragraph-content').first.fill('Versão que escolho manter')
-        page.evaluate('window.cacheRichText.flush(); window.AutoSaveManager.forceAutoSave()')
-        page.wait_for_function('window.AutoSaveManager.getCloudConflict() && !window.AutoSaveManager.sending')
-        page.get_by_role('button', name='Usar deste aparelho', exact=True).click()
-        page.wait_for_function('!window.AutoSaveManager.getCloudConflict() && fakeCloud.writes.length === 3')
-        assert 'Versão que escolho manter' in page.locator('#editor').inner_text()
+        assert page.evaluate("document.activeElement === qaFocused && getSelection().anchorNode === qaSelection.node && getSelection().anchorOffset === qaSelection.offset")
+        assert 'Minha edição durante a disputa' in page.locator('#editor').inner_text()
+        assert 'Minha edição durante a disputa' in page.evaluate('fakeCloud.raw')
+        assert page.evaluate("""Array.from({length:localStorage.length},(_,i)=>localStorage.key(i))
+            .filter(k=>k.startsWith('richtext_recovery_02-11_'))
+            .some(k=>localStorage.getItem(k).includes('Versão do outro aparelho'))""")
+        assert not page.evaluate('qaHasSaveBubble')
+        # Launch with a pending edit and a real previous-version comparison
+        # marker. The server changes once more before the editor reopens.
+        page.evaluate("fakeCloud.fail = true")
+        editor.fill('Rascunho pendente antes da atualização')
+        page.evaluate('cacheRichText.flush(); window.AutoSaveManager.forceAutoSave()')
+        page.wait_for_function('cacheRichText.hasPending(cacheRichText.snapshot()) && !window.AutoSaveManager.sending')
+        page.evaluate("""() => {
+            const old = {html:'Versão antiga da nuvem',formato:'legacy-html'};
+            const marker = {account:'synthetic', semana:'02-11', createdAt:123, local:cacheRichText.snapshot().payload,
+                externalRaw:JSON.stringify(old), external:old, saved:false};
+            localStorage.setItem('richtext_cloud_conflict_synthetic_02-11',JSON.stringify(marker));
+            sessionStorage.setItem('qa-cloud',JSON.stringify({...fakeCloud, fail:false,
+                raw:JSON.stringify({html:'Última mudança externa',formato:'legacy-html'})}));
+        }""")
+        page.reload()
+        page.wait_for_function('window.cacheRichText && window.AutoSaveManager && fakeCloud.writes.length === 3 && !window.AutoSaveManager.sending')
+        assert 'Rascunho pendente antes da atualização' in page.locator('#editor').inner_text()
+        assert 'Rascunho pendente antes da atualização' in page.evaluate('fakeCloud.raw')
+        assert page.evaluate("localStorage.getItem('richtext_cloud_conflict_synthetic_02-11')") is None
+        # Previous versions delayed the popup until a pause in typing.
+        page.wait_for_timeout(800)
+        assert not page.evaluate('qaHasSaveBubble')
+        assert not page.get_by_text('Comparar versões', exact=True).is_visible()
+        # Switch login synchronously after input, before the cache's debounce
+        # can issue a notes:stored event for the new private text.
+        page.evaluate("""() => {
+            const field = document.querySelector('#editor .paragraph-content');
+            field.textContent = 'Edição privada de A antes de trocar de conta';
+            field.dispatchEvent(new InputEvent('input', {bubbles:true, inputType:'insertText'}));
+            fakeCloud.raw = JSON.stringify({html:'Nota privada da conta B',formato:'legacy-html'});
+            localStorage.setItem('supabase_user',JSON.stringify({id:'account-B',loginId:'two'}));
+            window.dispatchEvent(new Event('supabaseSessionChanged'));
+        }""")
+        page.wait_for_function("document.getElementById('editor').textContent.includes('Nota privada da conta B') && !window.AutoSaveManager.sending")
+        assert page.evaluate('fakeCloud.writes.length') == 3
+        assert page.evaluate("""Array.from({length:localStorage.length},(_,i)=>localStorage.key(i))
+            .filter(k=>k.startsWith('richtext_recovery_02-11_'))
+            .some(k=>localStorage.getItem(k).includes('Edição privada de A antes de trocar de conta'))""")
+        assert not page.evaluate('qaHasSaveBubble')
         assert not errors, errors
-        print(json.dumps({'engine': engine.name, 'version': version, 'local_failure_and_retry': 'passed', 'empty_cloud_and_recovery': 'passed', 'atomic_conflict_reload_and_choices': 'passed', 'conflict_preserves_focus': 'passed'}), flush=True)
+        print(json.dumps({'engine': engine.name, 'version': version, 'local_failure_and_retry': 'passed',
+                          'empty_cloud_and_recovery': 'passed', 'silent_conflict_and_upgrade': 'passed',
+                          'conflict_preserves_focus': 'passed'}), flush=True)
         context.close()
     browser.close()
 

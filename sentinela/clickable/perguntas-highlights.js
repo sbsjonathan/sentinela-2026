@@ -1,6 +1,6 @@
-import { buildContext } from './agente-modal/agente-contexto.js';
-
-const PRIVATE = '.anotacao,.comentarios,.ia-wrapper,.clickable,[contenteditable]:not([contenteditable="false"]),button,input,textarea,select,script,style,template';
+import {buildContext, PRIVATE_CONTENT as PRIVATE} from './agente-modal/agente-contexto.js';
+import {namedBoxSources, restoreBoxMarks, saveBoxMarks} from './fontes-quadros.js';
+export {restoreBoxMarks};
 const NOTE_PIN = 'a.footnote-link,a.footnote-ref,.simbolo-rodape,sup';
 const COLORS = ['yellow', 'green', 'blue'];
 const activeSweeps = new Map();
@@ -129,7 +129,8 @@ export function analyzeQuestion(questionText) {
 function normalizedPart(part, index) {
   return {...part, id: String(index + 1), title: clean(part?.title || 'Resposta'), question: clean(part?.question),
     natural_answer: prose(part?.natural_answer), literal_smooth: prose(part?.literal_smooth),
-    highlights: Array.isArray(part?.highlights) ? part.highlights.filter(item => item && typeof item.literal_text === 'string').map(item => ({paragraph_number: Number(item.paragraph_number), literal_text: clean(item.literal_text)})) : [],
+    highlights: Array.isArray(part?.highlights) ? part.highlights.filter(item => item && typeof item.literal_text === 'string').map(item => (typeof item.source_id === 'string' ? {source_id: item.source_id, literal_text: clean(item.literal_text)} :
+      {paragraph_number: Number(item.paragraph_number), literal_text: clean(item.literal_text)})) : [],
     hexKey: 'a', partIndex: 0};
 }
 
@@ -193,16 +194,22 @@ export function buildSource(idPergunta) {
     return {number: source.number, text: source.text, element, id: element.id};
   });
   if (paragraphs.some(paragraph => !paragraph)) return null;
-  return {idPergunta, questionElement, questionText: context.question, paragraphs};
+  const boxSources = namedBoxSources(root, context.question);
+  if (boxSources.length) restoreBoxMarks(root);
+  // A question solely about a sidebar can be answered there. Require article
+  // evidence as well when the author explicitly coordinates another source.
+  const includesArticle = boxSources.length > 0 && (/\bparágrafos?\s+\d+/iu.test(context.question) ||
+    /\be\s+(?:com\s+|n[oa]\s+|d[oa]\s+)?(?:[oa]\s+)?(?:(?:história|experiência|exemplo|relato)\s+do\s+)?quadro\s+[“"‘']/iu.test(context.question));
+  return {idPergunta, questionElement, questionText: context.question, paragraphs, boxSources, includesArticle};
 }
 
-function indexParagraph(element) {
+function indexParagraph(element, numbered = true) {
   const raw = [];
   const first = element.firstElementChild;
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
     acceptNode(node) {
       if (node.nodeType === Node.ELEMENT_NODE) {
-        if (node.matches(PRIVATE) || (node === first && node.matches('span') && /^\s*\d+\s*$/.test(node.textContent))) return NodeFilter.FILTER_REJECT;
+        if (node.matches(PRIVATE) || (numbered && node === first && node.matches('span') && /^\s*\d+\s*$/.test(node.textContent))) return NodeFilter.FILTER_REJECT;
         return node.tagName === 'BR' ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
       }
       return NodeFilter.FILTER_ACCEPT;
@@ -286,17 +293,29 @@ export function applyHighlights(ownerId, parsed, bundle) {
   const classified = validateQuestionParts(parsed?.parts, bundle.questionText);
   const parts = classified.parts;
   const plans = [];
-  let invalid = 0;
+  const boxes = bundle.boxSources || [];
+  const sources = [...bundle.paragraphs, ...boxes];
+  let invalid = false;
   parts.forEach((part, partNumber) => part.highlights.forEach(highlight => {
-    const paragraph = bundle.paragraphs.find(item => item.number === highlight.paragraph_number);
-    if (!paragraph || !highlight.literal_text) {invalid++; return;}
-    const index = indexParagraph(paragraph.element);
+    const paragraph = highlight.source_id ? boxes.find(item => item.source_id === highlight.source_id) :
+      bundle.paragraphs.find(item => item.number === highlight.paragraph_number);
+    if (!paragraph || !highlight.literal_text) {invalid = true; return;}
+    const index = indexParagraph(paragraph.element, !paragraph.source_id);
     const quote = canonical(highlight.literal_text);
     const start = index.text.indexOf(quote);
-    if (start < 0 || index.text.indexOf(quote, start + 1) !== -1 || !hasWholeWordBoundaries(index.text, start, start + quote.length) || !index.map.slice(start, start + quote.length).some(item => canReplaceColor(item, ownerId))) {invalid++; return;}
-    plans.push({paragraph, start, end: start + quote.length, partNumber, highlight, color: COLORS[part.partIndex]});
+    if (start < 0 || index.text.indexOf(quote, start + 1) !== -1 ||
+        !hasWholeWordBoundaries(index.text, start, start + quote.length) ||
+        !index.map.slice(start, start + quote.length).some(item => canReplaceColor(item, ownerId))) {invalid = true; return;}
+    // Keep the original punctuation for the reader after matching typography.
+    const text = clean(index.map.slice(start, start + quote.length).map(item => item.char).join(''));
+    plans.push({paragraph, start, end: start + quote.length, partNumber, highlight: {...highlight, literal_text: text}, color: COLORS[part.partIndex]});
   }));
-  if (invalid || !plans.length) return {...parsed, parts, questionCount: classified.questionCount, appliedCount: 0,
+  // When the author explicitly asks about the sidebar as well, accepting the
+  // numbered text alone would silently omit one of the requested accounts.
+  const requiredBoxes = [...new Set(boxes.map(source => source.title))];
+  const incomplete = boxes.length && ((bundle.includesArticle && !plans.some(plan => !plan.paragraph.source_id)) ||
+    requiredBoxes.some(title => !plans.some(plan => plan.paragraph.title === title)));
+  if (invalid || !plans.length || incomplete) return {...parsed, parts, questionCount: classified.questionCount, appliedCount: 0,
     highlightWarning: 'Não foi possível confirmar todos os trechos exatos. Os destaques anteriores foram mantidos.'};
 
   // Deduplicate or reject overlaps before splitting text nodes. The same source
@@ -309,7 +328,7 @@ export function applyHighlights(ownerId, parsed, bundle) {
   const touched = new Set();
   const createdMarks = [];
   ensureHighlightPaint();
-  bundle.paragraphs.forEach(paragraph => {
+  sources.forEach(paragraph => {
     paragraph.element.querySelectorAll('mark').forEach(mark => {
       if (!ownedMark(mark, ownerId)) return;
       cancelSweep(mark);
@@ -326,7 +345,7 @@ export function applyHighlights(ownerId, parsed, bundle) {
   const nodePlans = new Map();
   const applied = new Set();
   selected.forEach((plan, selection) => {
-    const index = indexParagraph(plan.paragraph.element);
+    const index = indexParagraph(plan.paragraph.element, !plan.paragraph.source_id);
     let segment = null;
     const group = `${ownerId}-${parts[plan.partNumber].hexKey}-${selection}-${Date.now().toString(36)}`;
     const flush = () => {
@@ -359,9 +378,12 @@ export function applyHighlights(ownerId, parsed, bundle) {
       touched.add(range.plan.paragraph); applied.add(range.plan);
     });
   }
-  touched.forEach(paragraph => window.CacheAnotacao?.salvar(paragraph.id, paragraph.element.innerHTML));
+  touched.forEach(paragraph => {
+    if (paragraph.source_id) saveBoxMarks(paragraph.element);
+    else window.CacheAnotacao?.salvar(paragraph.id, paragraph.element.innerHTML);
+  });
   revealHighlights(createdMarks);
   const resultParts = parts.map((part, i) => ({...part, highlights: selected.filter(plan => plan.partNumber === i && applied.has(plan)).map(plan => ({...plan.highlight, appliedParagraph: plan.paragraph.number, appliedMode: 'exact'}))}));
   return {...parsed, parts: resultParts, questionCount: classified.questionCount, appliedCount: applied.size,
-    highlightWarning: invalid ? 'Alguns trechos não foram destacados porque não correspondem exatamente ao texto.' : ''};
+    highlightWarning: ''};
 }

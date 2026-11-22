@@ -1,6 +1,6 @@
 // Source-only context for the tutor. This module never reads note storage or
 // changes the document, focus, scrolling, or the selected conversation.
-const PRIVATE_CONTENT = [
+export const PRIVATE_CONTENT = [
   '.anotacao', '.comentarios', '.ia-wrapper', '.clickable', '.btn-gerar-ia',
   '.agente-overlay', '.agente-modal', '[data-tutor-generated]',
   '[contenteditable]:not([contenteditable="false"])',
@@ -19,7 +19,7 @@ function sourceNode(element) {
   return element && !element.closest(PRIVATE_CONTENT);
 }
 
-function sourceText(element, removeNumber = false) {
+export function sourceText(element, removeNumber = false) {
   if (!element) return '';
   const clone = element.cloneNode(true);
   clone.querySelectorAll(PRIVATE_CONTENT).forEach(node => node.remove());

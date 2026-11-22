@@ -5,6 +5,14 @@
     highlightsModule = null;
     throw error;
   }));
+  function restoreArticleBoxes() {
+    const article = document.querySelector('main,article');
+    if (article?.querySelector('.quadro1')) loadHighlights().then(api => api.restoreBoxMarks(article)).catch(() => {});
+  }
+  document.addEventListener('cacheRestored', restoreArticleBoxes);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restoreArticleBoxes, {once:true});
+  else restoreArticleBoxes();
+
   const pendingQuestions = new Map();
   // Literal selection remains independent of explanatory prose.
   const HIGHLIGHT_CONFIG = {
@@ -100,9 +108,11 @@
     if (!parts?.length || parts.length > 12 || parts.some(part => {
       if (!part || typeof part !== 'object' || Array.isArray(part) || typeof part.question !== 'string') return true;
       if (!extractive) return typeof part.natural_answer !== 'string' || !part.natural_answer.trim() || typeof part.literal_smooth !== 'string';
-      return !Array.isArray(part.highlights) || part.highlights.some(highlight => !highlight ||
-        !Number.isInteger(Number(highlight.paragraph_number)) || Number(highlight.paragraph_number) < 1 ||
-        typeof highlight.literal_text !== 'string' || !highlight.literal_text.trim());
+      return !Array.isArray(part.highlights) || part.highlights.some(highlight => {
+        if (!highlight || typeof highlight.literal_text !== 'string' || !highlight.literal_text.trim()) return true;
+        if ('source_id' in highlight) return 'paragraph_number' in highlight || !/^quadro-\d+-\d+$/.test(highlight.source_id);
+        return !Number.isInteger(Number(highlight.paragraph_number)) || Number(highlight.paragraph_number) < 1;
+      });
     })) throw new Error('A IA devolveu uma resposta incompleta.');
     return {sub_questions: parts};
   }
@@ -348,7 +358,12 @@
     lines.push('</div>');
 
     lines.push('<div class="ia-tab-content ia-tab-literal">');
-    parts.forEach((part) => {
+    if (parsed.exactEvidence) {
+      for (const quote of parsed.exactEvidence) {
+        lines.push(`<div class="ia-answer-part" data-part="${escapeHTML(quote.part)}"><div class="ia-answer-part-title">${escapeHTML(quote.source)}</div><div class="ia-answer-part-text">“${escapeHTML(quote.text)}”</div></div>`);
+      }
+      if (!parsed.exactEvidence.length) lines.push(`<div class="ia-inline-note">${parsed.highlightWarning ? 'Nenhum trecho confirmado nesta tentativa.' : 'Conferindo os trechos…'}</div>`);
+    } else parts.forEach((part) => {
       lines.push(`<div class="ia-answer-part" data-part="${escapeHTML(part.hexKey)}">`);
       if (parts.length > 1) lines.push(`<div class="ia-answer-part-title">${escapeHTML(part.title)}</div>`);
       if (part.literal_smooth) {
@@ -390,6 +405,10 @@
     return lines.join('');
   }
 
+  function boxContext(bundle) {
+    return 'QUADROS CITADOS: ' + JSON.stringify(bundle.boxSources.map(({title, source_id, text}) => ({title, source_id, text})));
+  }
+
   function buildPrompt(bundle) {
     // Complete source evidence, independent of written answers and model reasoning.
     return [
@@ -402,6 +421,10 @@
       "Exemplo de cobertura: pergunta \"Que acontecimentos são esperados?\"; fonte \"Haverá mudanças. A prefeitura autorizará a entrada. Os bombeiros entrarão na área. O relatório explica: ‘Por causa da fumaça, eles retirarão as famílias e os animais.’ Por fim, virá a reconstrução. Equipes removerão os escombros e reconstruirão as casas.\"; selecione \"A prefeitura autorizará a entrada.\", \"Os bombeiros entrarão na área.\", \"Por causa da fumaça, eles retirarão as famílias e os animais.\" e \"Por fim, virá a reconstrução. Equipes removerão os escombros e reconstruirão as casas.\". A retirada acrescenta causa e alvo; a entrada não a substitui.",
       "Para \"O que estudaremos?\", selecione o assunto e todos os temas propostos, mesmo em forma de perguntas. Exemplo: \"Estudaremos X e suas aplicações hoje e no futuro. Mas antes, faremos uma visão geral de X.\" → somente \"Estudaremos X e suas aplicações hoje e no futuro.\". A última frase apenas repete o roteiro.",
       "Confira se cada informação pedida aparece nos trechos selecionados e se nenhum desfecho foi cortado. Se não houver resposta na fonte, retorne highlights: [].",
+      ...(bundle.boxSources.length ? [
+        'Selecione pelo menos um trecho de cada quadro citado e inclua os parágrafos que sustentam outras partes da pergunta. Para um quadro use {"source_id":"ID do bloco","literal_text":"cópia exata"} em vez de paragraph_number. Copie cada trecho de um só bloco.',
+        boxContext(bundle)
+      ] : []),
       'PERGUNTA: ' + JSON.stringify(bundle.questionText),
       'PARÁGRAFOS: ' + JSON.stringify(bundle.paragraphs.map(p => ({n: p.number, text: p.text})))
     ].join('\n');
@@ -419,6 +442,7 @@
       'Formato: {"sub_questions":[{"id":"1","title":"Resposta","question":"pergunta literal","natural_answer":"resposta humana natural","literal_smooth":"trecho fluido"}]}',
       'Pergunta: ' + bundle.questionText,
       'Contexto:',
+      ...(bundle.boxSources.length ? ['Responda a cada parte da pergunta usando também o quadro citado. Ao comentar experiências, atribua os fatos a quem os viveu.', boxContext(bundle)] : []),
       bundle.paragraphs.map(p => `PARÁGRAFO ${p.number}: ${p.text}`).join('\n\n')
     ].join('\n');
   }
@@ -506,24 +530,32 @@
     }
   }
 
-  async function requestWithFallback(prompt, imagePart = null, isJson = true, extractive = false) {
+  async function requestWithFallback(prompt, imagePart = null, isJson = true, extractive = false, verify = null) {
     if (extractive && prompt.length > HIGHLIGHT_CONFIG.maxInputChars) throw new Error('Este trecho é grande demais para uma marcação segura. Abra uma pergunta menor.');
     // Keep extraction on the model validated for source coverage. A transient
     // failure may retry once; do not silently switch to a different selector.
     const models = extractive ? Array(HIGHLIGHT_CONFIG.maxAttempts).fill(HIGHLIGHT_CONFIG.model) : Array.isArray(CONFIG.modelFallbacks) && CONFIG.modelFallbacks.length ? CONFIG.modelFallbacks.slice() : DEFAULT_CONFIG.modelFallbacks.slice();
     let lastError = null;
+    let unverified = null;
     for (const model of models) {
       try {
         const text = await requestGemini(prompt, model, imagePart, isJson, extractive);
         // HTTP 200 is not sufficient: truncated/malformed output must use the
         // fallback before any response or source marks are replaced.
         const payload = isJson ? parseQuestionPayload(text, extractive) : null;
-        return { text, model, payload };
+        const checked = verify?.(payload, model);
+        const result = {text, model, payload, checked};
+        if (!checked?.highlightWarning) return result;
+        unverified = result;
+        const correction = '\nRevise os trechos. Copie palavras contínuas da fonte indicada, usando paragraph_number para o artigo e source_id para o quadro. Inclua os trechos que sustentam cada parte pedida na pergunta.';
+        if (prompt.length + correction.length > HIGHLIGHT_CONFIG.maxInputChars) return result;
+        prompt += correction;
       } catch (error) {
         lastError = error;
         if (extractive && ((error.status >= 400 && error.status < 500) || getActiveCooldown(model).until)) break;
       }
     }
+    if (unverified) return unverified;
     throw lastError || new Error('Falha ao consultar a IA.');
   }
 
@@ -576,6 +608,14 @@
     const renderCurrentResponse = () => {
       if (!textParsed || window.sentinelaSync?.localClearInProgress) return;
       textParsed.highlightWarning = highlightResult?.highlightWarning || '';
+      if (bundle.boxSources.length) {
+        textParsed.exactEvidence = highlightResult?.appliedCount ? highlightResult.parts.flatMap(part =>
+          part.highlights.map(quote => ({
+            part: part.hexKey,
+            source: quote.source_id ? bundle.boxSources.find(box => box.source_id === quote.source_id).title : `Parágrafo ${quote.paragraph_number}`,
+            text: quote.literal_text
+          }))) : [];
+      }
       const html = renderResponseHTML(textParsed);
       if (html === lastRenderedHTML) return;
       const tabs = [...responseDiv.querySelectorAll('.ia-tab-content')];
@@ -588,15 +628,18 @@
       }
       responseDiv.scrollTop = scrollTop;
       lastRenderedHTML = html;
-      if (window.CacheAnotacao) window.CacheAnotacao.salvar(idRespostaIA, html);
+      if (!bundle.boxSources.length || highlightResult) window.CacheAnotacao?.salvar(idRespostaIA, html);
     };
     // Apply source marks as soon as the small extraction request finishes,
     // independently of the natural answer, Bible or image requests.
     const highlightJob = (async () => {
       try {
-        const result = await requestWithFallback(buildPrompt(bundle), null, true, true);
+        const apply = (payload, model) => window.sentinelaSync?.localClearInProgress ? null :
+          highlighter.applyHighlights(idPergunta, {parts: payload.sub_questions, model}, bundle);
+        const verify = bundle.boxSources.length ? apply : null;
+        const result = await requestWithFallback(buildPrompt(bundle), null, true, true, verify);
         if (window.sentinelaSync?.localClearInProgress) return;
-        highlightResult = highlighter.applyHighlights(idPergunta, {parts: result.payload.sub_questions, model: result.model}, bundle);
+        highlightResult = verify ? result.checked : apply(result.payload, result.model);
       } catch (_) {
         highlightResult = {highlightWarning: 'Não foi possível atualizar os destaques. As marcações anteriores foram mantidas.'};
       }

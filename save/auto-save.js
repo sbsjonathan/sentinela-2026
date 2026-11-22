@@ -1,12 +1,12 @@
-// Local persistence is synchronous and independent of network latency. Only the
-// newest pending revision is queued behind an active cloud request.
+// The editor persists locally first. Downloads and uploads share a single queue
+// so a stale read cannot replace typing or undo a newer upload.
 class AutoSaveManager {
     constructor() {
         this.editor = null; this.currentSemana = null; this.isLoggedIn = false;
-        this.lastSavedContent = ''; this.lastCloudKey = null;
+        this.lastSavedContent = ''; this.lastCloudKey = null; this.lastAckLocalKey = null;
         this.saveInProgress = false; this.isPaused = false; this.SAVE_DELAY = 350;
         this.pending = null; this.sending = null; this.accountId = null;
-        this.cloudConflict = null; this.resolvingCloud = false;
+        this.retryDelay = 2000; this.retryTimer = null;
         this.ready = this.setup();
     }
     async setup() {
@@ -17,142 +17,226 @@ class AutoSaveManager {
         this.currentSemana = this.store.semanaAtual();
         this.checkLoginStatus();
         const initial = this.store.snapshot();
+        // Keep the editor's owner across auth changes, including while there
+        // is typing in the DOM waiting for the local debounce to fire.
+        try {
+            this.editorAccount = this.storedOwner(initial);
+            if (this.editorAccount === undefined) this.editorAccount = this.previousOwner(initial) ?? this.accountId;
+        } catch (_) { this.editorAccount = false; }
         this.lastSavedContent = JSON.stringify(initial.payload);
         window.addEventListener('notes:stored', event => this.acceptSnapshot(event.detail));
-        window.addEventListener('notes:save-error', () => this.triggerFeedbackEvent('Não foi possível salvar neste aparelho. Mantenha esta página aberta ou baixe uma cópia.', 'error', 0));
-        window.addEventListener('notes:conflict', () => { this.pending = null; });
-        window.addEventListener('notes:external-updated', () => { this.pending = null; this.showLocalSaveFeedback(); });
-        window.addEventListener('notes:conflict-resolved', event => this.acceptSnapshot(event.detail));
-        const retry = () => { this.checkLoginStatus(); this.executeAutoSave('resume'); };
-        window.addEventListener('online', retry);
-        window.addEventListener('pageshow', retry);
-        window.addEventListener('supabaseSessionChanged', retry);
+        window.addEventListener('notes:external-updated', () => this.syncCurrent());
+        window.addEventListener('online', () => this.syncCurrent());
+        window.addEventListener('pageshow', () => this.syncCurrent());
+        window.addEventListener('supabaseSessionChanged', () => this.syncCurrent());
         window.addEventListener('supabaseLogout', () => this.checkLoginStatus());
-        window.addEventListener('storage', event => { if (event.key === 'supabase_user') retry(); });
+        window.addEventListener('storage', event => { if (event.key === 'supabase_user') this.syncCurrent(); });
         for (const name of ['pagehide', 'beforeunload', 'blur']) window.addEventListener(name, () => this.onPageUnload());
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') this.onPageUnload(); });
         if (this.store.hasPending(initial)) this.acceptSnapshot(initial);
     }
     checkLoginStatus() {
-        try { this.isLoggedIn = typeof window.SupabaseSync?.isLoggedIn === 'function' ? window.SupabaseSync.isLoggedIn() : !!localStorage.getItem('supabase_user'); }
-        catch (_) { this.isLoggedIn = false; }
         let account = null;
-        try { if (this.isLoggedIn) account = JSON.parse(localStorage.getItem('supabase_user'))?.id || null; } catch (_) {}
+        try {
+            if (window.SupabaseSync?.isLoggedIn?.() !== false) account = JSON.parse(localStorage.getItem('supabase_user'))?.id || null;
+        } catch (_) {}
         if (account !== this.accountId) {
-            const hadConflict = !!this.cloudConflict;
-            this.accountId = account; this.lastCloudKey = null; this.cloudConflict = null;
-            if (account && this.currentSemana) {
+            this.pending = null;
+            this.lastCloudKey = null; this.lastAckLocalKey = null;
+            this.lastRecovery = null;
+            this.accountId = account;
+            if (account) {
                 try {
-                    const baseline = JSON.parse(localStorage.getItem(this.cloudStateKey('baseline')));
-                    if (typeof baseline?.key === 'string') this.lastCloudKey = baseline.key;
-                    const raw = localStorage.getItem(this.cloudStateKey('conflict'));
-                    if (raw !== null) {
-                        const saved = JSON.parse(raw);
-                        if (!saved || saved.account !== account || !Object.prototype.hasOwnProperty.call(saved, 'externalRaw')) throw Error('Comparação inválida');
-                        this.cloudConflict = saved;
-                    }
-                } catch (_) { this.cloudConflict = { account, unavailable: true }; }
-                if (this.cloudConflict) this.announceCloudConflict();
+                    const saved = JSON.parse(localStorage.getItem(this.cloudStateKey('baseline')));
+                    this.lastCloudKey = saved?.key ?? null;
+                    this.lastAckLocalKey = saved?.localKey ?? this.lastCloudKey;
+                } catch (_) {}
             }
-            if (hadConflict && !this.cloudConflict) window.dispatchEvent(new CustomEvent('notes:cloud-conflict-resolved'));
         }
+        this.isLoggedIn = !!account;
         return this.isLoggedIn;
     }
     cloudStateKey(kind) { return `richtext_cloud_${kind}_${encodeURIComponent(this.accountId)}_${this.currentSemana}`; }
-    rememberCloudKey(key) {
-        localStorage.setItem(this.cloudStateKey('baseline'), JSON.stringify({ key }));
-        this.lastCloudKey = key;
+    storedOwner(snapshot) {
+        const token = snapshot.payload.localRevision;
+        const owner = JSON.parse(localStorage.getItem('richtext_cloud_owner_' + this.currentSemana));
+        if (owner && (token ? owner.token === token : owner.legacyKey === snapshot.key)) return owner.account;
     }
-    getCloudConflict() { return this.cloudConflict; }
-    announceCloudConflict() {
-        window.dispatchEvent(new CustomEvent('notes:cloud-conflict', { detail: this.cloudConflict }));
+    previousOwner(snapshot) {
+        // Older installations stored baselines per account, but just one
+        // device draft per week. Never seed a different account from it.
+        const prefix = 'richtext_cloud_baseline_', suffix = '_' + this.currentSemana;
+        const accounts = [], matching = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key?.startsWith(prefix) || !key.endsWith(suffix)) continue;
+            const account = decodeURIComponent(key.slice(prefix.length, -suffix.length));
+            accounts.push(account);
+            const baseline = JSON.parse(localStorage.getItem(key));
+            if ([baseline?.key, baseline?.localKey].includes(snapshot.key)) matching.push(account);
+        }
+        const candidates = matching.length ? matching : accounts;
+        // false marks an ambiguous old draft. Preserve it locally on restore.
+        return candidates.length > 1 ? false : candidates[0];
     }
-    setCloudConflict(raw, snapshot = this.store.snapshot()) {
-        const external = this.parseRemote(raw) || { html: '', formato: 'legacy-html' };
-        const conflict = { account: this.accountId, semana: this.currentSemana, createdAt: Date.now(),
-            local: snapshot.payload, externalRaw: raw, external, saved: false };
-        this.cloudConflict = conflict;
-        // Persist the stop marker before any retry. Recovery survives reload and
-        // is separate from the editor's local-tab conflict mechanism.
-        localStorage.setItem(this.cloudStateKey('conflict'), JSON.stringify(conflict));
-        this.preserveCopy(snapshot.payload, external, 'Edições simultâneas em aparelhos diferentes');
-        conflict.saved = true;
-        localStorage.setItem(this.cloudStateKey('conflict'), JSON.stringify(conflict));
-        this.announceCloudConflict();
+    rememberOwner(snapshot, account) {
+        const token = snapshot.payload.localRevision;
+        const owner = token ? { token, account } : { legacyKey: snapshot.key, account };
+        localStorage.setItem('richtext_cloud_owner_' + this.currentSemana, JSON.stringify(owner));
     }
-    clearCloudConflict() {
-        localStorage.removeItem(this.cloudStateKey('conflict'));
-        this.cloudConflict = null;
-        window.dispatchEvent(new CustomEvent('notes:cloud-conflict-resolved'));
-    }
-    async resolveCloudConflict(choice) {
-        if (!['local', 'external'].includes(choice) || this.resolvingCloud || !this.checkLoginStatus() ||
-            !this.cloudConflict || this.store.getConflict?.()) return false;
-        const user = localStorage.getItem('supabase_user');
-        this.resolvingCloud = true;
-        try {
-            const current = this.store.flush();
-            if (!current || !this.store.isStored(current)) return false;
-            const raw = await window.SupabaseSync.carregarRichtextAnotacoes(this.currentSemana);
-            if (user !== localStorage.getItem('supabase_user')) return false;
-            if (this.cloudConflict.unavailable || raw !== this.cloudConflict.externalRaw) {
-                this.setCloudConflict(raw, this.store.snapshot());
-                return false; // The displayed comparison changed; choose again.
-            }
-            const latest = this.store.flush();
-            if (!latest || !this.store.isStored(latest)) return false;
-            if (choice === 'external' && (latest.key !== current.key || latest.revision !== current.revision)) {
-                this.setCloudConflict(raw, latest); return false;
-            }
-            const external = this.parseRemote(raw) || { html: '', formato: 'legacy-html' };
-            this.preserveCopy(latest.payload, external, 'Antes de resolver edições simultâneas');
-            if (choice === 'external') {
-                if (!this.store.applyContent(external, { remote: true })) return false;
-                const applied = this.store.snapshot();
-                if (!this.store.isStored(applied)) return false;
-                this.acknowledgeRemote(applied, raw === null ? null : this.store.contentKey(external));
-            } else {
-                const result = await window.SupabaseSync.salvarRichtextAnotacoes(this.currentSemana,
-                    JSON.stringify(latest.payload), { expectedRemote: raw });
-                if (user !== localStorage.getItem('supabase_user')) return false;
-                if (result?.success !== true) {
-                    if (result?.code === 'SYNC_CONFLICT') {
-                        const newest = await window.SupabaseSync.carregarRichtextAnotacoes(this.currentSemana);
-                        if (user === localStorage.getItem('supabase_user')) this.setCloudConflict(newest);
-                    }
-                    throw Error(result?.error || 'Não foi possível concluir.');
-                }
-                this.rememberCloudKey(latest.key);
-                this.acknowledgeRemote(latest);
-            }
-            this.clearCloudConflict();
-            const after = this.store.snapshot();
-            this.pending = this.store.hasPending(after) ? after : null;
-            this.showSavedFeedback();
-            return true;
-        } catch (_) { this.announceCloudConflict(); return false; }
-        finally { this.resolvingCloud = false; if (!this.cloudConflict && this.pending) this.drain(); }
-    }
-    downloadCloudConflict() {
-        const payload = this.cloudConflict
-            ? { type: 'notes-cloud-conflict', ...this.cloudConflict, local: this.store.snapshot().payload }
-            : { type: 'notes-backup', semana: this.currentSemana, local: this.store.snapshot().payload };
-        const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
-        const link = document.createElement('a'); link.href = url; link.download = `anotacoes-conflito-${this.currentSemana}.json`;
-        document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    draftOwner(snapshot, claim = false) {
+        const stored = this.storedOwner(snapshot);
+        const owner = stored ?? this.editorAccount ?? this.accountId;
+        if (claim && (stored === undefined || stored !== owner)) this.rememberOwner(snapshot, owner);
+        this.editorAccount = owner;
+        return owner;
     }
     parseRemote(raw) {
         if (raw === null) return null;
         if (typeof raw !== 'string') throw new Error('A anotação da nuvem está inválida.');
-        // An existing empty document is an intentional deletion, not a missing row.
         const value = raw.trim() ? this.store.parse(raw) : { html: '', formato: 'legacy-html' };
-        if (!value) throw new Error('A anotação da nuvem está inválida.');
+        if (!value || (typeof value.html !== 'string' && !(Array.isArray(value.tree) && value.tree.length))) throw new Error('A anotação da nuvem está inválida.');
         return value;
     }
     preserveCopy(local, external, reason) {
+        const copy = { type: 'notes-cloud-recovery', account: this.accountId, semana: this.currentSemana, local, external, reason };
+        const pair = JSON.stringify(copy);
+        if (this.lastRecovery?.pair === pair && localStorage.getItem(this.lastRecovery.id)) return;
         const id = `richtext_recovery_${this.currentSemana}_${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        localStorage.setItem(id, JSON.stringify({ type: 'notes-cloud-recovery', semana: this.currentSemana,
-            createdAt: Date.now(), reason, local, external }));
+        localStorage.setItem(id, JSON.stringify({ ...copy, createdAt: Date.now() }));
+        this.lastRecovery = { id, pair };
+    }
+    archivePreviousComparison() {
+        const marker = this.cloudStateKey('conflict');
+        const raw = localStorage.getItem(marker);
+        if (raw === null) return;
+        // Older versions could write a comparison before there was room for
+        // its recovery copy. Keep the exact original, including both revisions.
+        const id = `richtext_recovery_${this.currentSemana}_${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        let data;
+        try { data = JSON.parse(raw); } catch (_) { data = { original: raw }; }
+        localStorage.setItem(id, JSON.stringify({ ...data, type: 'notes-cloud-recovery', createdAt: Date.now() }));
+        localStorage.removeItem(marker);
+    }
+    acknowledgeRemote(snapshot, remoteKey = snapshot?.key) {
+        if (!snapshot || !this.store.isStored(snapshot)) return;
+        this.rememberOwner(snapshot, this.accountId);
+        this.editorAccount = this.accountId;
+        const baseline = snapshot.key === remoteKey ? { key: remoteKey } : { key: remoteKey, localKey: snapshot.key };
+        localStorage.setItem(this.cloudStateKey('baseline'), JSON.stringify(baseline));
+        this.lastCloudKey = remoteKey;
+        this.lastAckLocalKey = snapshot.key;
+        this.lastSavedContent = JSON.stringify(snapshot.payload);
+        this.store.acknowledge(snapshot);
+    }
+    acceptSnapshot(snapshot) {
+        if (!snapshot || !this.store.isStored(snapshot) || !this.store.hasPending(snapshot)) return;
+        this.lastSavedContent = JSON.stringify(snapshot.payload);
+        this.checkLoginStatus();
+        try { this.draftOwner(snapshot, true); } catch (_) { /* Recheck before any upload. */ }
+        this.pending = snapshot;
+        return this.drain();
+    }
+    syncCurrent() {
+        if (!this.store || !this.editor || !this.checkLoginStatus()) return;
+        const snapshot = this.store.flush();
+        if (!snapshot) return;
+        this.pending = snapshot;
+        return this.drain();
+    }
+    async reconcile(snapshot, session) {
+        const api = window.SupabaseSync;
+        const sessionMatches = () => session === localStorage.getItem('supabase_user');
+        if (!sessionMatches() || this.isPaused || this.store.getConflict?.()) return;
+        this.archivePreviousComparison();
+        for (let attempt = 0; attempt < 3; attempt++) {
+            if (!sessionMatches() || this.isPaused) return;
+            const raw = await api.carregarRichtextAnotacoes(this.currentSemana);
+            if (!sessionMatches() || this.isPaused) return;
+            const latest = this.store.flush();
+            if (!latest || this.store.getConflict?.()) return;
+            if (latest.key !== snapshot.key || latest.revision !== snapshot.revision) {
+                this.pending = latest;
+                return;
+            }
+            const remote = this.parseRemote(raw);
+            const remoteKey = remote === null ? null : this.store.contentKey(remote);
+            if (remoteKey === snapshot.key) {
+                this.acknowledgeRemote(snapshot, remoteKey);
+                return;
+            }
+
+            const dirty = this.store.hasPending(snapshot);
+            const owner = this.draftOwner(snapshot, dirty);
+            const foreign = owner != null && owner !== this.accountId;
+            // Legacy HTML can render as an equivalent structured editor tree
+            // with a different key. Leave an already imported document in place.
+            if (!foreign && !dirty && remoteKey === this.lastCloudKey && snapshot.key === this.lastAckLocalKey) return;
+            const seedMissing = raw === null && this.lastCloudKey === null && this.editor.textContent.trim();
+            if (!foreign && (dirty || seedMissing)) {
+                if (!this.store.isStored(snapshot)) return;
+                if (remoteKey !== this.lastCloudKey) {
+                    this.preserveCopy(snapshot.payload, remote || { html: '' }, 'Antes de sincronizar edições de aparelhos diferentes');
+                }
+                const result = await api.salvarRichtextAnotacoes(this.currentSemana, JSON.stringify(snapshot.payload), { expectedRemote: raw });
+                if (!sessionMatches()) return;
+                if (result?.code === 'SYNC_CONFLICT') continue;
+                if (result?.success !== true) throw new Error(result?.error || 'Falha na sincronização.');
+                // A successful write is the baseline for typing that took place
+                // while awaiting its response, even if that new edit is pending.
+                this.lastCloudKey = snapshot.key;
+                this.acknowledgeRemote(snapshot);
+                return;
+            }
+            if (raw === null && this.lastCloudKey === null && !foreign) return;
+            const incoming = remote || { html: '', formato: 'legacy-html' };
+            this.preserveCopy(snapshot.payload, incoming, 'Antes de restaurar a nuvem');
+            if (!this.store.applyContent(incoming, { remote: true })) throw new Error('Falha ao restaurar a nota.');
+            const applied = this.store.snapshot();
+            if (!this.store.isStored(applied)) throw new Error('Falha ao guardar a nota.');
+            this.acknowledgeRemote(applied, remoteKey);
+            return;
+        }
+        throw new Error('A anotação mudou durante a sincronização.');
+    }
+    async drain() {
+        if (this.sending || this.isPaused || navigator.onLine === false || !this.checkLoginStatus() ||
+            !this.pending || this.store.getConflict?.() || !window.SupabaseSync?.salvarRichtextAnotacoes ||
+            !window.SupabaseSync?.carregarRichtextAnotacoes) return this.sending;
+        clearTimeout(this.retryTimer);
+        this.saveInProgress = true;
+        let failed = false;
+        this.sending = Promise.resolve().then(async () => {
+            while (this.pending && !this.isPaused && navigator.onLine !== false && this.checkLoginStatus()) {
+                const next = this.pending; this.pending = null;
+                const session = localStorage.getItem('supabase_user');
+                const run = () => this.reconcile(next, session);
+                try {
+                    if (navigator.locks?.request) await navigator.locks.request('notes-cloud-' + this.currentSemana, run);
+                    else await run();
+                    this.retryDelay = 2000;
+                } catch (_) {
+                    if (session === localStorage.getItem('supabase_user')) {
+                        this.pending ??= next;
+                        failed = true;
+                        this.retryTimer = setTimeout(() => this.drain(), this.retryDelay);
+                        this.retryDelay = Math.min(this.retryDelay * 2, 60000);
+                    }
+                    break;
+                }
+            }
+        });
+        try { await this.sending; }
+        finally {
+            this.sending = null; this.saveInProgress = false;
+            if (this.pending && !failed) this.drain();
+        }
+    }
+    executeAutoSave() {
+        if (!this.store || !this.editor) return;
+        const snapshot = this.store.flush();
+        if (snapshot && this.store.hasPending(snapshot)) this.acceptSnapshot(snapshot);
+        return this.drain();
     }
     obterRaizesEditor() { return Array.from(this.editor?.children || []).filter(node => node.matches('.node-paragraph,.node-text,.node-toggle')); }
     exportTree() { return this.store?.snapshot()?.payload.tree || []; }
@@ -161,126 +245,19 @@ class AutoSaveManager {
     serializeForRemote() { return JSON.stringify(this.serializePayload()); }
     parseSavedContent(raw) { return this.store?.parse(raw); }
     applySavedContent(raw) { return this.store?.applyContent(raw, { remote: true }); }
-    acknowledgeRemote(snapshot, remoteKey = snapshot?.key) {
-        if (!snapshot || !this.store.isStored(snapshot)) return;
-        this.rememberCloudKey(remoteKey);
-        this.lastSavedContent = JSON.stringify(snapshot.payload);
-        this.store.acknowledge(snapshot);
-        if (this.pending?.key === snapshot.key) this.pending = null;
-    }
-    uploadCurrent() {
-        // A legacy local document has no revision token. If the server has no
-        // document yet, still preserve the old behavior of uploading that copy.
-        const snapshot = this.store?.flush();
-        if (!snapshot || !this.store.isStored(snapshot)) return;
-        this.pending = snapshot;
-        return this.drain();
-    }
-    acceptSnapshot(snapshot) {
-        if (!snapshot || !this.store.isStored(snapshot)) return;
-        this.lastSavedContent = JSON.stringify(snapshot.payload);
-        if (!this.store.hasPending(snapshot)) return;
-        this.pending = snapshot;
-        if (this.cloudConflict) {
-            this.cloudConflict.local = snapshot.payload;
-            try { localStorage.setItem(this.cloudStateKey('conflict'), JSON.stringify(this.cloudConflict)); } catch (_) {}
-            this.announceCloudConflict(); return;
-        }
-        this.showLocalSaveFeedback();
-        return this.drain();
-    }
-    async drain() {
-        if (this.sending || this.isPaused || this.store.getConflict?.() || navigator.onLine === false || !this.checkLoginStatus()) return this.sending;
-        if (this.cloudConflict || this.resolvingCloud) { this.announceCloudConflict(); return; }
-        if (!this.pending || typeof window.SupabaseSync?.salvarRichtextAnotacoes !== 'function' ||
-            typeof window.SupabaseSync?.carregarRichtextAnotacoes !== 'function') return;
-        this.saveInProgress = true;
-        let failed = false;
-        this.sending = (async () => {
-            while (this.pending && !this.isPaused && !this.store.getConflict?.() && navigator.onLine !== false && this.checkLoginStatus() && !this.cloudConflict) {
-                const next = this.pending; this.pending = null;
-                if (!this.store.isStored(next)) continue;
-                if (next.key === this.lastCloudKey && !this.store.hasPending(next)) continue;
-                this.showSavingFeedback();
-                try {
-                    const user = localStorage.getItem('supabase_user');
-                    const send = async () => {
-                        if (!this.store.isStored(next) || user !== localStorage.getItem('supabase_user')) return { skipped: true };
-                        const raw = await window.SupabaseSync.carregarRichtextAnotacoes(this.currentSemana);
-                        if (!this.store.isStored(next) || user !== localStorage.getItem('supabase_user')) return { skipped: true };
-                        const remote = this.parseRemote(raw);
-                        const remoteKey = remote === null ? null : this.store.contentKey(remote);
-                        if (remoteKey === next.key) return { success: true };
-                        if (remoteKey !== this.lastCloudKey && (remote !== null || this.lastCloudKey !== null)) {
-                            this.setCloudConflict(raw, next);
-                            return { conflict: true };
-                        }
-                        const result = await window.SupabaseSync.salvarRichtextAnotacoes(this.currentSemana, JSON.stringify(next.payload), { expectedRemote: raw });
-                        if (result?.code === 'SYNC_CONFLICT' && user === localStorage.getItem('supabase_user')) {
-                            this.setCloudConflict(raw, this.store.snapshot());
-                            try {
-                                const newest = await window.SupabaseSync.carregarRichtextAnotacoes(this.currentSemana);
-                                if (user === localStorage.getItem('supabase_user')) this.setCloudConflict(newest);
-                            } catch (_) {} // Keep the durable stop marker until the cloud is readable.
-                            return { conflict: true };
-                        }
-                        return result;
-                    };
-                    // Serialize uploads by week across v2 tabs when Web Locks is
-                    // available; recheck the stored revision after acquiring it.
-                    const result = navigator.locks?.request
-                        ? await navigator.locks.request('notes-cloud-' + this.currentSemana, send)
-                        : await send();
-                    if (result?.skipped) continue;
-                    if (result?.conflict) { if (!this.pending) this.pending = next; failed = true; break; }
-                    if (result?.success !== true) throw new Error(result?.error || 'Falha na sincronização.');
-                    if (user !== localStorage.getItem('supabase_user') || !this.store.isStored(next)) continue;
-                    this.rememberCloudKey(next.key);
-                    this.store.acknowledge(next);
-                    this.showSavedFeedback();
-                } catch (_) {
-                    // A newer edit wins the queue. The full local document remains
-                    // saved even when this request fails or the app is suspended.
-                    if (!this.pending) this.pending = next;
-                    failed = true;
-                    if (this.cloudConflict) this.announceCloudConflict(); else this.showErrorFeedback(); break;
-                }
-            }
-        })();
-        try { await this.sending; }
-        finally {
-            this.sending = null; this.saveInProgress = false;
-            // Include an edit queued in the microtask that finishes the request.
-            // A failed request waits for an explicit retry/reconnection.
-            if (this.pending && !failed) this.drain();
-        }
-    }
-    executeAutoSave() {
-        if (!this.store || !this.editor) return Promise.resolve();
-        const snapshot = this.store.flush();
-        if (snapshot && this.store.isStored(snapshot) && this.store.hasPending(snapshot)) this.pending = snapshot;
-        return this.drain();
-    }
-    onContentChange() { return this.executeAutoSave('input'); }
-    onFocusLost() { return this.executeAutoSave('blur'); }
-    onPageUnload() { return this.executeAutoSave('unload'); }
+    uploadCurrent() { return this.syncCurrent(); }
+    onContentChange() { return this.executeAutoSave(); }
+    onFocusLost() { return this.executeAutoSave(); }
+    onPageUnload() { return this.executeAutoSave(); }
     saveToLocal() { return this.store?.flush(); }
     async saveToSupabase(content) {
-        // Compatibility callers must use the same guarded queue as editor input.
         const snapshot = this.store?.flush();
         if (!snapshot || content !== JSON.stringify(snapshot.payload)) throw new Error('O conteúdo mudou. Salve a versão atual do editor.');
         return this.uploadCurrent();
     }
-    triggerFeedbackEvent(message, type, duration = null) {
-        window.dispatchEvent(new CustomEvent('editor:save-status', { detail: { message, type, duration } }));
-    }
-    showSavingFeedback() { this.triggerFeedbackEvent('Sincronizando…', 'saving'); }
-    showSavedFeedback() { this.triggerFeedbackEvent('Salvo na nuvem', 'success', 1800); }
-    showLocalSaveFeedback() { this.triggerFeedbackEvent('Salvo neste aparelho', 'local', 1600); }
-    showErrorFeedback() { this.triggerFeedbackEvent('Salvo neste aparelho. A sincronização será tentada novamente quando houver conexão.', 'error', 0); }
-    forceAutoSave() { return this.executeAutoSave('force'); }
-    pauseAutoSave() { this.isPaused = true; this.triggerFeedbackEvent('⏸️ Sincronização pausada', 'local', 2000); }
-    resumeAutoSave() { this.isPaused = false; return this.executeAutoSave('resume'); }
+    forceAutoSave() { return this.executeAutoSave(); }
+    pauseAutoSave() { this.isPaused = true; }
+    resumeAutoSave() { this.isPaused = false; return this.executeAutoSave(); }
     setDelay(ms) {
         const value = Number(ms); if (!Number.isFinite(value) || value < 0) return;
         this.SAVE_DELAY = Math.floor(value); this.store?.setDelay(this.SAVE_DELAY);

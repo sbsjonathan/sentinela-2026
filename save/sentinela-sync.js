@@ -81,7 +81,7 @@ class SentinelaSync {
     validKey(key) {
         if (!key || !this.estudoId) return false;
         const study = this.estudoId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        return new RegExp(`^(?:[crp]-${study}-\\d+(?:\\s*(?:[-–—,]|e)\\s*\\d+)*(?:-pg-(?:extra-)?\\d+)?|[crp]-rcp-\\d+-${study}|(?:r-)?obj-${study}|(?:r-)?sub-h1-${study}|(?:r-)?sub-h2-\\d+-${study})$`).test(key);
+        return new RegExp(`^(?:[crp]-${study}-\\d+(?:\\s*(?:[-–—,]|e)\\s*\\d+)*(?:-pg-(?:extra-)?\\d+)?|p-${study}-quadro-\\d+-\\d+|[crp]-rcp-\\d+-${study}|(?:r-)?obj-${study}|(?:r-)?sub-h1-${study}|(?:r-)?sub-h2-\\d+-${study})$`).test(key);
     }
     stable(value) { return JSON.stringify(Object.fromEntries(Object.entries(value || {}).sort(([a], [b]) => a.localeCompare(b)))); }
     manualKey() {

@@ -196,7 +196,12 @@
     return false;
   };
 
+  const markScope = '.paragrafo,[data-ia-box-key]';
   const saveState = scope => {
+    if (scope?.dataset.iaBoxKey) {
+      scope.dispatchEvent(new Event('sentinela:save-box-marks', {bubbles: true}));
+      return;
+    }
     if (window.CacheAnotacao && scope?.id) window.CacheAnotacao.salvar(scope.id, scope.innerHTML);
   };
 
@@ -315,7 +320,7 @@
       delete m.dataset.iaGroup;
       delete m.dataset.iaPart;
       delete m.dataset.iaMode;
-      if (!scope) scope = m.closest('.paragrafo');
+      if (!scope) scope = m.closest(markScope);
     });
     if (scope) saveState(scope);
   };
@@ -323,7 +328,7 @@
   const removeHighlight = id => {
     const marks = document.querySelectorAll(`mark[data-hl-id="${id}"]`);
     if (!marks.length) return;
-    const scope = marks[0].closest('.paragrafo');
+    const scope = marks[0].closest(markScope);
     marks.forEach(m => {
       // Older saved articles can put both styles on one element. Removing
       // their color should leave the dotted reference available to the reader.
@@ -350,8 +355,8 @@
       mainBtn.setAttribute('aria-expanded', 'true');
     } else if (activeRange) {
       const scope = activeRange.commonAncestorContainer.nodeType === 1
-        ? activeRange.commonAncestorContainer.closest('.paragrafo')
-        : activeRange.commonAncestorContainer.parentElement?.closest('.paragrafo');
+        ? activeRange.commonAncestorContainer.closest(markScope)
+        : activeRange.commonAncestorContainer.parentElement?.closest(markScope);
       if (scope) applyHighlight(lastColor, activeRange, scope);
       window.getSelection()?.removeAllRanges();
       hideMenu();
@@ -368,8 +373,8 @@
       changeColor(activeHlId, lastColor);
     } else if (activeRange) {
       const scope = activeRange.commonAncestorContainer.nodeType === 1 
-        ? activeRange.commonAncestorContainer.closest('.paragrafo') 
-        : activeRange.commonAncestorContainer.parentElement.closest('.paragrafo');
+        ? activeRange.commonAncestorContainer.closest(markScope)
+        : activeRange.commonAncestorContainer.parentElement.closest(markScope);
       if (scope) applyHighlight(lastColor, activeRange, scope);
       window.getSelection().removeAllRanges();
     }
@@ -513,8 +518,8 @@
 
       const range = sel.getRangeAt(0);
       const scope = range.commonAncestorContainer.nodeType === 1 
-        ? range.commonAncestorContainer.closest('.paragrafo') 
-        : range.commonAncestorContainer.parentElement?.closest('.paragrafo');
+        ? range.commonAncestorContainer.closest(markScope)
+        : range.commonAncestorContainer.parentElement?.closest(markScope);
       
       if (!scope) return;
 
