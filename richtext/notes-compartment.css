@@ -47,7 +47,7 @@
   box-shadow: 0 6px 20px rgba(20,16,28,.08);
 }
 #notes-compartment [hidden] { display: none; }
-.notes-summary-header, #notes-compartment footer { display: flex; align-items: center; gap: 10px; }
+.notes-summary-header { display: flex; align-items: center; gap: 10px; }
 .notes-summary-header h2 {
   flex: 1;
   margin: 0;
@@ -72,10 +72,9 @@
   font-size: clamp(16px,1em,22px); line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text;
 }
 .notes-summary-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-#notes-compartment footer { justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-#notes-compartment [data-summary-count] { color: var(--summary-muted); font-size: clamp(12px,.7em,15px); font-variant-numeric: tabular-nums; }
+#notes-compartment footer { display: flex; justify-content: flex-end; }
 #notes-compartment [data-summary-generate] {
-  margin-inline-start: auto; min-height: 44px; padding: 8px 17px; border: 0; border-radius: 12px;
+  min-height: 44px; padding: 8px 17px; border: 0; border-radius: 12px;
   background: var(--summary-button); color: white; font-size: clamp(14px,.8em,17px); font-weight: 650;
 }
 #notes-compartment [data-summary-generate]:disabled { background: var(--summary-wash); color: var(--summary-muted); cursor: default; }

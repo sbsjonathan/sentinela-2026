@@ -30,23 +30,35 @@ def check_summary(page, panel):
         page.wait_for_function('count => testSummaryRequests.length === count + 1', arg=count)
         return count
 
+    # Model output may quote a number. Only the panel's own controls and hints
+    # should omit any visible character total or numeric minimum.
+    def expect_no_count():
+        expect(panel.locator('[data-summary-count]')).to_be_hidden()
+        for chrome in [panel.locator('header'), status, panel.locator('footer')]:
+            expect(chrome).not_to_contain_text(re.compile(r'\d|caracter(?:e|es)\b', re.I), use_inner_text=True)
+
     expect(generate).to_be_disabled()
-    expect(status).to_contain_text('50')
+    expect(status).not_to_have_text('')
+    expect_no_count()
     restore([{'type': 'paragraph', 'text': 'a' * 49}])
     assert page.evaluate('NotesSummarySource.read().characters') == 49
     expect(generate).to_be_disabled()
+    expect_no_count()
     assert page.evaluate('testSummaryRequests.length') == 0
     restore([{'type': 'paragraph', 'text': 'a' * 50}])
     assert page.evaluate('NotesSummarySource.read().characters') == 50
     expect(generate).to_be_enabled()
+    expect_no_count()
     page.context.set_offline(True)
     expect(generate).to_be_disabled()
     expect(status).to_contain_text('internet')
+    expect_no_count()
     page.context.set_offline(False)
     expect(generate).to_be_enabled()
     first = start()
     assert 'a' * 50 in page.evaluate('testSummaryRequests[0].outline')
     expect(status).to_contain_text('Resumindo')
+    expect_no_count()
     spinner = panel.locator('.notes-summary-spinner svg')
     expect(spinner).to_be_visible()
     article = (ROOT / 'sentinela/clickable/clickable.js').read_text()
@@ -67,9 +79,11 @@ def check_summary(page, panel):
     page.evaluate("i => testSummaryRequests[i].reject(new Error('Falha de rede simulada'))", first)
     expect(generate).to_be_enabled()
     expect(status).to_contain_text('Tente novamente')
+    expect_no_count()
     retry = start()
-    page.evaluate("i => testSummaryRequests[i].resolve('Uma síntese de teste.')", retry)
-    expect(result).to_contain_text('Uma síntese de teste.')
+    page.evaluate("i => testSummaryRequests[i].resolve('A leitura citada foi Gênesis 1:1.')", retry)
+    expect(result).to_contain_text('A leitura citada foi Gênesis 1:1.')
+    expect_no_count()
 
     tree = [
         {'type': 'paragraph', 'text': 'Discurso sobre perseverança.'},

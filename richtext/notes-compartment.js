@@ -58,11 +58,10 @@
         <p data-summary-status role="status" aria-live="polite"></p>
         <p data-summary-result hidden dir="auto"></p>
       </div>
-      <footer><span data-summary-count></span><button type="button" data-summary-generate>Resumir</button></footer>`;
+      <footer><button type="button" data-summary-generate>Resumir</button></footer>`;
     const button = panel.querySelector('[data-summary-generate]');
     const result = panel.querySelector('[data-summary-result]');
     const status = panel.querySelector('[data-summary-status]');
-    const count = panel.querySelector('[data-summary-count]');
     const spinner = panel.querySelector('.notes-summary-spinner');
     const footer = panel.querySelector('footer');
     const editor = document.getElementById('editor');
@@ -81,10 +80,9 @@
       spinner.hidden = !busy;
       footer.hidden = busy;
       result.hidden = !result.textContent;
-      count.textContent = source.characters.toLocaleString('pt-BR') + (source.characters === 1 ? ' caractere' : ' caracteres');
       let hint = '';
       if (busy) hint = 'Resumindo…';
-      else if (!enough) hint = 'Escreva pelo menos 50 caracteres para gerar um resumo.';
+      else if (!enough) hint = 'Escreva um pouco mais para gerar o resumo.';
       else if (offline) hint = 'Conecte-se à internet para gerar o resumo.';
       else if (error) hint = error;
       else if (changed) hint = 'A anotação mudou. Você pode gerar um novo resumo.';

@@ -10,7 +10,9 @@ function load(fetch) {
   vm.runInNewContext(source, context);
   return context.window.NotesSummaryAgent.summarize;
 }
-const reply = resumo => ({ok: true, json: async () => ({text: JSON.stringify({resumo})})});
+const reply = (resumo, desenvolvida) => ({
+  ok: true, json: async () => ({text: JSON.stringify({resumo, desenvolvida})})
+});
 
 test('short notes stay on device; the 50th character enables a plain summary', async () => {
   const requests = [];
@@ -30,6 +32,7 @@ test('large outlines retain every block and word, including the final child', as
   const sources = [];
   const summarize = load(async (url, options) => {
     const {prompt} = JSON.parse(options.body);
+    assert.equal(prompt.includes('300 caracteres'), prompt.includes('Faça a síntese final'));
     sources.push(prompt.split('\n\nConteúdo para resumir:\n')[1]);
     return reply('Síntese ' + sources.length);
   });
@@ -42,6 +45,32 @@ test('large outlines retain every block and word, including the final child', as
   assert.equal(finalInput, sources.map((_, index) => 'Síntese ' + (index + 1)).join('\n'));
   assert.equal(summary, 'Síntese ' + (sources.length + 1));
   for (const part of sources) assert.equal(part, Buffer.from(part).toString());
+});
+
+test('developed notes target 300 characters and keep full sentences after at most one rewrite', async () => {
+  const note = 'Contexto, exemplos e conclusão de uma anotação desenvolvida. '.repeat(12).trim();
+  const target = 'Uma frase com várias ideias. '.repeat(10).trim();
+  assert.ok(target.length >= 260 && target.length <= 340);
+  for (const first of ['Uma só frase.', target, target + target]) {
+    const prompts = [];
+    const summarize = load(async (url, options) => {
+      prompts.push(JSON.parse(options.body).prompt);
+      return reply(prompts.length === 1 ? first : target, true);
+    });
+    assert.equal(await summarize(note), target);
+    assert.equal(prompts.length, first === target ? 1 : 2);
+    assert.ok(prompts.every(prompt => prompt.endsWith(note)));
+  }
+});
+
+test('one-idea and repetitive notes are not padded out to 300 characters', async () => {
+  const idea = 'A horta comunitária precisa de água nos períodos de seca.';
+  for (const note of [idea, Array(80).fill(idea).join('\n')]) {
+    let calls = 0;
+    const summarize = load(async () => { calls++; return reply('A horta precisa de água durante a seca.', false); });
+    assert.equal(await summarize(note), 'A horta precisa de água durante a seca.');
+    assert.equal(calls, 1);
+  }
 });
 
 test('cancellation aborts the active step and stops all remaining requests', async () => {
