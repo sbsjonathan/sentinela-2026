@@ -409,13 +409,22 @@
     return 'QUADROS CITADOS: ' + JSON.stringify(bundle.boxSources.map(({title, source_id, text}) => ({title, source_id, text})));
   }
 
+  function articleContext(bundle) {
+    return [
+      'PERGUNTA: ' + JSON.stringify(bundle.questionText),
+      'PARÁGRAFOS: ' + JSON.stringify(bundle.paragraphs.map(p => ({n: p.number, text: p.text})))
+    ].join('\n');
+  }
+
   function buildPrompt(bundle) {
     // Complete source evidence, independent of written answers and model reasoning.
     return [
       "Extraia somente os trechos literais que, juntos, respondem à pergunta por completo. Retorne JSON, sem resumo ou comentários.",
       "Formato: {\"sub_questions\":[{\"question\":\"pergunta original ou cláusula independente literal\",\"highlights\":[{\"paragraph_number\":1,\"literal_text\":\"cópia contínua exata da fonte\"}]}]}.",
       "Uma pergunta pode ter vários fatos e parágrafos. Vírgulas, enumerações e perguntas no corpo do texto não criam sub_questions. Separe apenas solicitações independentes ou partes (a)/(b)/(c).",
-      "Leia todos os parágrafos antes de selecionar. Em uma sequência de acontecimentos, mantenha a decisão que inicia a sequência, cada ação e a explicação que acrescenta agente, motivo, alvo ou desfecho. Um anúncio e uma explicação complementar não são duplicatas.",
+      bundle.accounts.length
+        ? "Selecione a narrativa contínua de cada experiência pedida desde a apresentação da pessoa e da situação até o resultado. Inclua a sequência de ações e os diálogos. A pergunta editorial anterior e a aplicação geral posterior ficam fora da narrativa."
+        : "Leia todos os parágrafos antes de selecionar. Em uma sequência de acontecimentos, mantenha a decisão que inicia a sequência, cada ação e a explicação que acrescenta agente, motivo, alvo ou desfecho. Um anúncio e uma explicação complementar não são duplicatas.",
       "Inclua o nome do acontecimento e sua ação completa, com complementos e resultados coordenados necessários. Não corte a explicação após metade da ação. Copie a oração completa quando toda ela responde, incluindo suas ligações curtas. Separe trechos distantes, sem paráfrase, reticências ou referências de apoio.",
       "Texto entre aspas pode ser a própria resposta; não o descarte por ser citação. Exclua introduções vagas, perguntas retóricas, indicação bibliográfica, exemplos dispensáveis e roteiro repetitivo.",
       "Exemplo de cobertura: pergunta \"Que acontecimentos são esperados?\"; fonte \"Haverá mudanças. A prefeitura autorizará a entrada. Os bombeiros entrarão na área. O relatório explica: ‘Por causa da fumaça, eles retirarão as famílias e os animais.’ Por fim, virá a reconstrução. Equipes removerão os escombros e reconstruirão as casas.\"; selecione \"A prefeitura autorizará a entrada.\", \"Os bombeiros entrarão na área.\", \"Por causa da fumaça, eles retirarão as famílias e os animais.\" e \"Por fim, virá a reconstrução. Equipes removerão os escombros e reconstruirão as casas.\". A retirada acrescenta causa e alvo; a entrada não a substitui.",
@@ -425,9 +434,46 @@
         'Selecione pelo menos um trecho de cada quadro citado e inclua os parágrafos que sustentam outras partes da pergunta. Para um quadro use {"source_id":"ID do bloco","literal_text":"cópia exata"} em vez de paragraph_number. Copie cada trecho de um só bloco.',
         boxContext(bundle)
       ] : []),
-      'PERGUNTA: ' + JSON.stringify(bundle.questionText),
-      'PARÁGRAFOS: ' + JSON.stringify(bundle.paragraphs.map(p => ({n: p.number, text: p.text})))
+      articleContext(bundle)
     ].join('\n');
+  }
+
+  function buildRelevanceReview(bundle, candidates) {
+    const instructions = [
+      'Revise a pertinência dos destaques para esta pergunta de estudo. Faça uma nova leitura do artigo e do quadro. Decida primeiro o que as fontes ensinam sobre cada parte pedida. Depois confronte as sugestões com essa leitura. Elas podem estar literalmente corretas e ainda assim não responder.',
+      'Quando a pergunta pede o que se aprende com experiências identificadas, copie um trecho CONTÍNUO por relato, do começo da situação ao seu desfecho. Quem lê somente as marcas deve poder acompanhar quem estava envolvido, o que aconteceu passo a passo, a ajuda concreta dada ou recebida e seu efeito. Preserve dentro da história os encontros, ferramentas, falas e reações. Se a ajuda e seu resultado estiverem em frases diferentes, copie o intervalo entre elas, inclusive no quadro. Duas frases de resultado podem omitir como algo aconteceu.',
+      'Deixe de fora a pergunta introdutória do autor e a aplicação geral depois do relato. Um detalhe de cenário ou uma lição genérica de outro parágrafo, sozinhos, não contam a experiência. Para perguntas sobre um fato específico selecione apenas o trecho que comprova aquele fato.',
+      'Devolva a seleção COMPLETA final, corrigindo ou ampliando sugestões incompletas. Preserve pontuação, grafia e fonte ao transcrever. Separe as passagens por fonte, mantendo as partes consecutivas de uma mesma narrativa juntas. Se não houver sustentação suficiente, devolva highlights vazio.',
+      'Formato JSON: {"sub_questions":[{"question":"pergunta ou parte literal","highlights":[{"paragraph_number":1,"literal_text":"texto do parágrafo"},{"source_id":"ID do bloco","literal_text":"texto do quadro"}]}]}.',
+      ...bundle.accounts.map(({name, number}) => `O relato de ${name} foi identificado no parágrafo ${number}. Selecione a experiência nesse parágrafo.`),
+      articleContext(bundle), boxContext(bundle)
+    ].join('\n');
+    // Source text has priority over the suggestions if a model echoes a whole article.
+    const proposed = '\nSUGESTÕES A CONFERIR: ' + JSON.stringify(candidates);
+    return candidates.length && instructions.length + proposed.length <= HIGHLIGHT_CONFIG.maxInputChars ?
+      instructions + proposed : instructions;
+  }
+
+  async function selectReviewedHighlights(bundle) {
+    // A joint question gets one draft and one independent editorial pass.
+    // No draft, including one with exact source matches, can reach the DOM.
+    const model = HIGHLIGHT_CONFIG.model;
+    const extract = async prompt => {
+      if (prompt.length > HIGHLIGHT_CONFIG.maxInputChars) throw new Error('Fontes muito extensas para a extração literal.');
+      const text = await requestGemini(prompt, model, null, true, true);
+      return parseQuestionPayload(text, true);
+    };
+    let candidates = [];
+    try {
+      const draft = await extract(buildPrompt(bundle));
+      candidates = draft.sub_questions.flatMap(part => part.highlights.map(({literal_text, paragraph_number, source_id}) =>
+        source_id ? {source_id, literal_text} : {paragraph_number, literal_text}));
+    } catch (error) {
+      if ((error.status >= 400 && error.status < 500) || getActiveCooldown(model).until) throw error;
+      // A malformed or missing draft leaves the reviewer the original sources.
+    }
+    if (window.sentinelaSync?.localClearInProgress) return null;
+    return {payload: await extract(buildRelevanceReview(bundle, candidates)), model};
   }
 
   function buildNaturalPrompt(bundle) {
@@ -635,10 +681,11 @@
     const highlightJob = (async () => {
       try {
         const apply = (payload, model) => window.sentinelaSync?.localClearInProgress ? null :
-          highlighter.applyHighlights(idPergunta, {parts: payload.sub_questions, model}, bundle);
-        const verify = bundle.boxSources.length ? apply : null;
-        const result = await requestWithFallback(buildPrompt(bundle), null, true, true, verify);
-        if (window.sentinelaSync?.localClearInProgress) return;
+          highlighter.applyHighlights(idPergunta, {parts: payload.sub_questions, model}, bundle, {reviewed: bundle.includesArticle});
+        const verify = bundle.boxSources.length && !bundle.includesArticle ? apply : null;
+        const result = bundle.includesArticle ? await selectReviewedHighlights(bundle) :
+          await requestWithFallback(buildPrompt(bundle), null, true, true, verify);
+        if (!result || window.sentinelaSync?.localClearInProgress) return;
         highlightResult = verify ? result.checked : apply(result.payload, result.model);
       } catch (_) {
         highlightResult = {highlightWarning: 'Não foi possível atualizar os destaques. As marcações anteriores foram mantidas.'};

@@ -86,6 +86,27 @@ function hasWholeWordBoundaries(text, start, end) {
     !(left.test(text.slice(0, end)) && right.test(text.slice(end)));
 }
 
+function uniqueQuoteStart(text, quote, reviewed) {
+  if (!quote) return -1;
+  const variants = new Set([quote]);
+  if (reviewed) {
+    // The reviewer may capitalize a clause copied from mid-sentence. Only its
+    // first letter can vary, and the combined search must still be unambiguous.
+    const first = String.fromCodePoint(quote.codePointAt(0));
+    for (const initial of [first.toLocaleLowerCase('pt-BR'), first.toLocaleUpperCase('pt-BR')]) {
+      if (initial.length === first.length) variants.add(initial + quote.slice(first.length));
+    }
+  }
+  let start = -1;
+  for (const variant of variants) {
+    const index = text.indexOf(variant);
+    if (index < 0) continue;
+    if (start >= 0 || text.indexOf(variant, index + 1) >= 0) return -1;
+    start = index;
+  }
+  return start;
+}
+
 // Mask quoted examples and parenthetical asides before interpreting punctuation.
 // The returned text keeps exactly the original UTF-16 offsets.
 function structuralText(text) {
@@ -178,6 +199,48 @@ export function validateQuestionParts(modelParts, questionText) {
   return {parts, questionCount: 1};
 }
 
+const nameWords = value => ' ' + (value.normalize('NFC').match(/[\p{L}\p{M}'’-]+/gu) || []).join(' ') + ' ';
+
+function delimitedAccount(text, name) {
+  // Some accounts have explicit editorial boundaries: an invitation naming
+  // the subject, then the subject's closing testimony before a general lesson.
+  const invitations = [...text.matchAll(/(?:^|[.!?]\s+)((?:Veja(?:mos)?|Considere(?:mos)?|Conheça(?:mos)?|Observe(?:mos)?)\s+[^.!?]+[.!?])/giu)]
+    .filter(match => nameWords(match[1]).includes(nameWords(name)));
+  if (invitations.length !== 1) return '';
+  const opening = invitations[0];
+  const start = opening.index + opening[0].indexOf(opening[1]);
+  const speech = new RegExp('(?:^|[.!?][”"]?\\s+)' + name + '\\s+[^.!?:“”"]{1,80}:\\s*(?:“[^”]+”|"[^"]+")', 'gu');
+  const finalSpeech = [...text.matchAll(speech)].at(-1);
+  if (!finalSpeech || finalSpeech.index < start) return '';
+  const end = finalSpeech.index + finalSpeech[0].length;
+  const tail = text.slice(end).replace(/^[.!?]?\s*/, '');
+  if (tail && !/^(?:É\s|Isso\s|Assim[,\s]|Portanto[,\s]|O que\s)/u.test(tail)) return '';
+  return text.slice(start, end);
+}
+
+function namedAccounts(question, paragraphs) {
+  // Only an explicitly named account whose name occurs in exactly one
+  // numbered paragraph identifies a source. A quotation there can use pronouns.
+  const text = structuralText(question), accounts = new Map();
+  const nameAtStart = /^\p{Lu}[\p{L}\p{M}'’-]*(?:\s+(?:(?:d[aeo]s?)\s+)?\p{Lu}[\p{L}\p{M}'’-]*)*/u;
+  const sources = paragraphs.map(({number, text}) => ({number, text, words: nameWords(text)}));
+  for (const intro of text.matchAll(/\b(?:experiências?|histórias?|relatos?)\s+(?:de|d[oa]s?)\s+/giu)) {
+    let remainder = text.slice(intro.index + intro[0].length);
+    let name;
+    while ((name = nameAtStart.exec(remainder)?.[0])) {
+      const matches = sources.filter(source => source.words.includes(nameWords(name)));
+      if (matches.length !== 1) return [];
+      const {number, text: original} = matches[0];
+      accounts.set(name, {name, number, passage: delimitedAccount(original, name)});
+      remainder = remainder.slice(name.length);
+      const joiner = /^(?:\s*,\s*|\s+e\s+)(?:(?:de|d[oa]s?)\s+)?/iu.exec(remainder);
+      if (!joiner) break;
+      remainder = remainder.slice(joiner[0].length);
+    }
+  }
+  return [...accounts.values()];
+}
+
 export function buildSource(idPergunta) {
   const questionElement = document.getElementById(idPergunta);
   const context = buildContext(questionElement);
@@ -200,7 +263,8 @@ export function buildSource(idPergunta) {
   // evidence as well when the author explicitly coordinates another source.
   const includesArticle = boxSources.length > 0 && (/\bparágrafos?\s+\d+/iu.test(context.question) ||
     /\be\s+(?:com\s+|n[oa]\s+|d[oa]\s+)?(?:[oa]\s+)?(?:(?:história|experiência|exemplo|relato)\s+do\s+)?quadro\s+[“"‘']/iu.test(context.question));
-  return {idPergunta, questionElement, questionText: context.question, paragraphs, boxSources, includesArticle};
+  return {idPergunta, questionElement, questionText: context.question, paragraphs, boxSources, includesArticle,
+    accounts: includesArticle ? namedAccounts(context.question, paragraphs) : []};
 }
 
 function indexParagraph(element, numbered = true) {
@@ -289,11 +353,13 @@ function canReplaceColor(item, ownerId) {
 }
 
 /** Validate first; invalid model text never erases previously saved markings. */
-export function applyHighlights(ownerId, parsed, bundle) {
+export function applyHighlights(ownerId, parsed, bundle, {reviewed = false} = {}) {
   const classified = validateQuestionParts(parsed?.parts, bundle.questionText);
   const parts = classified.parts;
   const plans = [];
   const boxes = bundle.boxSources || [];
+  const accounts = bundle.accounts || [];
+  const namedPassages = reviewed ? accounts.filter(account => account.passage) : [];
   const sources = [...bundle.paragraphs, ...boxes];
   let invalid = false;
   parts.forEach((part, partNumber) => part.highlights.forEach(highlight => {
@@ -302,18 +368,43 @@ export function applyHighlights(ownerId, parsed, bundle) {
     if (!paragraph || !highlight.literal_text) {invalid = true; return;}
     const index = indexParagraph(paragraph.element, !paragraph.source_id);
     const quote = canonical(highlight.literal_text);
-    const start = index.text.indexOf(quote);
-    if (start < 0 || index.text.indexOf(quote, start + 1) !== -1 ||
-        !hasWholeWordBoundaries(index.text, start, start + quote.length) ||
-        !index.map.slice(start, start + quote.length).some(item => canReplaceColor(item, ownerId))) {invalid = true; return;}
+    let start = uniqueQuoteStart(index.text, quote, reviewed);
+    if (start < 0 || !hasWholeWordBoundaries(index.text, start, start + quote.length)) {invalid = true; return;}
+    let end = start + quote.length;
+    if (namedPassages.length && paragraph.number) {
+      const sameParagraph = accounts.filter(account => account.number === paragraph.number);
+      // A generalization in a different paragraph cannot replace either story.
+      if (!sameParagraph.length && classified.questionCount === 1 &&
+          !/(?:\bparágrafos?\s+|§+\s*)\d+/iu.test(bundle.questionText)) return;
+      if (sameParagraph.length === 1 && sameParagraph[0].passage) {
+        const passage = canonical(sameParagraph[0].passage);
+        const opening = uniqueQuoteStart(index.text, passage, false);
+        if (opening < 0) {invalid = true; return;}
+        if (end <= opening || start >= opening + passage.length) return;
+        start = opening; end = opening + passage.length;
+      }
+    }
+    const excerpt = index.map.slice(start, end);
+    const needsPaint = excerpt.some(item => canReplaceColor(item, ownerId));
+    if (!needsPaint) {
+      // A reviewed quotation may already be entirely highlighted by the reader.
+      // Its color does not provide evidence; it only governs who can paint it.
+      const alreadyMarked = reviewed && excerpt.every(item => {
+        if (!/\S/.test(item.char)) return true;
+        const mark = item.node?.parentElement?.closest('mark[data-hl-id][class*="hl-color-"]');
+        return !item.protected && mark && !mark.dataset.iaOwner;
+      });
+      if (!alreadyMarked) {invalid = true; return;}
+    }
     // Keep the original punctuation for the reader after matching typography.
-    const text = clean(index.map.slice(start, start + quote.length).map(item => item.char).join(''));
-    plans.push({paragraph, start, end: start + quote.length, partNumber, highlight: {...highlight, literal_text: text}, color: COLORS[part.partIndex]});
+    const text = clean(excerpt.map(item => item.char).join(''));
+    plans.push({paragraph, start, end, partNumber, highlight: {...highlight, literal_text: text}, color: COLORS[part.partIndex], needsPaint});
   }));
   // When the author explicitly asks about the sidebar as well, accepting the
   // numbered text alone would silently omit one of the requested accounts.
   const requiredBoxes = [...new Set(boxes.map(source => source.title))];
   const incomplete = boxes.length && ((bundle.includesArticle && !plans.some(plan => !plan.paragraph.source_id)) ||
+    accounts.some(account => !plans.some(plan => plan.paragraph.number === account.number)) ||
     requiredBoxes.some(title => !plans.some(plan => plan.paragraph.title === title)));
   if (invalid || !plans.length || incomplete) return {...parsed, parts, questionCount: classified.questionCount, appliedCount: 0,
     highlightWarning: 'Não foi possível confirmar todos os trechos exatos. Os destaques anteriores foram mantidos.'};
@@ -343,8 +434,9 @@ export function applyHighlights(ownerId, parsed, bundle) {
     });
   });
   const nodePlans = new Map();
-  const applied = new Set();
+  const applied = new Set(selected.filter(plan => !plan.needsPaint));
   selected.forEach((plan, selection) => {
+    if (!plan.needsPaint) return;
     const index = indexParagraph(plan.paragraph.element, !plan.paragraph.source_id);
     let segment = null;
     const group = `${ownerId}-${parts[plan.partNumber].hexKey}-${selection}-${Date.now().toString(36)}`;

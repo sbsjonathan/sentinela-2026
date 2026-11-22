@@ -607,6 +607,18 @@ const M10_EditorEvents = {
     wrap.appendChild(range.cloneContents());
     return wrap.innerHTML;
   },
+  writeClipboard(dt, payload) {
+    if (!dt) return false;
+    const formats = [['text/plain', payload.plain], ['text/html', payload.html]];
+    if (payload.trs) formats.push([M1_Config.MIME, JSON.stringify(payload.trs)]);
+    let copied = false;
+    for (const [type, value] of formats) {
+      if (!value) continue;
+      try { dt.setData(type, value); copied = true; } catch (_) { /* This format may be unsupported on iOS. */ }
+    }
+    if (copied) this.setInternalClipboard(payload);
+    return copied;
+  },
   setClipboardTreeData(dt, trs) {
     if (!trs?.length) return false;
     const exportRoot = document.createElement('div');
@@ -616,20 +628,20 @@ const M10_EditorEvents = {
       if (b) exportRoot.appendChild(b);
     });
 
+    const lines = [];
+    const collectText = tree => {
+      lines.push(tree.text || '');
+      tree.children?.forEach(collectText);
+    };
+    trs.forEach(collectText);
     const payload = {
       kind: 'tree',
       trs: JSON.parse(JSON.stringify(trs)),
-      plain: trs.map(t => t.text || '').join('\n'),
+      plain: lines.join('\n'),
       html: exportRoot.outerHTML
     };
 
-    this.setInternalClipboard(payload);
-
-    if (!dt) return true;
-    dt.setData(M1_Config.MIME, JSON.stringify(trs));
-    dt.setData('text/plain', payload.plain);
-    dt.setData('text/html', payload.html);
-    return true;
+    return this.writeClipboard(dt, payload);
   },
   setClipboardFragmentData(dt, range) {
     if (!range || range.collapsed) return false;
@@ -638,12 +650,7 @@ const M10_EditorEvents = {
     const plain = range.toString();
     if (!html && !plain) return false;
 
-    this.setInternalClipboard({ kind: 'html', html, plain });
-
-    if (!dt) return true;
-    if (plain) dt.setData('text/plain', plain);
-    if (html) dt.setData('text/html', html);
-    return true;
+    return this.writeClipboard(dt, { kind: 'html', html, plain });
   },
   removeSelectedNodes(ns) {
     if (!ns?.length) return;
@@ -670,13 +677,63 @@ const M10_EditorEvents = {
     const e = M2_Query.closest(range.endContainer, '.editable');
     if (s && e && s !== e) return true;
     if (s && e && s === e) return false;
-    return M8_MultiSel.getNodes().length > 1;
+    return M8_MultiSel.getNodes().length > 0;
   },
   treesFromSelection() {
     const ns = M8_MultiSel.getNodes();
     if (!ns.length) return null;
-    const trs = ns.map(n => M6_Tree.toTree(n)).filter(Boolean);
+    const range = M2_Query.curRange();
+    const trimToSelection = (node, tree) => {
+      const editable = M2_Query.getEdFor(node);
+      const part = document.createRange();
+      part.selectNodeContents(editable);
+      if (part.compareBoundaryPoints(Range.START_TO_START, range) < 0) part.setStart(range.startContainer, range.startOffset);
+      if (part.compareBoundaryPoints(Range.END_TO_END, range) > 0) part.setEnd(range.endContainer, range.endOffset);
+      // A partial first or last block must contain exactly its selected text.
+      // Completely selected blocks keep their original HTML and line breaks.
+      if (part.startContainer !== editable || part.startOffset !== 0 ||
+          part.endContainer !== editable || part.endOffset !== editable.childNodes.length) {
+        tree.html = this.selectionHTML(part);
+        tree.text = part.toString();
+      }
+      if (tree.children) {
+        tree.children = M2_Query.childs(M2_Query.getChil(node)).flatMap((child, i) =>
+          range.intersectsNode(child) ? [trimToSelection(child, tree.children[i])] : []);
+      }
+      return tree;
+    };
+    const trs = ns.map(n => trimToSelection(n, M6_Tree.toTree(n)));
     return trs.length ? trs : null;
+  },
+  hasNoteContent(fragment) {
+    fragment.querySelectorAll('.toggle-arrow,.text-plus,.toggle-spacer').forEach(control => control.remove());
+    return !!(fragment.textContent.replace(/[\u200B\uFEFF]/g, '') ||
+      fragment.querySelector('br,img,svg,video,audio,canvas,hr,iframe,object,embed,math,input,textarea,table'));
+  },
+  coversWholeNote(range) {
+    const before = document.createRange();
+    before.selectNodeContents(M1_Config.editor);
+    const after = before.cloneRange();
+    before.setEnd(range.startContainer, range.startOffset);
+    after.setStart(range.endContainer, range.endOffset);
+    // WebKit's list command adds a final caret BR after the last character;
+    // Select All ends at that character. Preserve any real breaks before it.
+    const item = M2_Query.closest(range.endContainer, 'li');
+    const filler = item?.lastChild;
+    if (filler?.nodeName === 'BR') {
+      const tail = after.cloneRange();
+      tail.setEndBefore(filler);
+      if (!this.hasNoteContent(tail.cloneContents())) after.setStartAfter(filler);
+    }
+    // Inspect the DOM, including text inside closed toggles. Visible selection
+    // text alone cannot distinguish a selected title from the entire note.
+    return !this.hasNoteContent(before.cloneContents()) && !this.hasNoteContent(after.cloneContents());
+  },
+  resetAfterCut() {
+    const paragraph = M5_Factory.para();
+    M1_Config.editor.replaceChildren(paragraph);
+    M4_Caret.place(M2_Query.getParC(paragraph));
+    M4_Caret.saveR();
   },
   fullyCoveredTopNodes(range) {
     const within = n => {
@@ -699,12 +756,28 @@ const M10_EditorEvents = {
   flattenDeleteSelection() {
     const sel = M2_Query.selObj();
     if (!sel || !sel.rangeCount || sel.isCollapsed) return false;
-    const range = sel.getRangeAt(0);
+    const selected = sel.getRangeAt(0);
+    const range = selected.cloneRange();
     if (!M1_Config.editor.contains(range.commonAncestorContainer)) return false;
 
-    const startEd = M2_Query.closest(range.startContainer, '.editable');
-    const endEd = M2_Query.closest(range.endContainer, '.editable');
-    if (!startEd || !endEd) return false;
+    let startEd = M2_Query.closest(range.startContainer, '.editable');
+    let endEd = M2_Query.closest(range.endContainer, '.editable');
+    if (!startEd || !endEd) {
+      const fields = Array.from(M1_Config.editor.querySelectorAll('.editable')).filter(el => range.intersectsNode(el));
+      if (!fields.length) return false;
+      if (range.startContainer === M1_Config.editor && range.endContainer === M1_Config.editor) {
+        this.removeSelectedNodes(this.fullyCoveredTopNodes(selected));
+        return true;
+      }
+      if (!startEd) {
+        startEd = fields[0];
+        range.setStart(startEd, 0);
+      }
+      if (!endEd) {
+        endEd = fields.at(-1);
+        range.setEnd(endEd, endEd.childNodes.length);
+      }
+    }
 
     if (startEd === endEd) {
       range.deleteContents();
@@ -722,7 +795,7 @@ const M10_EditorEvents = {
 
     const startNode = startEd.closest('.node-toggle, .node-text, .node-paragraph');
     const endNode = endEd.closest('.node-toggle, .node-text, .node-paragraph');
-    const fully = this.fullyCoveredTopNodes(range);
+    const fully = this.fullyCoveredTopNodes(selected);
     const startWasFull = fully.includes(startNode);
 
     const rStart = document.createRange();
@@ -1001,10 +1074,23 @@ const M10_EditorEvents = {
       }
     });
 
+    let nativeWholeCut = false;
     M1_Config.editor.addEventListener('beforeinput', e => {
       const s = M2_Query.selObj();
       let ed = M2_Query.curEd();
       if (!s) return;
+      const cutRange = e.inputType === 'deleteByCut' && !s.isCollapsed && M2_Query.curRange();
+      nativeWholeCut = !!(cutRange && M1_Config.editor.contains(cutRange.commonAncestorContainer) && this.coversWholeNote(cutRange));
+      if (nativeWholeCut) {
+        if (e.cancelable) {
+          e.preventDefault();
+          window.M12_History?.beforeChange?.();
+          this.resetAfterCut();
+          window.M12_History?.afterChange?.(2);
+          nativeWholeCut = false;
+        }
+        return;
+      }
 
       if (!s.isCollapsed && e.cancelable && (e.inputType.includes('delete') || e.inputType.startsWith('insert'))) {
         const range = M2_Query.curRange();
@@ -1280,6 +1366,11 @@ const M10_EditorEvents = {
     });
 
     M1_Config.editor.addEventListener('input', e => {
+      if (e.inputType === 'deleteByCut' && (nativeWholeCut || !this.hasNoteContent(M1_Config.editor.cloneNode(true)))) {
+        nativeWholeCut = false;
+        this.resetAfterCut();
+        return;
+      }
       if (!M1_Config.editor.children.length) M7_Actions.ensureRoot();
 
       const editable = e.target?.closest?.('.editable') || M2_Query.curEd();
@@ -1319,6 +1410,7 @@ const M10_EditorEvents = {
     });
 
     M1_Config.editor.addEventListener('cut', e => {
+      if (!M1_Config.editor.isContentEditable) return;
       const sel = M2_Query.selObj();
       if (!sel || !sel.rangeCount || sel.isCollapsed) return;
 
@@ -1326,17 +1418,27 @@ const M10_EditorEvents = {
       if (!M1_Config.editor.contains(range.commonAncestorContainer)) return;
 
       e.preventDefault();
-      window.M12_History?.beforeChange?.();
-
-      if (this.selectionIsStructural(range)) {
-        const trs = this.treesFromSelection();
-        if (trs) this.setClipboardTreeData(e.clipboardData, trs);
-        else this.setClipboardFragmentData(e.clipboardData, range);
-      } else {
-        this.setClipboardFragmentData(e.clipboardData, range);
+      if (!e.clipboardData) return;
+      const whole = this.coversWholeNote(range);
+      try {
+        let trees = null;
+        if (whole && M1_Config.editor.childNodes.length === M1_Config.editor.children.length &&
+            Array.from(M1_Config.editor.children).every(n => n.matches('.node-paragraph,.node-text,.node-toggle'))) {
+          trees = Array.from(M1_Config.editor.children, n => M6_Tree.toTree(n));
+        } else if (!whole && this.selectionIsStructural(range)) {
+          trees = this.treesFromSelection();
+        }
+        const copied = trees?.length ? this.setClipboardTreeData(e.clipboardData, trees) :
+          this.setClipboardFragmentData(e.clipboardData, range);
+        if (!copied) return;
+      } catch (_) {
+        // A rejected clipboard write must never be followed by deleting the note.
+        return;
       }
 
-      this.flattenDeleteSelection();
+      window.M12_History?.beforeChange?.();
+      if (whole) this.resetAfterCut();
+      else this.flattenDeleteSelection();
       window.M12_History?.afterChange?.(2);
     });
 

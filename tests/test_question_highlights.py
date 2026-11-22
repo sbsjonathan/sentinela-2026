@@ -65,13 +65,20 @@ FIXTURE = '''<!doctype html><html lang="pt-BR" data-theme="light"><head>
 BOX_QUESTION = 'O que você aprendeu com a experiência de Robert e com a história do quadro “ Uma refugiada encontra esperança”?'
 ROBERT = 'E eu percebi que o homem passou a entender melhor a mensagem da Bíblia e a dar mais valor a ela.'
 YOUA = 'Ela ficou feliz e passou a ter esperança de uma vida melhor no futuro.'
+ROBERT_ACTION = 'Robert conhecia tão bem essa brochura que conseguia pedir para o homem ler parágrafos específicos em turco.'
+YOUA_ACTION = 'Um dia, uma irmã que falava inglês deixou com ela o folheto A Vida num Pacífico Novo Mundo em hmong.'
+ROBERT_ASIDE = 'Nós conversamos por mais ou menos uma hora.'
+YOUA_ASIDE = 'Youa, uma mulher que falava o idioma hmong, vivia como refugiada nos Estados Unidos e tinha uma vida muito difícil.'
+GENERAL_LESSON = 'Mesmo sendo algo simples, compartilhar um folheto ou um artigo do site jw.org no idioma do coração de uma pessoa pode ter um efeito profundo na vida dela.'
+BOX_ENDING = 'Tudo graças a um folheto na língua dela!'
+SHORT_PASSAGES = f'''<p class="paragrafo"><span>10</span> {ROBERT_ACTION} Robert conta: “{ROBERT_ASIDE} {ROBERT}”</p>
+<p class="paragrafo"><span>11</span> {GENERAL_LESSON}</p>
+<div class="quadro1"><h3 class="quadro1-titulo">Uma refugiada encontra esperança</h3><div class="quadro1-corpo">
+<p>{YOUA_ASIDE} {YOUA_ACTION} Youa nunca tinha ouvido falar das promessas da Bíblia que ela leu no folheto. {YOUA} {BOX_ENDING}<span class="comentarios">PRIVATE_BOX_NOTE</span></p></div></div>'''
 BOX_FIXTURE = f'''<!doctype html><meta charset="utf-8"><main>
 <h1 class="estudo-titulo">Pregando as boas novas em “todas as línguas das nações”</h1>
 <div><p class="pergunta"><span>10-11.</span> {BOX_QUESTION}</p></div>
-<p class="paragrafo"><span>10</span> Robert conta: “Nós conversamos por mais ou menos uma hora. {ROBERT}”</p>
-<p class="paragrafo"><span>11</span> Mesmo sendo algo simples, compartilhar um folheto ou um artigo do site jw.org no idioma do coração de uma pessoa pode ter um efeito profundo na vida dela.</p>
-<div class="quadro1"><h3 class="quadro1-titulo">Uma refugiada encontra esperança</h3><div class="quadro1-corpo">
-<p>Youa nunca tinha ouvido falar das promessas da Bíblia que ela leu no folheto. {YOUA}<span class="comentarios">PRIVATE_BOX_NOTE</span></p></div></div>
+__QA_PASSAGES__
 <div class="quadro1"><h3 class="quadro1-titulo">Outra experiência</h3><div class="quadro1-corpo"><p>UNRELATED_BOX_TEXT</p></div></div>
 <div><p class="pergunta"><span>12.</span> Como a Tradução do Novo Mundo tem ajudado o povo de Jeová?</p></div>
 <p class="paragrafo"><span>12</span> OUTSIDE_GROUP_TEXT</p></main>
@@ -96,9 +103,11 @@ MOCKS = '''(() => {
     const url = String(input?.url || input);
     if (!url.includes('workers.dev')) return nativeFetch(input,options);
     const request = JSON.parse(options.body || '{}');
-    const kind = request.prompt?.startsWith('Extraia somente') ? 'highlight' : 'natural';
+    let kind = 'natural';
+    if (request.prompt?.startsWith('Extraia somente')) kind = 'highlight';
+    if (request.prompt?.startsWith('Revise a pertinência')) kind = 'review';
     qaRequests.push({...request,qaKind:kind});
-    const item = kind === 'highlight' ? qaResponses.shift() : (qaNaturalResponses.shift() || {payload:qaNaturalDefault});
+    const item = kind === 'natural' ? (qaNaturalResponses.shift() || {payload:qaNaturalDefault}) : qaResponses.shift();
     if (!item) throw new Error('Unexpected synthetic Gemini request');
     if (item.defer) await new Promise(resolve=>qaDeferred.push({kind,resolve}));
     if (item.reject) throw new TypeError(item.reject);
@@ -122,8 +131,14 @@ class Handler(SimpleHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path.startswith(('/highlight-fixture.html', '/question-box-fixture.html')):
-            data = (BOX_FIXTURE if self.path.startswith('/question-box-fixture.html') else FIXTURE).encode()
+        if self.path.startswith(('/highlight-fixture.html', '/question-box-fixture.html', '/question-account-fixture.html')):
+            if self.path.startswith('/highlight-fixture.html'):
+                data = FIXTURE.encode()
+            else:
+                passages = SHORT_PASSAGES
+                if self.path.startswith('/question-account-fixture.html'):
+                    passages = (ROOT / 'tests/fixtures/question-highlights-2026562-account.html').read_text()
+                data = BOX_FIXTURE.replace('__QA_PASSAGES__', passages).encode()
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.send_header('Content-Length', str(len(data)))
@@ -515,25 +530,95 @@ def check_named_box_in_grouped_question(page, origin):
     youa = {'source_id': 'quadro-1-1', 'literal_text': YOUA}
     verified = extraction(robert, youa)
 
-    def generate(*attempts, answer_text='Robert e Youa se beneficiaram de publicações na língua que entendiam.'):
+    def generate(*attempts, while_reviewing=None,
+                 answer_text='Robert e Youa se beneficiaram de publicações na língua que entendiam.'):
         natural = {'sub_questions': [{'question': asked_question, 'natural_answer': answer_text,
                                       'literal_smooth': 'PARÁFRASE_SEM_MARCAÇÃO'}]}
-        page.evaluate('''({attempts,natural}) => {
+        page.evaluate('''({attempts,natural,pause}) => {
           qaRequests.length=0;
-          qaResponses.push(...attempts.map(payload=>({payload})));
+          qaResponses.push(...attempts.map((payload,i)=>({payload,defer:pause && i===1})));
           qaNaturalResponses.push({payload:natural});
-        }''', {'attempts': attempts, 'natural': natural})
+        }''', {'attempts': attempts, 'natural': natural, 'pause': while_reviewing is not None})
         button.click()
+        if while_reviewing:
+            page.wait_for_function("qaDeferred.some(item => item.kind === 'review')")
+            while_reviewing()
+            page.evaluate("qaDeferred.splice(qaDeferred.findIndex(row=>row.kind==='review'),1)[0].resolve()")
         page.wait_for_function("qaRequests.length > 0 && !document.querySelector('#ia-2026562-10-11 .btn-gerar-ia').disabled")
         prompts = page.evaluate("qaRequests.map(row => [row.qaKind, row.prompt])")
         assert sum(kind == 'natural' for kind, _ in prompts) == 1
-        assert sum(kind == 'highlight' for kind, _ in prompts) == len(attempts)
+        phases = [kind for kind, _ in prompts if kind != 'natural']
+        expected = ['highlight', 'review'] if asked_question == BOX_QUESTION else ['highlight'] * len(attempts)
+        assert phases == expected, phases
         for _, prompt in prompts:
             assert ROBERT in prompt and 'Mesmo sendo algo simples' in prompt
             assert YOUA in prompt and 'Uma refugiada encontra esperança' in prompt
             assert all(secret not in prompt for secret in ['PRIVATE_BOX_NOTE', 'UNRELATED_BOX_TEXT', 'OUTSIDE_GROUP_TEXT'])
 
     question.click()
+    # Both preliminary quotations are letter-for-letter matches in the right
+    # stories. Neither the visit duration nor the biographical introduction
+    # explains what sharing a publication in someone's language accomplished.
+    asides = extraction({**robert, 'literal_text': ROBERT_ASIDE}, {**youa, 'literal_text': YOUA_ASIDE})
+    causes_and_results = extraction({**robert, 'literal_text': ROBERT_ACTION}, robert,
+                                    {**youa, 'literal_text': YOUA_ACTION}, youa)
+
+    def no_draft_marks():
+        assert not page.locator(marks).count()
+        for key in [question_id + '-pg-0', box_key]:
+            assert not page.evaluate('key=>qaStored[key]', key), key
+
+    generate(asides, causes_and_results, while_reviewing=no_draft_marks)
+    assert_exact_coverage(page, paragraph, [ROBERT_ACTION, ROBERT])
+    assert_exact_coverage(page, referenced_box, [YOUA_ACTION, YOUA])
+    exact = answer.locator('.ia-tab-literal').text_content()
+    assert all(text in exact for text in [ROBERT_ACTION, ROBERT, YOUA_ACTION, YOUA])
+    assert ROBERT_ASIDE not in exact and YOUA_ASIDE not in exact
+    # A review can return no support. A grammatical, literal, correctly
+    # located first-pass answer must never displace the verified highlights.
+    preserved = [page.locator(paragraph).inner_html(), page.locator(box).first.inner_html()]
+    generate(asides, extraction())
+    assert preserved == [page.locator(paragraph).inner_html(), page.locator(box).first.inner_html()]
+    assert 'Não foi possível' in answer.inner_text()
+
+    # The original remote selector returned the general lesson and the box's
+    # closing sentence. Both match their sources; neither describes Robert's
+    # experience. Reject even a review that repeats that pair unchanged.
+    recorded_lesson = GENERAL_LESSON.removeprefix('Mesmo sendo algo simples, ')
+    conclusions = extraction({'paragraph_number': 11, 'literal_text': recorded_lesson},
+                             {**youa, 'literal_text': BOX_ENDING})
+    generate(conclusions, conclusions)
+    assert preserved == [page.locator(paragraph).inner_html(), page.locator(box).first.inner_html()]
+    assert_exact_coverage(page, '#' + question_id + '-pg-1', [])
+    exact = answer.locator('.ia-tab-literal').text_content()
+    assert recorded_lesson not in exact and BOX_ENDING not in exact
+    assert 'Não foi possível' in answer.inner_text()
+
+    # The live reviewer started its quotation one word after "E" and
+    # capitalised the resulting fragment. Keep the original lowercase
+    # character in the mark and in the public-facing transcription.
+    original_case = ROBERT.removeprefix('E ')
+    quoted = original_case[0].upper() + original_case[1:]
+    reviewed = extraction({**robert, 'literal_text': quoted}, youa)
+    generate(conclusions, reviewed)
+    assert_exact_coverage(page, paragraph, [original_case])
+    exact = answer.locator('.ia-tab-literal').text_content()
+    assert original_case in exact and quoted not in exact
+    assert 'Não foi possível' not in answer.inner_text()
+    before = page.locator(paragraph).inner_html()
+    generate(conclusions, extraction({**robert, 'literal_text': quoted.replace('Bíblia', 'bíblia')}, youa))
+    assert page.locator(paragraph).inner_html() == before and 'Não foi possível' in answer.inner_text()
+    # If both initial letter forms exist, an equal casing is insufficient
+    # to identify which occurrence ends up in the student's article.
+    page.locator(paragraph).evaluate('''(el, text) => {
+      const copy = document.createElement('span');
+      copy.id = 'qa-duplicate-quote'; copy.textContent = ' ' + text; el.append(copy);
+    }''', quoted)
+    before = page.locator(paragraph).inner_html()
+    generate(conclusions, reviewed)
+    assert page.locator(paragraph).inner_html() == before and 'Não foi possível' in answer.inner_text()
+    page.locator('#qa-duplicate-quote').evaluate('el => el.remove()')
+
     # The first extraction skips the named experience. Repair only that
     # request; a successful retry must mark each quotation in its own source.
     generate(extraction(robert), verified)
@@ -570,6 +655,46 @@ def check_named_box_in_grouped_question(page, origin):
     assert 'Não foi possível' in answer.inner_text()
     page.evaluate("sessionStorage.removeItem('qaSavedBoxStudy')")
 
+    # On a fresh article, both best supporting quotations are already fully
+    # painted green by the reader. Preserve their identity and count them as
+    # evidence without replacing their color, including after regeneration.
+    page.reload()
+    question.click()
+    def manual_green(locator, quote, mark_id):
+        locator.evaluate("""(el, {quote, markId})=>{
+          const walker=document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          let node;
+          while ((node=walker.nextNode()) && !node.data.includes(quote)) {}
+          const text=node.splitText(node.data.indexOf(quote)); text.splitText(quote.length);
+          const mark=document.createElement('mark');
+          mark.className='hl-color-green'; mark.dataset.hlId=markId;
+          text.replaceWith(mark); mark.append(text);
+        }""", {'quote': quote, 'markId': mark_id})
+    manual_green(page.locator(paragraph), ROBERT, 'reader-robert')
+    manual_green(page.locator(referenced_box), YOUA, 'reader-youa')
+    # Recreate a saved selection accepted by the previous exact-match-only
+    # pipeline. A successful review must remove these obsolete yellows even
+    # when no new paint is needed for either of the approved green passages.
+    old_count = page.evaluate('''async ({id,draft}) => {
+      const api=await import('/sentinela/clickable/perguntas-highlights.js');
+      return api.applyHighlights(id,{parts:draft.sub_questions},api.buildSource(id)).appliedCount;
+    }''', {'id': question_id, 'draft': asides})
+    assert old_count == 2 and page.locator(marks).count() == 2
+    generate(asides, verified)
+    assert not page.locator(marks).count()
+    for mark_id, text in [('reader-robert', ROBERT), ('reader-youa', YOUA)]:
+        mark = page.locator(f'mark[data-hl-id="{mark_id}"]')
+        assert mark.text_content() == text and mark.get_attribute('class') == 'hl-color-green'
+        assert text in answer.locator('.ia-tab-literal').text_content()
+    assert 'Não foi possível' not in answer.inner_text()
+    # Two paragraphs now describe the named contributor. The validator
+    # must allow either relevant narrative rather than always pinning §10.
+    second_quote = 'Robert explicou as promessas ao homem em turco.'
+    second = '#' + question_id + '-pg-1'
+    page.locator(second).evaluate('(el, text) => el.append(" " + text)', second_quote)
+    generate(conclusions, extraction({'paragraph_number': 11, 'literal_text': second_quote}, youa))
+    assert_exact_coverage(page, second, [second_quote])
+    assert second_quote in answer.locator('.ia-tab-literal').text_content()
     # A question exclusively about Youa needs evidence only from her box.
     page.reload()
     asked_question = 'Segundo o quadro “Uma refugiada encontra esperança”, como Youa se sentiu?'
@@ -583,6 +708,69 @@ def check_named_box_in_grouped_question(page, origin):
     generate(extraction(robert), extraction(youa), answer_text=YOUA)
     assert_exact_coverage(page, paragraph, [])
     assert_exact_coverage(page, referenced_box, [YOUA])
+
+
+def check_complete_account_on_article(page, origin):
+    """Range selected by the reader in the published 2026562 article."""
+    page.goto(origin + '/question-account-fixture.html?d=2026-11-16')
+    owner = 'p-2026562-10-11'
+    paragraph = '#' + owner + '-pg-0'
+    conclusion = '#' + owner + '-pg-1'
+    box = '.quadro1-corpo > p'
+    section = page.locator('#ia-2026562-10-11')
+    section.locator('.pergunta').click()
+    source = page.locator(paragraph).text_content()
+    start = source.index('Veja o que aconteceu com Robert, que fala inglês.')
+    end = source.index(ROBERT + '”') + len(ROBERT + '”')
+    narrative = source[start:end]
+    assert ROBERT_ACTION in narrative and 'Nós conversamos por mais ou menos uma hora.' in narrative
+    assert 'Boas Notícias de Deus para Você!' in narrative and 'JW Library.' in narrative
+    assert 'Como podemos' not in narrative and 'É um privilégio' not in narrative
+    refugee_story = page.locator(box).first.text_content()
+    box_id = {'source_id': 'quadro-1-1'}
+    preliminary = [{'paragraph_number': 11, 'literal_text': GENERAL_LESSON.removeprefix('Mesmo sendo algo simples, ')},
+                   {**box_id, 'literal_text': BOX_ENDING}]
+    # The model can point at the middle or just the outcome. In either
+    # case the authored introduction, conversation and reported result
+    # bound the continuous story. The generalisation in §11 is separate.
+    def run(*picks, accepted=True):
+        review = [{'paragraph_number': 10, 'literal_text': pick} for pick in picks]
+        review.append({**box_id, 'literal_text': refugee_story})
+        page.evaluate('''([first,final,question])=>{
+          qaRequests.length=0;
+          for(const highlights of [first,final]) {
+            qaResponses.push({payload:{sub_questions:[{question,highlights}]}});
+          }
+        }''', [preliminary, review, BOX_QUESTION])
+        section.locator('.btn-gerar-ia').click()
+        page.wait_for_function("qaRequests.some(r=>r.qaKind==='review') && !document.querySelector('#ia-2026562-10-11 .btn-gerar-ia').disabled")
+        literal = section.locator('.ia-tab-literal').text_content()
+        if accepted:
+            assert narrative in literal and refugee_story in literal
+        else:
+            assert narrative not in literal and 'Não foi possível' in section.inner_text()
+        assert 'Como podemos usar bem' not in literal and 'É um privilégio' not in literal
+        assert preliminary[0]['literal_text'] not in literal
+        assert_exact_coverage(page, conclusion, [])
+    application = source[end:].strip()
+    run(application, accepted=False)
+    assert not page.locator(paragraph + ' mark').count()
+    run(ROBERT_ACTION, application)
+    assert_exact_coverage(page, paragraph, [narrative])
+    assert_exact_coverage(page, box + ' >> nth=0', [refugee_story])
+    assert page.locator(paragraph + ' em').all_text_contents() == ['Boas Notícias de Deus para Você!', 'JW Library.']
+    assert page.locator(paragraph + ' em mark[data-ia-owner]').count() == 2
+
+    mark = page.locator(paragraph + ' mark[data-ia-owner]').first
+    mark.scroll_into_view_if_needed()
+    mark.tap()
+    page.locator('#hl-custom-menu .hl-color-btn-main').click()
+    page.locator('#hl-custom-menu .hl-palette [data-color="green"]').click()
+    assert page.locator(paragraph + ' mark').count() == page.locator(paragraph + ' mark.hl-color-green:not([data-ia-owner])').count() > 2
+    manual = page.locator(paragraph).inner_html()
+    run(ROBERT)
+    assert page.locator(paragraph).inner_html() == manual
+    assert page.evaluate('key => qaStored[key]', owner + '-pg-0') == manual
 
 
 def check_recorded_public_responses(page, origin):
@@ -682,9 +870,10 @@ def check(engine, executable, origin):
     check_response_shapes_and_validation_fallback(page, origin)
     check_recorded_public_responses(page, origin)
     check_named_box_in_grouped_question(page, origin)
+    check_complete_account_on_article(page, origin)
     check_tab_and_scroll_retention(page, origin)
     print(json.dumps({'engine':engine.name,'singleQuestionAcrossParagraphs':'passed',
-      'namedBoxInGroupedQuestion':'passed',
+      'namedBoxInGroupedQuestion':'passed', 'onlyReviewedEvidencePainted':'passed', 'verifiedManualColorRetained':'passed', 'continuousPublishedAccount':'passed',
       'semanticDoubleQuestions':'passed','threeQuestionsInAuthoredColorOrder':'passed','linkedOverviewAndAnswerBoundary':'passed','exactSourceAndReferenceExclusion':'passed',
       'naturalAnswerAndManualMarksPreserved':'passed','invalidPayloadSafety':'passed',
       'fallbackAndInflightDeduplication':'passed','terminalExtractionErrorsDoNotSwitchModel':'passed','alternateJsonShapesAndValidatedRetry':'passed','failedRegenerationPreservesSavedAnswer':'passed','recordedPublicModelCoverage':'passed','independentHighlightAndNaturalFailures':'passed','activeTabAndScrollRetention':'passed','perParagraphPersistence':'passed'}),flush=True)
