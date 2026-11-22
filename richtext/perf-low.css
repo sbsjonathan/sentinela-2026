@@ -47,14 +47,3 @@
   box-shadow: none !important;
   text-shadow: none !important;
 }
-
-:root.perf-low .editor > .node-paragraph:only-child .paragraph-content[data-empty="true"]::before {
-  animation: none !important;
-  background-image: none !important;
-  background-size: auto !important;
-  -webkit-background-clip: initial !important;
-  background-clip: initial !important;
-  -webkit-text-fill-color: initial !important;
-  color: var(--placeholder-color) !important;
-  text-shadow: none !important;
-}

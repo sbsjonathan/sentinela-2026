@@ -38,7 +38,7 @@ def check(engine, executable, origin):
     navbar = page.locator('.bottom-navbar [data-page="notes"]')
     panel = page.locator('#notes-tools')
     editable = page.locator('#editor .paragraph-content').first
-    assert editable.get_attribute('data-placeholder') == 'Semana de 2 de novembro'
+    assert page.locator('#notes-week-placeholder').text_content() == 'Semana de 2 de novembro'
     assert panel.get_attribute('aria-hidden') == 'true'
     assert panel.evaluate('(el) => el.inert')
 

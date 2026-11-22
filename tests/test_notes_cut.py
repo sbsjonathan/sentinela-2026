@@ -1,11 +1,14 @@
 """Cut and paste against the native clipboard in the real Notes editor."""
 import os
+from io import BytesIO
 from http.server import ThreadingHTTPServer
 from threading import Thread
+from urllib.parse import parse_qs, urlsplit
 
+from PIL import Image, ImageChops
 from playwright.sync_api import sync_playwright
 
-from test_notes_upgrade import Handler, PREFIX, WEEK
+from test_notes_upgrade import Handler, PREFIX
 
 
 def check(engine, executable, origin):
@@ -14,21 +17,44 @@ def check(engine, executable, origin):
     context = browser.new_context(viewport={'width': 430, 'height': 873}, is_mobile=True,
                                   has_touch=True, service_workers='block')
     context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') else route.abort())
+    context.add_init_script("Object.defineProperty(navigator, 'standalone', {get: () => true})")
     page = context.new_page()
     errors = []
     page.on('pageerror', lambda error: errors.append(str(error)))
-    page.goto(origin + PREFIX + 'richtext/container.html?semana=' + WEEK + '&versao=2')
+    page.goto(origin + PREFIX + 'index.html')
+    page.locator('.bottom-navbar [data-page="notes"]').tap()
     page.wait_for_function('window.cacheRichText && window.M12_History')
     page.evaluate('cacheRichText.ready')
     editor = page.locator('#editor')
     paragraph = editor.locator('.paragraph-content')
-    week = 'Semana de 2 de novembro'
+    day, month = map(int, parse_qs(urlsplit(page.url).query)['semana'][0].split('-'))
+    months = 'janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro'.split()
+    week = f'Semana de {day} de {months[month - 1]}'
+    label = page.locator('#notes-week-placeholder')
+
+    def assert_visible_hint():
+        assert label.is_visible() and label.text_content() == week
+        assert week not in editor.text_content()
+        # Count the visible pixels drawn by the hint in the top of the scrollport.
+        # Computed styles alone passed when the field was scrolled off screen.
+        scroller = page.locator('#editorScroll').bounding_box()
+        clip = {'x': scroller['x'] + 8, 'y': scroller['y'], 'width': 350, 'height': 95}
+        def sample():
+            shot = page.screenshot(clip=clip, animations='disabled', caret='hide')
+            return Image.open(BytesIO(shot)).convert('RGB')
+        painted = sample()
+        override = page.add_style_tag(content='#notes-week-placeholder {visibility:hidden!important}')
+        try:
+            delta = ImageChops.difference(painted, sample()).convert('L')
+            assert sum(delta.histogram()[12:]) > 100, 'Weekly hint has no visible text at the top of Notes'
+        finally:
+            override.evaluate('n => n.remove()')
 
     def assert_empty():
         assert editor.locator('.editable').count() == 1
         assert paragraph.count() == 1 and paragraph.is_visible()
         assert paragraph.get_attribute('data-empty') == 'true'
-        assert week in paragraph.evaluate("el => getComputedStyle(el,'::before').content")
+        assert label.is_visible() and label.text_content() == week
         assert not editor.text_content().strip()
         assert editor.locator('li,.node-toggle,.node-text').count() == 0
 
@@ -60,6 +86,7 @@ def check(engine, executable, origin):
         page.evaluate('new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(done))))')
 
     assert_empty()
+    assert_visible_hint()
     # Plain text with a genuine keyboard selection. Undo and redo must each
     # take one step, and typing at the new caret must enter the existing editor.
     paragraph.click()
@@ -144,6 +171,8 @@ def check(engine, executable, origin):
     page.keyboard.press('Control+v')
     assert editor.locator('.toggle-title').text_content() == 'Título'
     assert editor.locator('.text-content').text_content() == 'Filho selecionado'
+    assert label.is_hidden()
+
     # If the system rejects a clipboard write, even a full selection stays in place.
     select_root()
     editor.evaluate("""e => {
@@ -155,6 +184,83 @@ def check(engine, executable, origin):
     }""")
     assert editor.locator('.toggle-title').text_content() == 'Título'
     assert editor.locator('.text-content').text_content() == 'Filho selecionado'
+
+    # Select only the visible words, like iOS selection handles. Soft breaks
+    # on the following line lie outside the selection and survive the real cut.
+    apply([{'type': 'paragraph', 'text': 'Últimas palavras'}])
+    page.keyboard.press('End')
+    page.keyboard.press('Enter')
+    page.keyboard.press('Shift+Enter')
+    page.keyboard.press('Shift+Enter')
+    paragraph.first.evaluate("""el => {
+        const range = new Range();
+        range.selectNodeContents(el);
+        const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    }""")
+    cut()
+    assert_visible_hint()
+    assert pasted_text() == 'Últimas palavras'
+    page.evaluate('cacheRichText.flush()')
+    assert week not in page.evaluate("JSON.stringify(cacheRichText.snapshot().payload.tree)")
+    page.reload()
+    page.wait_for_function('window.cacheRichText && window.M12_History')
+    page.evaluate('cacheRichText.ready')
+    assert_visible_hint()
+
+    # The next tap and keystroke in a visually empty note enter the same editor.
+    box = label.bounding_box()
+    page.touchscreen.tap(box['x'] + 5, box['y'] + 5)
+    page.keyboard.insert_text('Continuei aqui')
+    assert 'Continuei aqui' in editor.inner_text()
+    assert label.is_hidden()
+
+    # Saved notes can already contain empty list markup from prior versions.
+    # Hidden children, however, are part of a note even when its title is empty.
+    apply([{'type': 'paragraph', 'html': '<ol><li><br></li></ol>'}])
+    assert_visible_hint()
+    page.evaluate("cacheRichText.applyContent({tree:[{type:'toggle',text:'',open:false,children:[{type:'text',text:'Texto recolhido'}]}]})")
+    assert label.is_hidden()
+    assert editor.locator('.text-content').text_content() == 'Texto recolhido'
+
+    # After cutting a note from the bottom on a short screen the hint must
+    # physically return into view. Repeat in the dark, normal-performance theme.
+    page.evaluate("""() => {
+        localStorage.setItem('tema-interface','dark');
+        localStorage.setItem('editor-performance-mode','normal');
+    }""")
+    page.reload()
+    page.wait_for_function('window.cacheRichText && window.M12_History')
+    page.evaluate('cacheRichText.ready')
+    page.set_viewport_size({'width':430,'height':500})
+    page.evaluate("""() => cacheRichText.applyContent({tree:Array.from({length:80},
+        (_,i)=>({type:'paragraph',text:'Linha ' + i}))})""")
+    editor.locator('.editable').last.click()
+    page.keyboard.press('End')
+    assert page.locator('#editorScroll').evaluate('el=>el.scrollTop') > 500
+    select_root()
+    cut()
+    assert_visible_hint()
+
+    # Native editing commands can leave browser-owned markup and report only
+    # a generic input event. The next keystroke still needs a real, saved block.
+    page.keyboard.insert_text('Texto antes do corte')
+    editor.evaluate("""host => {
+        host.innerHTML = '<div><br></div>';
+        const target = host.firstChild;
+        const range = new Range(); range.selectNodeContents(target); range.collapse(true);
+        const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+        host.dispatchEvent(new InputEvent('input', {bubbles:true}));
+    }""")
+    page.wait_for_function("document.querySelector('#notes-week-placeholder')?.getClientRects().length")
+    assert_visible_hint()
+    page.keyboard.insert_text('Texto após corte nativo')
+    assert 'Texto após corte nativo' in editor.inner_text()
+    assert label.is_hidden()
+    page.evaluate('cacheRichText.flush()')
+    page.reload()
+    page.wait_for_function('window.cacheRichText')
+    page.evaluate('cacheRichText.ready')
+    assert 'Texto após corte nativo' in editor.inner_text()
     assert not errors, errors
     browser.close()
     print(f'PASS {engine.name} cut, clipboard, placeholder, undo/redo, reload and partial toggle', flush=True)

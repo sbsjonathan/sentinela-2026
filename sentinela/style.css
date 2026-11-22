@@ -197,9 +197,14 @@ p.objetivo-titulo {
 }
 
 .comentarios {
+    --comment-height: max(44px, 2.5em);
+    --comment-border: 1.6px;
     width: 100%;
-    min-height: max(44px, 2.5em);
-    padding: calc(8px * var(--font-scale-global)) calc(8px * var(--font-scale-global));
+    min-height: var(--comment-height);
+    padding: calc(8px * var(--font-scale-global));
+    /* Empty editing hosts position the native caret at the padding edge. */
+    padding-block: calc((var(--comment-height) - 1lh) / 2 - var(--comment-border));
+    align-content: center;
     font-size: calc(14.4px * var(--font-scale-global));
     font-family: inherit;
     color: var(--text-sub);
@@ -207,9 +212,14 @@ p.objetivo-titulo {
     box-sizing: border-box;
     margin-bottom: calc(15px * var(--font-scale-global));
     line-height: 1.2;
-    border: 1.6px solid var(--border-color);
+    border: var(--comment-border) solid var(--border-color);
     border-radius: calc(5px * var(--font-scale-global)); 
     transition: border-color 0.2s, box-shadow 0.2s, background-color 0.3s, color 0.3s;
+}
+
+/* Previously saved empty comments can contain a single empty block. */
+.comentarios > div:only-child:empty {
+    min-height: 1lh;
 }
 
 .comentarios:focus {

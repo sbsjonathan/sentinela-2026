@@ -50,10 +50,9 @@ const M3_TextModel = {
   sync(el) {
     if (!el) return;
     el.dataset.empty = this.isEmpty(el) ? 'true' : 'false';
-    if (el.classList.contains('paragraph-content')) {
-      const placeholder = M4A_Placeholder.main();
-      if (el.dataset.placeholder !== placeholder) el.dataset.placeholder = placeholder;
-    }
+    // Older HTML backups kept the week on each paragraph. It now belongs
+    // to the editor as a whole and never needs to travel with the note.
+    if (el.classList.contains('paragraph-content')) el.removeAttribute('data-placeholder');
   },
   syncAll() {
     M1_Config.editor.querySelectorAll('.editable').forEach(e => this.sync(e));
@@ -213,6 +212,75 @@ const M4A_Placeholder = {
 
   main() {
     return `Semana de ${this.formatSemanaAmigavel()}`;
+  },
+
+  hasContent() {
+    // Stop at the first real word or object. Include collapsed topic children;
+    // BRs, native caret fillers and the editor's own buttons are not note data.
+    const walker = document.createTreeWalker(M1_Config.editor, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+      acceptNode(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          return /[^\s\u200B\uFEFF]/u.test(node.data) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+        }
+        if (node.matches('.toggle-arrow,.text-plus,.toggle-spacer,script,style,template')) return NodeFilter.FILTER_REJECT;
+        return node.matches('img,svg,video,audio,canvas,hr,iframe,object,embed,math,input,textarea,table')
+          ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+      }
+    });
+    return !!walker.nextNode();
+  },
+
+  sync() {
+    const editor = M1_Config.editor;
+    const hint = this.hint;
+    const empty = !this.hasContent();
+    if (empty && !editor.querySelector('.editable')) {
+      // A native edit can leave the contenteditable host as <div><br></div>,
+      // even without a deleteByCut event. Give the next character a real block.
+      const selection = window.getSelection();
+      const keepCaret = document.activeElement === editor && editor.contains(selection?.anchorNode);
+      const paragraph = M5_Factory.para();
+      editor.replaceChildren(paragraph);
+      if (keepCaret) M4_Caret.place(M2_Query.getParC(paragraph));
+    }
+    if (!empty) hint.removeAttribute('data-after-cut');
+    if (hint.hidden === empty) {
+      hint.hidden = !empty;
+      if (empty) M1_Config.scroll.scrollTop = 0;
+    }
+  },
+
+  bind() {
+    const editor = M1_Config.editor;
+    this.hint = document.getElementById('notes-week-placeholder');
+    this.hint.textContent = this.main();
+    editor.setAttribute('aria-placeholder', this.hint.textContent);
+    this.sync();
+    this.observer = new MutationObserver(() => {
+      // New typing, a new block or a restored template resumes normal layout.
+      this.hint.removeAttribute('data-after-cut');
+      this.sync();
+    });
+    this.observer.observe(editor, { childList: true, characterData: true, subtree: true });
+  },
+
+  afterCut() {
+    if (this.hasContent()) return;
+    const editor = M1_Config.editor;
+    let first = editor.firstElementChild;
+    // Unselected whitespace, soft breaks and intentionally empty blocks
+    // can survive a cut. Keep them available for Undo and for later editing.
+    if (!first?.matches('.node-paragraph') || !M2_Query.getParC(first) || M2_Query.getParC(first).querySelector('ol,ul')) {
+      first = M5_Factory.para();
+      editor.prepend(first);
+    }
+    this.hint.setAttribute('data-after-cut', '');
+    this.hint.hidden = false;
+    M4_Caret.place(M2_Query.getParC(first));
+    M4_Caret.saveR();
+    M1_Config.scroll.scrollTop = 0;
+    // These records belong to the cut just rendered, not to the next edit.
+    this.observer.takeRecords();
   }
 };
 
@@ -236,7 +304,7 @@ const M5_Factory = {
   para(txt = '') {
     const n = this.mk('div', 'node-paragraph', { 'data-level': '0' });
     const r = this.mk('div', 'row');
-    const c = this.mk('div', 'paragraph-content editable', { 'data-placeholder': M4A_Placeholder.main() });
+    const c = this.mk('div', 'paragraph-content editable');
     c.textContent = txt;
     r.append(c);
     n.append(r);
@@ -732,8 +800,7 @@ const M10_EditorEvents = {
   resetAfterCut() {
     const paragraph = M5_Factory.para();
     M1_Config.editor.replaceChildren(paragraph);
-    M4_Caret.place(M2_Query.getParC(paragraph));
-    M4_Caret.saveR();
+    M4A_Placeholder.afterCut();
   },
   fullyCoveredTopNodes(range) {
     const within = n => {
@@ -1371,6 +1438,14 @@ const M10_EditorEvents = {
         this.resetAfterCut();
         return;
       }
+      // Native editing commands may clear the host first and send a plain
+      // input afterwards, with no matching cut or beforeinput on the page.
+      if (!M1_Config.editor.querySelector('.editable')) M4A_Placeholder.sync();
+      if (!e.isComposing && (!e.inputType || e.inputType === 'deleteByCut') &&
+          M4A_Placeholder.hint.hidden && !M4A_Placeholder.hasContent()) {
+        M4A_Placeholder.afterCut();
+        return;
+      }
       if (!M1_Config.editor.children.length) M7_Actions.ensureRoot();
 
       const editable = e.target?.closest?.('.editable') || M2_Query.curEd();
@@ -1438,7 +1513,7 @@ const M10_EditorEvents = {
 
       window.M12_History?.beforeChange?.();
       if (whole) this.resetAfterCut();
-      else this.flattenDeleteSelection();
+      else if (this.flattenDeleteSelection()) M4A_Placeholder.afterCut();
       window.M12_History?.afterChange?.(2);
     });
 
@@ -1556,6 +1631,7 @@ const M10_EditorEvents = {
 document.addEventListener('DOMContentLoaded', () => {
   M1_Config.editor.appendChild(M5_Factory.para());
   M3_TextModel.syncAll();
+  M4A_Placeholder.bind();
   
   M10_EditorEvents.bind();
   M11_Layout.run();
