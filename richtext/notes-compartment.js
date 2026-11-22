@@ -5,7 +5,7 @@
   if (!scroller || document.documentElement.dataset.notesVersion !== '2') return;
 
   const standalone = matchMedia('(display-mode: standalone)');
-  const holdTime = 2000;
+  const holdTime = 1200;
   const pullDistance = 56;
   let listeners = null, touch = null, timer = 0, progress = null, compartment = null;
   let disposePanel = null;
@@ -93,8 +93,8 @@
       let hint = '';
       if (busy) hint = 'Resumindo…';
       else if (!enough) hint = 'Escreva um pouco mais para gerar o resumo.';
-      else if (offline) hint = 'Conecte-se à internet para gerar o resumo.';
       else if (error) hint = error;
+      else if (offline) hint = hasResult ? 'Conecte-se à internet para gerar outro resumo.' : 'Conecte-se à internet para gerar o resumo.';
       else if (changed) hint = 'A anotação mudou. Você pode gerar um novo resumo.';
       else if (!hasResult) hint = 'A IA lê a anotação inteira, inclusive os tópicos recolhidos.';
       else hint = 'Resumo pronto.';
@@ -107,7 +107,7 @@
       request = null;
     }
 
-    function refreshSource() {
+    function refreshSource(restore = false) {
       const next = window.NotesSummarySource.read();
       if (next.outline !== source.outline) {
         changed = changed || !!request || !!result.textContent;
@@ -116,8 +116,14 @@
         result.textContent = '';
       }
       source = next;
+      if (restore) {
+        const saved = window.cacheRichText?.getSummary(source.outline) || '';
+        result.textContent = saved;
+        if (saved) { changed = false; error = ''; }
+      }
       render();
     }
+    const restoreSummary = () => refreshSource(true);
 
     async function generate(event) {
       refreshSource();
@@ -133,7 +139,13 @@
         refreshSource();
         if (current.signal.aborted) return;
         if (typeof summary !== 'string' || !summary.trim()) throw new Error('empty');
-        result.textContent = summary.trim();
+        const text = summary.trim();
+        const stored = window.cacheRichText?.saveSummary(source.outline, text);
+        // Saving can discover an edit from another tab and restore it synchronously.
+        refreshSource();
+        if (current.signal.aborted) return;
+        result.textContent = text;
+        if (!stored) error = 'O resumo foi gerado, mas não foi salvo neste aparelho.';
       } catch (_) {
         if (!current.signal.aborted) error = 'Não foi possível gerar o resumo. Tente novamente.';
       } finally {
@@ -151,9 +163,10 @@
     panel.querySelector('.notes-summary-close').addEventListener('click', hide, on);
     window.addEventListener('online', render, on);
     window.addEventListener('offline', render, on);
-    window.addEventListener('notes:restored', refreshSource, on);
+    window.addEventListener('notes:restored', restoreSummary, on);
+    window.addEventListener('notes:summary-changed', restoreSummary, on);
     window.addEventListener('supabaseLogout', hide, on);
-    render();
+    restoreSummary();
     return () => { cancelRequest(); events.abort(); observer.disconnect(); cancelAnimationFrame(frame); };
   }
 

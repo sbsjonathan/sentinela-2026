@@ -97,6 +97,53 @@ def check(engine, executable, origin):
         assert page.locator('#notes-save-status:visible').count() == 0
     assert any(c['local']['tree'][0]['text'] == 'Rascunho com armazenamento cheio'
                and c['external']['localRevision'] == 'sibling' for c in b.evaluate('window.cacheRichText.listRecovery()'))
+
+    # An attached summary follows its source across tabs without replacing the
+    # other editor's DOM or wiping its undo history.
+    source = 'Um discurso de exemplo para verificar o salvamento do resumo entre abas.'
+    a.evaluate("""text => {
+        const field = document.querySelector('#editor .paragraph-content');
+        field.textContent = text;
+        field.dispatchEvent(new Event('input', {bubbles:true}));
+        cacheRichText.flush();
+    }""", source)
+    b.wait_for_function("text => NotesSummarySource.read().outline === text", arg=source)
+    b.evaluate("window.originalParagraph = document.querySelector('#editor .paragraph-content')")
+    assert a.evaluate("text => cacheRichText.saveSummary(text, 'Primeira síntese.')", source)
+    b.wait_for_function("text => cacheRichText.getSummary(text) === 'Primeira síntese.'", arg=source)
+    assert b.evaluate("originalParagraph === document.querySelector('#editor .paragraph-content')")
+
+    # A format edit and a regenerated summary from the same base can coexist.
+    # Deliver the incoming commit before the event loop can flush local typing.
+    b.evaluate("""text => {
+        const key = 'richtext_cache_02-11';
+        const incoming = JSON.parse(localStorage.getItem(key));
+        originalParagraph.innerHTML = '<strong>' + text + '</strong>';
+        originalParagraph.dispatchEvent(new Event('input', {bubbles:true}));
+        incoming.notesSummary.text = 'Segunda síntese.';
+        incoming.previousLocalRevision = incoming.localRevision;
+        incoming.localRevision = 'other-summary';
+        localStorage.setItem(key, JSON.stringify(incoming));
+        cacheRichText.flush();
+    }""", source)
+    assert b.evaluate("text => cacheRichText.getSummary(text) === 'Segunda síntese.'", source)
+    assert b.locator('#editor strong').inner_text() == source
+
+    # A late model response must never write its source text over a newer
+    # committed note, even before the external storage event has been handled.
+    assert not b.evaluate("""source => {
+        const key = 'richtext_cache_02-11';
+        const incoming = JSON.parse(localStorage.getItem(key));
+        incoming.tree[0].text = incoming.tree[0].html = 'Texto atualizado em outra aba.';
+        incoming.previousLocalRevision = incoming.localRevision;
+        incoming.localRevision = 'other-text';
+        delete incoming.notesSummary;
+        localStorage.setItem(key, JSON.stringify(incoming));
+        return cacheRichText.saveSummary(source, 'Resposta desatualizada.');
+    }""", source)
+    assert b.evaluate("JSON.parse(localStorage.getItem('richtext_cache_02-11')).tree[0].text") == 'Texto atualizado em outra aba.'
+    assert b.evaluate("cacheRichText.getSummary(NotesSummarySource.read().outline)") == ''
+
     # The explicit recovery editor also exports the live draft on quota errors.
     b.goto(origin + PREFIX + 'richtext/container-v1.html?semana=' + WEEK + '&versao=1&legado=1')
     b.wait_for_function("window.NotesVersions?.current === '1' && window.cacheRichText")

@@ -12,6 +12,7 @@ class CacheRichText {
     this.maybeDirty = true;
     this.revision = 0;
     this.current = null;
+    this.summary = null;
     this.lastWrittenKey = null;
     this.lastStorageRaw = null;
     this.lastSaveError = null;
@@ -72,6 +73,19 @@ class CacheRichText {
     return typeof M6_Tree === 'undefined' ? [] : this.cleanTree(this.obterRaizesEditor().map(node => M6_Tree.toTree(node)).filter(Boolean));
   }
   exportarHTML() { return this.cleanHTML(this.editor?.innerHTML || ''); }
+  parseSummary(value) {
+    if (typeof value?.source !== 'string' || !value.source || typeof value.text !== 'string' || !value.text.trim()) return null;
+    return { source: value.source, text: value.text.trim() };
+  }
+  bodyKeyFrom(key) {
+    const prefix = 'notes-summary-v1:';
+    if (typeof key !== 'string' || !key.startsWith(prefix)) return key;
+    try {
+      const parts = JSON.parse(key.slice(prefix.length));
+      if (Array.isArray(parts) && parts.length === 3 && parts.every(part => typeof part === 'string')) return parts[0];
+    } catch (_) { /* A legacy HTML-only note can start with any text. */ }
+    return key;
+  }
   contentKey(payload, alreadyClean = false) {
     // text is redundant when rich HTML exists and can vary with rendering;
     // timestamp and localRevision describe persistence, not document content.
@@ -81,9 +95,29 @@ class CacheRichText {
       if (Array.isArray(value.children)) value.children = normalize(value.children);
       return value;
     });
-    return Array.isArray(payload?.tree) && payload.tree.length
+    const body = Array.isArray(payload?.tree) && payload.tree.length
       ? JSON.stringify(normalize(alreadyClean ? payload.tree : this.cleanTree(payload.tree)))
       : this.cleanHTML(payload?.html || '');
+    const summary = this.parseSummary(payload?.notesSummary);
+    // Keep the old key exactly for existing notes, including their cloud baselines.
+    return summary ? 'notes-summary-v1:' + JSON.stringify([body, summary.text, summary.source]) : body;
+  }
+  getSummary(outline) {
+    return this.summary && this.summary.source === outline ? this.summary.text : '';
+  }
+  saveSummary(outline, text) {
+    const summary = this.parseSummary({ source: outline, text });
+    if (!summary || this.isApplyingCache) return false;
+    const current = this.flush();
+    // flush may have picked up a different document from another tab.
+    if (!current || window.NotesSummarySource.read().outline !== outline) return false;
+    if (this.getSummary(outline) === summary.text) return this.isStored(current);
+    this.summary = summary;
+    this.maybeDirty = true;
+    const saved = this.flush();
+    if (!this.isStored(saved) || this.getSummary(outline) !== summary.text) return false;
+    window.dispatchEvent(new CustomEvent('notes:summary-changed'));
+    return true;
   }
   meaningfulMutation(record) {
     if (record.type !== 'attributes') return true;
@@ -102,6 +136,8 @@ class CacheRichText {
     this.metrics.snapshots++;
     const tree = this.exportarTree(), html = this.exportarHTML();
     const payload = { formato: 'v23-tree', versao: '2.0', semana: this.semanaAtual, tree, html };
+    if (this.summary && this.summary.source !== window.NotesSummarySource.read().outline) this.summary = null;
+    if (this.summary) payload.notesSummary = this.summary;
     const key = this.contentKey(payload, true);
     this.maybeDirty = false;
     if (this.current?.key === key) return this.current;
@@ -134,7 +170,8 @@ class CacheRichText {
   checkExternal(snapshot, raw) {
     if (raw === this.lastStorageRaw) return snapshot;
     const data = this.parse(raw) || { html: '', formato: 'legacy-html' };
-    if (this.contentKey(data) === snapshot.key) {
+    const incomingKey = this.contentKey(data);
+    if (incomingKey === snapshot.key) {
       this.lastStorageRaw = raw; this.lastWrittenKey = snapshot.key;
       if (data.localRevision) snapshot.payload.localRevision = data.localRevision;
       else delete snapshot.payload.localRevision;
@@ -145,12 +182,33 @@ class CacheRichText {
     const concurrentWrite = previous?.writerSession === this.sessionId &&
       data.previousLocalRevision !== (previous.localRevision || null);
     const editing = snapshot.key !== this.lastWrittenKey;
+    // A completed AI request is not a text edit. If another tab saved a
+    // different note while it ran, its committed text takes precedence.
+    const localBody = this.bodyKeyFrom(snapshot.key), previousBody = this.bodyKeyFrom(this.lastWrittenKey);
+    const externalBody = this.bodyKeyFrom(incomingKey);
+    const summaryOnly = editing && localBody === previousBody;
     if (editing || concurrentWrite || raw === null) this.preserveConflict(snapshot, raw, data);
     // Keep unsaved typing in place. A clean editor follows the already committed
     // copy, including a concurrent writer that saved from an older base.
-    if (editing) return snapshot;
+    if (editing && !(summaryOnly && externalBody !== localBody)) {
+      // A new summary can still apply to locally reformatted text.
+      if (localBody !== previousBody && externalBody === previousBody &&
+          data.notesSummary?.source === window.NotesSummarySource.read().outline) {
+        this.summary = this.parseSummary(data.notesSummary);
+        this.maybeDirty = true;
+        snapshot = this.snapshot();
+        window.dispatchEvent(new CustomEvent('notes:summary-changed'));
+      }
+      return snapshot;
+    }
     if (!this.applyContent(data, { external: true })) throw new Error('Não foi possível abrir a cópia salva desta anotação.');
     this.lastStorageRaw = raw; this.conflict = null; this.lastSaveError = null;
+    if (summaryOnly && snapshot.payload.notesSummary?.source === window.NotesSummarySource.read().outline) {
+      this.summary = snapshot.payload.notesSummary;
+      this.maybeDirty = true;
+      this.snapshot();
+      window.dispatchEvent(new CustomEvent('notes:summary-changed'));
+    }
     window.dispatchEvent(new CustomEvent('notes:external-updated', { detail: this.current }));
     return this.current;
   }
@@ -257,15 +315,24 @@ class CacheRichText {
   applyContent(raw, { remote = false, initial = false, external = false } = {}) {
     const data = this.parse(raw);
     if (!data || !this.editor || (this.conflict && remote)) return false;
+    // When only the attached summary arrives, retain the caret and undo history.
+    let summaryOnly = false;
+    if (!initial && (external || remote)) {
+      const incoming = this.contentKey(data), current = this.snapshot()?.key;
+      summaryOnly = incoming !== current && this.bodyKeyFrom(incoming) === this.bodyKeyFrom(current);
+    }
     this.isApplyingCache = true;
     clearTimeout(this.timeout); this.timeout = 0;
     this.observer?.disconnect();
     let applied = false;
     try {
-      applied = Array.isArray(data.tree) && data.tree.length ? this.aplicarTree(data.tree) : this.aplicarHTML(data.html);
+      applied = summaryOnly || (Array.isArray(data.tree) && data.tree.length ? this.aplicarTree(data.tree) : this.aplicarHTML(data.html));
       if (!applied) return false;
-      M3_TextModel.syncAll();
-      M11_Layout?.schedule(2);
+      if (!summaryOnly) {
+        M3_TextModel.syncAll();
+        M11_Layout?.schedule(2);
+      }
+      this.summary = this.parseSummary(data.notesSummary);
       this.maybeDirty = true;
       const snapshot = this.snapshot();
       if (initial || external) {
@@ -276,9 +343,9 @@ class CacheRichText {
       }
       if (remote) snapshot.acknowledgeAfterWrite = true;
       const history = window.M12_History;
-      if (history) { clearTimeout(history.timer); cancelAnimationFrame(history.raf); history.timer = 0; history.stack = []; history.index = -1; history.commit(true); }
+      if (!summaryOnly && history) { clearTimeout(history.timer); cancelAnimationFrame(history.raf); history.timer = 0; history.stack = []; history.index = -1; history.commit(true); }
       this.metrics.restores++;
-      window.dispatchEvent(new CustomEvent('notes:restored', { detail: { initial, remote } }));
+      window.dispatchEvent(new CustomEvent(summaryOnly ? 'notes:summary-changed' : 'notes:restored', { detail: { initial, remote } }));
       return true;
     } finally {
       this.isApplyingCache = false;
@@ -292,7 +359,7 @@ class CacheRichText {
   aplicarCacheSalvo() { return this.applyContent(this.carregarDados(), { initial: true }); }
   observe() {
     this.observer?.observe(this.editor, { childList: true, subtree: true, characterData: true, attributes: true, attributeOldValue: true,
-      attributeFilter: ['data-open', 'class', 'style', 'hidden', 'aria-expanded', 'data-bbl-source-id'] });
+      attributeFilter: ['data-open', 'class', 'style', 'hidden', 'aria-expanded', 'data-bbl-source-id', 'start', 'reversed', 'value'] });
   }
   integrarComEditor() {
     const editor = document.getElementById('editor');
@@ -326,6 +393,8 @@ class CacheRichText {
       salvar: () => this.flush(), salvarCache: () => this.flush(), flush: () => this.flush(),
       carregar: () => this.carregarCache(), carregarDados: () => this.carregarDados(), aplicar: () => this.aplicarCacheSalvo(),
       semanaAtual: () => this.semanaAtual, snapshot: () => this.snapshot(), contentKey: payload => this.contentKey(payload),
+      bodyKeyFrom: key => this.bodyKeyFrom(key), getSummary: outline => this.getSummary(outline),
+      saveSummary: (outline, text) => this.saveSummary(outline, text),
       parse: raw => this.parse(raw), applyContent: (raw, options) => this.applyContent(raw, options),
       hasPending: snapshot => this.hasPending(snapshot), acknowledge: snapshot => this.acknowledge(snapshot),
       isStored: snapshot => this.isStored(snapshot), getConflict: () => this.conflict,

@@ -90,5 +90,5 @@
 @keyframes notes-summary-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: no-preference) {
   .notes-summary-spinner svg, [data-summary-regenerate][aria-busy="true"] svg { animation: notes-summary-spin 1.6s linear infinite; }
-  #notes-compartment-progress svg:not(.notes-compartment-ring) { animation: notes-summary-spin 2s linear infinite; }
+  #notes-compartment-progress svg:not(.notes-compartment-ring) { animation: notes-summary-spin var(--hold-time) linear infinite; }
 }

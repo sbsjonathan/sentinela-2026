@@ -179,7 +179,22 @@ class AutoSaveManager {
                 return;
             }
             const seedMissing = raw === null && this.lastCloudKey === null && this.editor.textContent.trim();
-            if (!foreign && (dirty || seedMissing)) {
+            let preferRemoteBody = false;
+            if (!foreign && dirty && remoteKey !== this.lastCloudKey && this.store.bodyKeyFrom) {
+                const bodyKey = this.store.bodyKeyFrom;
+                const localBodyChanged = bodyKey(snapshot.key) !== bodyKey(this.lastAckLocalKey);
+                const remoteBodyChanged = bodyKey(remoteKey) !== bodyKey(this.lastCloudKey);
+                if (!localBodyChanged && remoteBodyChanged) {
+                    // Keep the new note when only the local summary changed.
+                    preferRemoteBody = true;
+                } else if (localBodyChanged && !remoteBodyChanged && remote?.notesSummary &&
+                    this.store.getSummary(remote.notesSummary.source) !== remote.notesSummary.text) {
+                    // Formatting changes can preserve the remote summary. If it
+                    // matches, saveSummary queues the resulting local revision.
+                    if (this.store.saveSummary(remote.notesSummary.source, remote.notesSummary.text)) return;
+                }
+            }
+            if (!foreign && !preferRemoteBody && (dirty || seedMissing)) {
                 if (!this.store.isStored(snapshot)) return;
                 if (remoteKey !== this.lastCloudKey) {
                     this.preserveCopy(snapshot.payload, remote || { html: '' }, 'Antes de sincronizar edições de aparelhos diferentes');
@@ -204,6 +219,10 @@ class AutoSaveManager {
             const applied = this.store.snapshot();
             if (!this.store.isStored(applied)) throw new Error('Falha ao guardar a nota.');
             this.acknowledgeRemote(applied, remoteKey);
+            const summaryForIncoming = preferRemoteBody && snapshot.payload.notesSummary;
+            if (summaryForIncoming && this.store.getSummary(summaryForIncoming.source) !== summaryForIncoming.text) {
+                this.store.saveSummary(summaryForIncoming.source, summaryForIncoming.text);
+            }
             return;
         }
         throw new Error('A anotação mudou durante a sincronização.');

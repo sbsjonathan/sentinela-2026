@@ -9,19 +9,20 @@ from playwright.sync_api import expect, sync_playwright
 from test_notes_upgrade import Handler, PREFIX, ROOT
 
 
-def check_summary(page, panel):
+class SummaryHandler(Handler):
+    def do_GET(self):
+        if self.server.unavailable:
+            self.send_response(503)
+            self.end_headers()
+            return
+        super().do_GET()
+
+
+def check_summary(page, panel, open_panel, offline_reload):
     generate = panel.locator('[data-summary-generate]')
     regenerate = panel.locator('button[data-summary-regenerate]')
     status = panel.locator('[data-summary-status]')
     result = panel.locator('[data-summary-result]')
-    # Delay the model itself. Local inputs, serialization and user interactions
-    # still pass through the same editor and compartment as on an installed PWA.
-    page.evaluate("""() => {
-        window.testSummaryRequests = [];
-        window.NotesSummaryAgent = {summarize: (outline, {signal}) =>
-            new Promise((resolve, reject) => testSummaryRequests.push({outline, signal, resolve, reject}))};
-    }""")
-
     def restore(tree):
         assert page.evaluate('tree => cacheRichText.applyContent({tree})', tree)
 
@@ -131,7 +132,13 @@ def check_summary(page, panel):
         {'type': 'paragraph', 'html': '<ol><li>Definir a meta.</li><li>Rever o progresso.</li></ol>'},
     ]
     restore(tree)
-    before = page.evaluate('cacheRichText.snapshot().key')
+    def editor_content():
+        return page.evaluate('''() => {
+            const {tree, html} = cacheRichText.snapshot().payload;
+            return {tree, html};
+        }''')
+
+    before = editor_content()
     pending = start()
     outline = page.evaluate('i => testSummaryRequests[i].outline', pending)
     for phrase in ['Discurso sobre perseverança.', 'Pequenos passos', 'Aplicação',
@@ -141,7 +148,28 @@ def check_summary(page, panel):
     page.evaluate("i => testSummaryRequests[i].resolve('A perseverança cresce com metas pequenas e revisões regulares.')", pending)
     expect(result).to_contain_text('A perseverança cresce')
     assert page.locator('#editor .node-toggle[data-open=false]').count() == 2
-    assert page.evaluate('cacheRichText.snapshot().key') == before
+    assert editor_content() == before
+    # Toggle expansion and emphasis alter the document tree or HTML but leave
+    # the outline sent to the model unchanged.
+    page.locator('#editor .toggle-arrow').first.tap()
+    expect(page.locator('#editor .toggle-arrow').first).to_have_attribute('aria-expanded', 'true')
+    field = page.locator('#editor .paragraph-content').first
+    before_format = field.inner_html()
+    field.tap()
+    assert field.evaluate("""field => {
+        const range = document.createRange();
+        range.selectNodeContents(field);
+        const selection = window.getSelection();
+        selection.removeAllRanges(); selection.addRange(range);
+        return document.execCommand('bold');
+    }""")
+    page.evaluate('document.activeElement.blur(); getSelection().removeAllRanges()')
+    assert field.inner_html() != before_format
+    assert page.evaluate('NotesSummarySource.read().outline') == outline
+    panel.get_by_role('button', name='Ocultar compartimento de IA').tap()
+    open_panel()
+    expect(result).to_contain_text('A perseverança cresce')
+    assert page.evaluate('testSummaryRequests.length') == pending + 1
 
     # A changed editor and a dismissed compartment must ignore even a provider
     # that resolves after receiving the cancellation signal.
@@ -170,20 +198,57 @@ def check_summary(page, panel):
     page.evaluate("i => testSummaryRequests[i].resolve('Resposta já descartada')", dismissed)
     expect(page.locator('body')).not_to_contain_text('Resposta já descartada')
 
+    open_panel()
+    expect(result).to_have_text('Resumo da última edição.')
+    assert page.evaluate('testSummaryRequests.length') == dismissed + 1
+    updated = start(regenerate)
+    page.evaluate("i => testSummaryRequests[i].resolve('Nova síntese para a mesma semana.')", updated)
+    expect(result).to_have_text('Nova síntese para a mesma semana.')
+    saved_note = editor_content()
+    offline_reload()
+    open_panel()
+    expect(result).to_have_text('Nova síntese para a mesma semana.')
+    expect(regenerate).to_be_disabled()
+    assert page.evaluate('testSummaryRequests.length') == 0
+    assert editor_content() == saved_note
+    page.context.set_offline(False)
+    original_url = page.url
+    page.goto(original_url.replace('semana=16-11', 'semana=23-11'))
+    page.evaluate('cacheRichText.ready')
+    restore(saved_note['tree'])
+    open_panel()
+    expect(result).to_be_hidden()
+    expect(generate).to_be_enabled()
+    assert page.evaluate('testSummaryRequests.length') == 0
+    page.goto(original_url)
+    page.evaluate('cacheRichText.ready')
+    open_panel()
+    expect(result).to_have_text('Nova síntese para a mesma semana.')
+    assert page.evaluate('testSummaryRequests.length') == 0
+    panel.get_by_role('button', name='Ocultar compartimento de IA').tap()
 
-def check(engine, executable, origin):
+
+def check(engine, executable, origin, server):
     browser = engine.launch(executable_path=executable, headless=True,
                             args=['--no-sandbox'] if engine.name == 'chromium' else [])
     for installed in (False, True):
         context = browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True,
-                                      has_touch=True, service_workers='block')
+                                      has_touch=True, service_workers='allow' if installed else 'block')
         context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin + '/') else route.abort())
         if installed:
             context.add_init_script("Object.defineProperty(navigator, 'standalone', {get: () => true})")
+            # Delay the model only. The editor, storage and offline shell are real.
+            context.add_init_script("""document.addEventListener('DOMContentLoaded', () => {
+                window.testSummaryRequests = [];
+                window.NotesSummaryAgent = {summarize: (outline, {signal}) => new Promise((resolve, reject) =>
+                    testSummaryRequests.push({outline, signal, resolve, reject}))};
+            });""")
         page = context.new_page()
         page.goto(origin + PREFIX + 'richtext/container.html?versao=2&semana=16-11')
         page.wait_for_function('window.cacheRichText && window.NotesMenu')
         page.evaluate('cacheRichText.ready')
+        if installed:
+            page.wait_for_function("navigator.serviceWorker.controller?.state === 'activated'", timeout=90000)
 
         # Chromium supports native touch drags through CDP. On WebKit drive the
         # same TouchEvent sequence directly because Playwright exposes taps only.
@@ -210,6 +275,27 @@ def check(engine, executable, origin):
 
         ring = page.locator('#notes-compartment-progress')
         panel = page.locator('#notes-compartment')
+
+        def open_panel():
+            pull()
+            expect(panel).to_be_visible(timeout=3300)
+            touch('end', 310)
+
+        def offline_reload():
+            # WebKit's automation offline flag rejects top-level navigation even
+            # with an active worker. Make the origin unavailable to both engines.
+            server.unavailable = True
+            try:
+                context.set_offline(engine.name == 'chromium')
+                response = page.reload(wait_until='domcontentloaded')
+                assert response.status == 200 and response.headers.get('x-sentinela-app-version'), response.headers
+                page.evaluate('cacheRichText.ready')
+                if page.evaluate('navigator.onLine'):
+                    context.set_offline(False)
+                context.set_offline(True)
+                page.wait_for_function('!navigator.onLine')
+            finally:
+                server.unavailable = False
         pull()
         if not installed:
             expect(ring).to_have_count(0)
@@ -255,7 +341,7 @@ def check(engine, executable, origin):
         }""")
         pull()
         expect(ring).to_be_visible()
-        expect(ring.locator('.notes-compartment-fill')).to_have_css('animation-duration', '2s')
+        expect(ring.locator('.notes-compartment-fill')).to_have_css('animation-duration', '1.2s')
         page.wait_for_function("""() => {
             const circle = document.querySelector('#notes-compartment-progress .notes-compartment-fill');
             const remaining = circle && parseFloat(getComputedStyle(circle).strokeDashoffset);
@@ -264,7 +350,7 @@ def check(engine, executable, origin):
         expect(panel).to_have_count(0)
         expect(panel).to_be_visible(timeout=3000)
         elapsed = page.evaluate('testHold.end - testHold.start')
-        assert 1950 <= elapsed < 3300, elapsed
+        assert 1150 <= elapsed < 1900, elapsed
         expect(ring).to_have_count(0)
         expect(panel.locator('[data-summary-generate]')).to_be_visible()
         expect(panel).to_be_in_viewport(ratio=1)
@@ -280,7 +366,7 @@ def check(engine, executable, origin):
         pull()
         expect(panel).to_be_visible(timeout=3300)
         touch('end', 310)
-        check_summary(page, panel)
+        check_summary(page, panel, open_panel, offline_reload)
         editor.locator('.paragraph-content').first.tap()
         pull()
         expect(ring).to_have_count(0)
@@ -297,17 +383,18 @@ def check(engine, executable, origin):
         assert page.locator('#editorScroll').evaluate('e => e.scrollTop') > 0
         context.close()
     browser.close()
-    print(f'PASS {engine.name}: two-second PWA gesture, 49/50 threshold, nested notes, first summary, star regeneration and cancellation', flush=True)
+    print(f'PASS {engine.name}: 1.2-second PWA gesture, 49/50 threshold, nested notes, regeneration, offline restore and weekly isolation', flush=True)
 
 
 if __name__ == '__main__':
-    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    server = ThreadingHTTPServer(('127.0.0.1', 0), SummaryHandler)
+    server.unavailable = False
     Thread(target=server.serve_forever, daemon=True).start()
     origin = f'http://127.0.0.1:{server.server_port}'
     try:
         with sync_playwright() as playwright:
-            check(playwright.chromium, os.getenv('CHROMIUM_EXECUTABLE', '/usr/bin/chromium'), origin)
+            check(playwright.chromium, os.getenv('CHROMIUM_EXECUTABLE', '/usr/bin/chromium'), origin, server)
             if os.getenv('WEBKIT_EXECUTABLE'):
-                check(playwright.webkit, os.environ['WEBKIT_EXECUTABLE'], origin)
+                check(playwright.webkit, os.environ['WEBKIT_EXECUTABLE'], origin, server)
     finally:
         server.shutdown()
